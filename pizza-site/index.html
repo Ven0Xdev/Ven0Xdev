@@ -1,1669 +1,1606 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>פיצה אמוורה — אמנות האיטלקית</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700&family=Playfair+Display+SC:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Amora Pizza — אמנות האיטלקית</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Jost:wght@200;300;400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    /* ── Design Tokens ── */
-    :root {
-      --primary:       #EA580C;
-      --primary-light: #FB923C;
-      --secondary:     #F97316;
-      --accent:        #2563EB;
-      --accent-light:  #3B82F6;
-      --bg:            #0C0A09;
-      --bg-card:       rgba(255,255,255,0.05);
-      --bg-card-hover: rgba(255,255,255,0.09);
-      --surface:       #1A1614;
-      --fg:            #FFF7ED;
-      --fg-muted:      #D4B89A;
-      --border:        rgba(234,88,12,0.2);
-      --border-glass:  rgba(255,255,255,0.12);
-      --radius-lg:     24px;
-      --radius-pill:   999px;
-      --gap-section:   120px;
-      --font-display:  'Playfair Display SC', serif;
-      --font-display2: 'Playfair Display', serif;
-      --font-body:     'Karla', sans-serif;
-      --shadow-glow:   0 0 60px rgba(234,88,12,0.25);
-      --transition:    all 0.28s cubic-bezier(0.4,0,0.2,1);
-    }
+  /* ─── TOKENS ─────────────────────────────────────── */
+  :root {
+    --bg:          #080604;
+    --bg-2:        #0f0d0b;
+    --surface:     #161310;
+    --surface-2:   #1e1a17;
+    --gold:        #D4A847;
+    --gold-light:  #E8C470;
+    --gold-dim:    rgba(212,168,71,.18);
+    --cream:       #FAF5E9;
+    --cream-dim:   rgba(250,245,233,.55);
+    --muted:       rgba(250,245,233,.35);
+    --border:      rgba(212,168,71,.18);
+    --border-soft: rgba(250,245,233,.08);
+    --r-sm:  12px;
+    --r-md:  20px;
+    --r-lg:  32px;
+    --r-xl:  48px;
+    --gap:   clamp(80px,10vw,140px);
+    --ease:  cubic-bezier(.4,0,.2,1);
+    --ease-spring: cubic-bezier(.34,1.56,.64,1);
+  }
 
-    /* ── Reset & Base ── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; font-size: 16px; }
-    body {
-      font-family: var(--font-body);
-      background: var(--bg);
-      color: var(--fg);
-      overflow-x: hidden;
-      line-height: 1.65;
-    }
-    img { display: block; max-width: 100%; }
-    a { color: inherit; text-decoration: none; }
-    button { cursor: pointer; font-family: var(--font-body); border: none; background: none; }
+  /* ─── RESET ──────────────────────────────────────── */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:16px;scroll-behavior:smooth}
+  body{
+    font-family:'Jost',sans-serif;
+    background:var(--bg);
+    color:var(--cream);
+    overflow-x:hidden;
+    line-height:1.65;
+  }
+  img{display:block;max-width:100%;height:auto}
+  a{color:inherit;text-decoration:none}
+  button{cursor:pointer;font-family:'Jost',sans-serif;border:none;background:none}
+  ::-webkit-scrollbar{width:3px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--gold);border-radius:3px}
 
-    /* ── Noise Texture Overlay ── */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-      opacity: 0.35;
-      pointer-events: none;
-      z-index: 0;
-    }
+  /* ─── PROGRESS BAR ───────────────────────────────── */
+  #progress-bar{
+    position:fixed;top:0;left:0;height:2px;
+    background:linear-gradient(90deg,var(--gold),var(--gold-light));
+    width:0%;z-index:200;transition:width .1s linear;
+    box-shadow:0 0 10px rgba(212,168,71,.6);
+  }
 
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+  /* ─── CUSTOM CURSOR ──────────────────────────────── */
+  #cursor{
+    width:8px;height:8px;
+    background:var(--gold);
+    border-radius:50%;
+    position:fixed;pointer-events:none;
+    z-index:9999;
+    transform:translate(-50%,-50%);
+    transition:width .25s var(--ease),height .25s var(--ease),background .25s;
+    mix-blend-mode:difference;
+  }
+  #cursor-ring{
+    width:36px;height:36px;
+    border:1.5px solid rgba(212,168,71,.55);
+    border-radius:50%;
+    position:fixed;pointer-events:none;
+    z-index:9998;
+    transform:translate(-50%,-50%);
+    transition:transform .12s linear,width .3s var(--ease),height .3s var(--ease),opacity .3s;
+  }
+  body.cursor-hover #cursor{width:48px;height:48px;background:rgba(212,168,71,.15)}
+  body.cursor-hover #cursor-ring{opacity:0}
 
-    /* ── Nav ── */
-    nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      padding: 20px 5%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: var(--transition);
-    }
-    nav.scrolled {
-      background: rgba(12,10,9,0.88);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 5%;
-    }
-    .nav-logo {
-      font-family: var(--font-display);
-      font-size: 1.6rem;
-      color: var(--primary);
-      letter-spacing: 0.04em;
-    }
-    .nav-logo span { color: var(--fg); }
-    .nav-links {
-      display: flex;
-      gap: 36px;
-      list-style: none;
-    }
-    .nav-links a {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--fg-muted);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      transition: var(--transition);
-      position: relative;
-    }
-    .nav-links a::after {
-      content: '';
-      position: absolute;
-      bottom: -4px; right: 0;
-      width: 0; height: 2px;
-      background: var(--primary);
-      transition: width 0.25s ease;
-    }
-    .nav-links a:hover { color: var(--fg); }
-    .nav-links a:hover::after { width: 100%; }
-    .nav-cta {
-      background: var(--primary);
-      color: #fff;
-      padding: 12px 28px;
-      border-radius: var(--radius-pill);
-      font-weight: 700;
-      font-size: 0.9rem;
-      letter-spacing: 0.04em;
-      transition: var(--transition);
-      box-shadow: 0 4px 20px rgba(234,88,12,0.4);
-    }
-    .nav-cta:hover {
-      background: var(--primary-light);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(234,88,12,0.55);
-    }
-    .nav-mobile-btn {
-      display: none;
-      flex-direction: column;
-      gap: 5px;
-      padding: 8px;
-    }
-    .nav-mobile-btn span {
-      display: block;
-      width: 24px; height: 2px;
-      background: var(--fg);
-      border-radius: 2px;
-      transition: var(--transition);
-    }
+  /* ─── NAV ────────────────────────────────────────── */
+  nav{
+    position:fixed;top:0;left:0;right:0;
+    z-index:100;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:28px 6%;
+    transition:padding .4s var(--ease),background .4s,backdrop-filter .4s;
+  }
+  nav.compact{
+    padding:16px 6%;
+    background:rgba(8,6,4,.82);
+    backdrop-filter:blur(24px);
+    -webkit-backdrop-filter:blur(24px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .nav-logo{
+    font-family:'Bodoni Moda',serif;
+    font-size:1.4rem;
+    letter-spacing:.06em;
+    color:var(--cream);
+    display:flex;align-items:center;gap:10px;
+  }
+  .nav-logo-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--gold);
+    box-shadow:0 0 12px var(--gold);
+  }
+  .nav-links{
+    display:flex;gap:40px;list-style:none;
+  }
+  .nav-links a{
+    font-size:.82rem;font-weight:500;
+    letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);
+    transition:color .25s;
+  }
+  .nav-links a:hover{color:var(--cream)}
+  .nav-reserve{
+    display:flex;align-items:center;gap:8px;
+    border:1px solid var(--border);
+    padding:11px 26px;border-radius:var(--r-xl);
+    font-size:.8rem;font-weight:600;
+    letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);
+    transition:background .25s,border-color .25s,color .25s;
+  }
+  .nav-reserve:hover{background:var(--gold-dim);border-color:var(--gold)}
+  .burger{display:none;flex-direction:column;gap:5px;padding:6px}
+  .burger span{
+    display:block;width:22px;height:1.5px;
+    background:var(--cream);border-radius:2px;transition:.3s
+  }
 
-    /* ── Hero ── */
-    #hero {
-      position: relative;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 140px 5% 80px;
-      overflow: hidden;
-    }
-    .hero-bg {
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-    }
-    /* Gradient orbs */
-    .orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(100px);
-      pointer-events: none;
-    }
-    .orb-1 {
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(234,88,12,0.35) 0%, transparent 70%);
-      top: -100px; left: -100px;
-      animation: float1 8s ease-in-out infinite;
-    }
-    .orb-2 {
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(37,99,235,0.2) 0%, transparent 70%);
-      bottom: -50px; right: -50px;
-      animation: float2 10s ease-in-out infinite;
-    }
-    .orb-3 {
-      width: 300px; height: 300px;
-      background: radial-gradient(circle, rgba(249,115,22,0.25) 0%, transparent 70%);
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      animation: float3 12s ease-in-out infinite;
-    }
-    @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,30px)} }
-    @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,40px)} }
-    @keyframes float3 { 0%,100%{transform:translate(-50%,-50%)} 50%{transform:translate(-45%,-55%)} }
+  /* ─── HERO ───────────────────────────────────────── */
+  #hero{
+    min-height:100vh;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    align-items:center;
+    padding:120px 6% 80px;
+    position:relative;overflow:hidden;
+    gap:60px;
+  }
+  /* Radial vignette */
+  #hero::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse 80% 80% at 70% 50%,rgba(212,168,71,.06) 0%,transparent 70%);
+    pointer-events:none;
+  }
 
-    /* Rotating pizza SVG background */
-    .hero-pizza-bg {
-      position: absolute;
-      right: -5%;
-      top: 50%;
-      transform: translateY(-50%);
-      width: min(600px, 55vw);
-      opacity: 0.12;
-      animation: rotatePizza 40s linear infinite;
-    }
-    @keyframes rotatePizza { from{transform:translateY(-50%) rotate(0deg)} to{transform:translateY(-50%) rotate(360deg)} }
+  .hero-left{position:relative;z-index:2}
+  .hero-eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-size:.75rem;font-weight:600;
+    letter-spacing:.2em;text-transform:uppercase;
+    color:var(--gold);margin-bottom:32px;
+  }
+  .hero-eyebrow::before{
+    content:'';display:block;
+    width:36px;height:1px;background:var(--gold);
+  }
+  .hero-h1{
+    font-family:'Bodoni Moda',serif;
+    font-size:clamp(3.2rem,6vw,6.2rem);
+    font-weight:700;
+    line-height:1.02;
+    letter-spacing:-.02em;
+    margin-bottom:8px;
+  }
+  .hero-h1 em{
+    font-style:italic;font-weight:400;
+    color:var(--gold-light);
+  }
+  .hero-h1 .line-sub{
+    display:block;
+    font-size:.42em;font-style:italic;font-weight:400;
+    letter-spacing:.01em;
+    color:var(--cream-dim);
+    margin-top:4px;
+  }
+  .hero-desc{
+    font-size:1rem;color:var(--muted);
+    line-height:1.8;max-width:400px;
+    margin:28px 0 44px;font-weight:300;
+  }
+  .hero-cta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .btn-gold{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--gold);color:#080604;
+    padding:17px 36px;border-radius:var(--r-xl);
+    font-size:.9rem;font-weight:700;
+    letter-spacing:.06em;text-transform:uppercase;
+    transition:background .25s,transform .25s,box-shadow .25s;
+    box-shadow:0 8px 32px rgba(212,168,71,.3);
+  }
+  .btn-gold:hover{
+    background:var(--gold-light);
+    transform:translateY(-3px);
+    box-shadow:0 16px 48px rgba(212,168,71,.45);
+  }
+  .btn-gold svg{transition:transform .25s}
+  .btn-gold:hover svg{transform:translateX(-5px)}
+  .btn-ghost{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:.82rem;color:var(--cream-dim);
+    letter-spacing:.06em;
+    transition:color .25s;
+  }
+  .btn-ghost:hover{color:var(--cream)}
+  .btn-ghost-icon{
+    width:44px;height:44px;border-radius:50%;
+    border:1px solid var(--border-soft);
+    display:flex;align-items:center;justify-content:center;
+    transition:border-color .25s,background .25s;
+  }
+  .btn-ghost:hover .btn-ghost-icon{
+    border-color:var(--border);
+    background:rgba(250,245,233,.05);
+  }
 
-    .hero-content {
-      position: relative;
-      z-index: 1;
-      max-width: 720px;
-      text-align: right;
-    }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(234,88,12,0.15);
-      border: 1px solid rgba(234,88,12,0.35);
-      border-radius: var(--radius-pill);
-      padding: 8px 20px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--primary-light);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 28px;
-    }
-    .hero-badge::before {
-      content: '';
-      width: 8px; height: 8px;
-      background: var(--primary);
-      border-radius: 50%;
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,0.5)} 50%{box-shadow:0 0 0 8px rgba(234,88,12,0)} }
+  .hero-awards{
+    display:flex;gap:32px;margin-top:56px;
+    padding-top:40px;
+    border-top:1px solid var(--border-soft);
+  }
+  .award-item{text-align:right}
+  .award-num{
+    font-family:'Bodoni Moda',serif;
+    font-size:2rem;font-weight:700;
+    color:var(--gold);line-height:1;display:block;
+  }
+  .award-label{
+    font-size:.72rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);
+    margin-top:4px;
+  }
+  .award-sep{width:1px;background:var(--border-soft);align-self:stretch}
 
-    .hero-title {
-      font-family: var(--font-display);
-      font-size: clamp(3rem, 7vw, 6.5rem);
-      line-height: 1.05;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      margin-bottom: 12px;
-    }
-    .hero-title .line-orange { color: var(--primary); display: block; }
-    .hero-title .line-italic {
-      font-family: var(--font-display2);
-      font-style: italic;
-      font-weight: 400;
-      color: var(--fg-muted);
-      font-size: 0.7em;
-    }
-    .hero-sub {
-      font-size: 1.15rem;
-      color: var(--fg-muted);
-      max-width: 480px;
-      margin-bottom: 44px;
-      line-height: 1.75;
-    }
-    .hero-actions {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--primary);
-      color: #fff;
-      padding: 18px 36px;
-      border-radius: var(--radius-pill);
-      font-weight: 700;
-      font-size: 1rem;
-      letter-spacing: 0.03em;
-      transition: var(--transition);
-      box-shadow: 0 8px 30px rgba(234,88,12,0.45);
-    }
-    .btn-primary:hover {
-      background: var(--primary-light);
-      transform: translateY(-3px);
-      box-shadow: 0 14px 40px rgba(234,88,12,0.55);
-    }
-    .btn-primary svg { transition: transform 0.25s ease; }
-    .btn-primary:hover svg { transform: translateX(-4px); }
-    .btn-outline {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      border: 1.5px solid var(--border-glass);
-      color: var(--fg);
-      padding: 18px 36px;
-      border-radius: var(--radius-pill);
-      font-weight: 600;
-      font-size: 1rem;
-      backdrop-filter: blur(10px);
-      transition: var(--transition);
-    }
-    .btn-outline:hover {
-      border-color: var(--primary);
-      background: rgba(234,88,12,0.08);
-      transform: translateY(-3px);
-    }
-    .hero-stats {
-      margin-top: 64px;
-      display: flex;
-      gap: 48px;
-    }
-    .stat-item { text-align: right; }
-    .stat-num {
-      font-family: var(--font-display);
-      font-size: 2.2rem;
-      color: var(--primary);
-      font-weight: 700;
-      display: block;
-      line-height: 1;
-    }
-    .stat-label {
-      font-size: 0.82rem;
-      color: var(--fg-muted);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      margin-top: 4px;
-    }
-    .stat-divider {
-      width: 1px;
-      background: var(--border);
-      align-self: stretch;
-    }
+  /* Hero right — pizza visual */
+  .hero-right{
+    position:relative;z-index:2;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .pizza-frame{
+    position:relative;
+    width:min(520px,50vw);
+    aspect-ratio:1;
+  }
+  .pizza-ring{
+    position:absolute;inset:-24px;
+    border-radius:50%;
+    border:1px solid var(--border);
+    animation:spin-slow 30s linear infinite;
+  }
+  .pizza-ring-2{
+    position:absolute;inset:-52px;
+    border-radius:50%;
+    border:1px dashed rgba(212,168,71,.12);
+    animation:spin-slow 50s linear infinite reverse;
+  }
+  @keyframes spin-slow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  .pizza-dot{
+    position:absolute;
+    width:6px;height:6px;background:var(--gold);
+    border-radius:50%;
+    box-shadow:0 0 10px var(--gold);
+  }
+  .pizza-dot:nth-child(1){top:0;left:50%;transform:translateX(-50%)}
+  .pizza-dot:nth-child(2){bottom:0;left:50%;transform:translateX(-50%)}
+  .pizza-dot:nth-child(3){left:0;top:50%;transform:translateY(-50%)}
+  .pizza-dot:nth-child(4){right:0;top:50%;transform:translateY(-50%)}
 
-    /* Hero floating pizza card */
-    .hero-float-card {
-      position: absolute;
-      left: 8%;
-      top: 50%;
-      transform: translateY(-30%);
-      z-index: 2;
-      background: var(--bg-card);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      width: 220px;
-      animation: cardFloat 6s ease-in-out infinite;
-    }
-    @keyframes cardFloat { 0%,100%{transform:translateY(-30%) translateX(0)} 50%{transform:translateY(-35%) translateX(8px)} }
-    .hero-float-card .pizza-emoji-wrapper {
-      font-size: 3.5rem;
-      text-align: center;
-      margin-bottom: 14px;
-      line-height: 1;
-    }
-    .hero-float-card h4 {
-      font-family: var(--font-display2);
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .hero-float-card p {
-      font-size: 0.8rem;
-      color: var(--fg-muted);
-      margin-bottom: 14px;
-    }
-    .rating-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .stars { color: #FACC15; font-size: 0.85rem; letter-spacing: 1px; }
-    .price-tag {
-      font-family: var(--font-display);
-      font-size: 1.1rem;
-      color: var(--primary);
-      font-weight: 700;
-    }
+  .pizza-img-circle{
+    width:100%;aspect-ratio:1;
+    border-radius:50%;
+    overflow:hidden;
+    position:relative;
+    box-shadow:0 40px 120px rgba(0,0,0,.8),0 0 60px rgba(212,168,71,.15);
+    transition:transform .6s var(--ease);
+  }
+  .pizza-img-circle:hover{transform:scale(1.03) rotate(3deg)}
+  .pizza-img-circle img{
+    width:100%;height:100%;
+    object-fit:cover;
+    transition:transform 6s var(--ease);
+  }
+  .pizza-img-circle:hover img{transform:scale(1.08)}
 
-    /* ── Section Shared ── */
-    section { position: relative; z-index: 1; }
-    .section-inner {
-      max-width: 1240px;
-      margin: 0 auto;
-      padding: 0 5%;
-    }
-    .section-tag {
-      display: inline-block;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--primary);
-      margin-bottom: 16px;
-    }
-    .section-title {
-      font-family: var(--font-display);
-      font-size: clamp(2rem, 4vw, 3.2rem);
-      font-weight: 700;
-      line-height: 1.15;
-      margin-bottom: 16px;
-    }
-    .section-sub {
-      font-size: 1.05rem;
-      color: var(--fg-muted);
-      max-width: 540px;
-      line-height: 1.75;
-    }
+  /* Floating chips */
+  .chip{
+    position:absolute;
+    background:rgba(8,6,4,.78);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--border);
+    border-radius:var(--r-md);
+    padding:14px 20px;
+    white-space:nowrap;
+    animation:chip-float 6s ease-in-out infinite;
+  }
+  .chip-1{
+    bottom:16%;left:-14%;
+    animation-delay:0s;
+  }
+  .chip-2{
+    top:14%;right:-12%;
+    animation-delay:-3s;
+  }
+  @keyframes chip-float{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-10px)}
+  }
+  .chip-icon{font-size:1.4rem;display:block;margin-bottom:6px}
+  .chip-label{font-size:.7rem;color:var(--muted);letter-spacing:.08em;display:block}
+  .chip-value{font-weight:700;font-size:.9rem;color:var(--cream)}
 
-    /* ── Marquee Strip ── */
-    .marquee-strip {
-      padding: 22px 0;
-      background: var(--primary);
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    .marquee-inner {
-      display: inline-flex;
-      gap: 0;
-      animation: marquee 20s linear infinite;
-    }
-    .marquee-item {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      font-weight: 400;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #fff;
-      padding: 0 40px;
-    }
-    .marquee-item .dot { color: rgba(255,255,255,0.5); }
-    @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  /* ─── MARQUEE ────────────────────────────────────── */
+  .marquee-wrap{
+    overflow:hidden;
+    border-top:1px solid var(--border-soft);
+    border-bottom:1px solid var(--border-soft);
+    padding:18px 0;
+  }
+  .marquee-track{
+    display:flex;width:max-content;
+    animation:marquee 22s linear infinite;
+  }
+  .marquee-track:hover{animation-play-state:paused}
+  @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .m-item{
+    display:flex;align-items:center;gap:20px;
+    padding:0 40px;
+    font-size:.78rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);font-weight:500;
+  }
+  .m-sep{width:4px;height:4px;border-radius:50%;background:var(--gold);flex-shrink:0}
 
-    /* ── Menu Section ── */
-    #menu { padding: var(--gap-section) 0; }
-    .menu-header {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      margin-bottom: 64px;
-      flex-wrap: wrap;
-      gap: 24px;
-    }
-    .menu-tabs {
-      display: flex;
-      gap: 8px;
-      background: var(--surface);
-      padding: 6px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--border);
-    }
-    .tab-btn {
-      padding: 10px 24px;
-      border-radius: var(--radius-pill);
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--fg-muted);
-      transition: var(--transition);
-      letter-spacing: 0.04em;
-    }
-    .tab-btn.active {
-      background: var(--primary);
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(234,88,12,0.4);
-    }
-    .tab-btn:hover:not(.active) { color: var(--fg); }
+  /* ─── SECTION SHARED ─────────────────────────────── */
+  .section-wrap{
+    padding:var(--gap) 6%;
+    max-width:1360px;
+    margin:0 auto;
+  }
+  .section-wrap.wide{max-width:none;padding-left:6%;padding-right:6%}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-size:.75rem;font-weight:600;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--gold);
+    margin-bottom:20px;
+  }
+  .eyebrow::before{content:'';width:24px;height:1px;background:var(--gold)}
+  h2.section-h2{
+    font-family:'Bodoni Moda',serif;
+    font-size:clamp(2.2rem,4.5vw,4rem);
+    font-weight:700;line-height:1.1;
+    letter-spacing:-.02em;margin-bottom:16px;
+  }
+  h2.section-h2 em{font-style:italic;font-weight:400;color:var(--gold-light)}
+  .section-lead{
+    font-size:1rem;color:var(--muted);
+    line-height:1.8;max-width:520px;font-weight:300;
+  }
 
-    .pizza-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 24px;
-    }
-    .pizza-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      transition: var(--transition);
-      position: relative;
-      backdrop-filter: blur(12px);
-    }
-    .pizza-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border);
-      transform: translateY(-6px);
-      box-shadow: var(--shadow-glow);
-    }
-    .pizza-card.featured {
-      grid-column: span 2;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-    .pizza-card.featured .pizza-img-wrap { aspect-ratio: auto; height: 100%; }
+  /* ─── ABOUT SPLIT ────────────────────────────────── */
+  #about{background:var(--bg-2)}
+  .about-grid{
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:80px;align-items:center;
+    max-width:1360px;margin:0 auto;padding:var(--gap) 6%;
+  }
+  .about-img-stack{
+    position:relative;
+  }
+  .about-img-main{
+    width:100%;aspect-ratio:4/5;
+    border-radius:var(--r-lg);overflow:hidden;
+    box-shadow:0 40px 80px rgba(0,0,0,.6);
+  }
+  .about-img-main img{width:100%;height:100%;object-fit:cover}
+  .about-img-accent{
+    position:absolute;
+    bottom:-28px;left:-28px;
+    width:55%;aspect-ratio:1;
+    border-radius:var(--r-md);overflow:hidden;
+    border:4px solid var(--bg-2);
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .about-img-accent img{width:100%;height:100%;object-fit:cover}
+  .about-badge{
+    position:absolute;top:32px;right:-20px;
+    background:var(--gold);
+    width:80px;height:80px;border-radius:50%;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    text-align:center;
+    box-shadow:0 10px 40px rgba(212,168,71,.4);
+    font-family:'Bodoni Moda',serif;
+  }
+  .about-badge strong{font-size:1.5rem;line-height:1;color:#080604}
+  .about-badge span{font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:#080604;opacity:.75}
 
-    .pizza-badge {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      background: var(--primary);
-      color: #fff;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 5px 14px;
-      border-radius: var(--radius-pill);
-      z-index: 2;
-    }
-    .pizza-badge.new { background: var(--accent); }
+  .about-text .eyebrow{display:flex}
+  .about-text blockquote{
+    font-family:'Bodoni Moda',serif;
+    font-style:italic;font-size:1.5rem;
+    line-height:1.55;color:var(--cream-dim);
+    border-right:2px solid var(--gold);
+    padding-right:24px;margin:32px 0;
+  }
+  .about-text p{
+    font-size:.97rem;color:var(--muted);
+    line-height:1.85;font-weight:300;margin-bottom:16px;
+  }
+  .chef-row{
+    display:flex;align-items:center;gap:16px;
+    margin-top:40px;padding-top:32px;
+    border-top:1px solid var(--border-soft);
+  }
+  .chef-avatar{
+    width:56px;height:56px;border-radius:50%;
+    overflow:hidden;flex-shrink:0;
+    border:2px solid var(--border);
+  }
+  .chef-avatar img{width:100%;height:100%;object-fit:cover}
+  .chef-name{font-weight:700;font-size:.95rem}
+  .chef-title{font-size:.78rem;color:var(--muted)}
 
-    .pizza-img-wrap {
-      aspect-ratio: 4/3;
-      background: var(--surface);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      font-size: 7rem;
-      position: relative;
-    }
-    .pizza-img-wrap::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(12,10,9,0.8) 0%, transparent 60%);
-    }
-    .pizza-img-inner {
-      transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
-      line-height: 1;
-    }
-    .pizza-card:hover .pizza-img-inner { transform: scale(1.12) rotate(8deg); }
+  /* ─── BENTO MENU ─────────────────────────────────── */
+  #menu{background:var(--bg)}
+  .menu-header{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    margin-bottom:52px;flex-wrap:wrap;gap:24px;
+  }
+  .menu-pills{
+    display:flex;gap:8px;
+    background:var(--surface);
+    padding:5px;border-radius:var(--r-xl);
+    border:1px solid var(--border-soft);
+  }
+  .pill{
+    padding:9px 22px;border-radius:var(--r-xl);
+    font-size:.78rem;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);
+    transition:background .25s,color .25s;cursor:pointer;
+  }
+  .pill.on{
+    background:var(--gold);color:#080604;
+    box-shadow:0 4px 20px rgba(212,168,71,.3);
+  }
+  .pill:hover:not(.on){color:var(--cream)}
 
-    .pizza-info {
-      padding: 24px;
-    }
-    .pizza-tags {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-    .pizza-tag {
-      background: rgba(234,88,12,0.12);
-      border: 1px solid rgba(234,88,12,0.25);
-      color: var(--primary-light);
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      padding: 3px 10px;
-      border-radius: var(--radius-pill);
-    }
-    .pizza-name {
-      font-family: var(--font-display2);
-      font-size: 1.35rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .pizza-desc {
-      font-size: 0.87rem;
-      color: var(--fg-muted);
-      line-height: 1.65;
-      margin-bottom: 20px;
-    }
-    .pizza-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .pizza-price {
-      font-family: var(--font-display);
-      font-size: 1.5rem;
-      color: var(--primary);
-      font-weight: 700;
-    }
-    .pizza-price small {
-      font-family: var(--font-body);
-      font-size: 0.8rem;
-      color: var(--fg-muted);
-      font-weight: 400;
-      margin-right: 4px;
-    }
-    .add-btn {
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      font-weight: 300;
-      transition: var(--transition);
-      box-shadow: 0 4px 16px rgba(234,88,12,0.4);
-      line-height: 1;
-    }
-    .add-btn:hover {
-      background: var(--primary-light);
-      transform: scale(1.1) rotate(90deg);
-      box-shadow: 0 8px 24px rgba(234,88,12,0.55);
-    }
+  /* Bento grid */
+  .bento{
+    display:grid;
+    grid-template-columns:repeat(12,1fr);
+    gap:16px;
+  }
+  .bcard{
+    background:var(--surface);
+    border:1px solid var(--border-soft);
+    border-radius:var(--r-lg);
+    overflow:hidden;
+    position:relative;
+    cursor:pointer;
+    transition:border-color .3s,transform .3s var(--ease),box-shadow .3s;
+  }
+  .bcard:hover{
+    border-color:rgba(212,168,71,.35);
+    transform:translateY(-5px);
+    box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 40px rgba(212,168,71,.08);
+  }
+  /* Animated gradient border on hover */
+  .bcard::before{
+    content:'';
+    position:absolute;inset:0;border-radius:inherit;
+    background:linear-gradient(135deg,rgba(212,168,71,.15),transparent,rgba(212,168,71,.08));
+    opacity:0;transition:opacity .3s;pointer-events:none;z-index:1;
+  }
+  .bcard:hover::before{opacity:1}
 
-    /* ── Process Section ── */
-    #process {
-      padding: var(--gap-section) 0;
-      background: linear-gradient(180deg, transparent 0%, var(--surface) 20%, var(--surface) 80%, transparent 100%);
-    }
-    .process-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 2px;
-      margin-top: 64px;
-      position: relative;
-    }
-    .process-grid::before {
-      content: '';
-      position: absolute;
-      top: 56px;
-      right: 12.5%;
-      left: 12.5%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
-      z-index: 0;
-    }
-    .process-step {
-      text-align: center;
-      padding: 32px 24px;
-      position: relative;
-      z-index: 1;
-    }
-    .step-icon {
-      width: 80px; height: 80px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 24px;
-      font-size: 2rem;
-      transition: var(--transition);
-      backdrop-filter: blur(12px);
-      position: relative;
-    }
-    .process-step:hover .step-icon {
-      background: rgba(234,88,12,0.15);
-      border-color: var(--primary);
-      transform: scale(1.1);
-      box-shadow: 0 0 30px rgba(234,88,12,0.3);
-    }
-    .step-num {
-      position: absolute;
-      top: -8px; left: -8px;
-      width: 24px; height: 24px;
-      background: var(--primary);
-      border-radius: 50%;
-      font-size: 0.7rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-    }
-    .step-title {
-      font-family: var(--font-display2);
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .step-desc {
-      font-size: 0.87rem;
-      color: var(--fg-muted);
-      line-height: 1.65;
-    }
+  .bcard.c1{grid-column:span 5;grid-row:span 2}
+  .bcard.c2{grid-column:span 4}
+  .bcard.c3{grid-column:span 3}
+  .bcard.c4{grid-column:span 4}
+  .bcard.c5{grid-column:span 3}
+  .bcard.c6{grid-column:span 5}
 
-    /* ── Specials Banner ── */
-    #specials {
-      padding: var(--gap-section) 0;
-    }
-    .specials-banner {
-      background: linear-gradient(135deg, var(--primary) 0%, #C2410C 50%, #1E3A8A 100%);
-      border-radius: 32px;
-      padding: 80px 64px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 48px;
-      align-items: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .specials-banner::before {
-      content: '';
-      position: absolute;
-      top: -60px; right: 120px;
-      width: 300px; height: 300px;
-      background: rgba(255,255,255,0.07);
-      border-radius: 50%;
-    }
-    .specials-banner::after {
-      content: '';
-      position: absolute;
-      bottom: -80px; left: 40px;
-      width: 200px; height: 200px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 50%;
-    }
-    .specials-text { position: relative; z-index: 1; }
-    .specials-text .section-tag { color: rgba(255,255,255,0.7); }
-    .specials-text .section-title { color: #fff; margin-bottom: 12px; }
-    .specials-text p { color: rgba(255,255,255,0.8); font-size: 1.05rem; }
-    .specials-cta {
-      position: relative;
-      z-index: 1;
-      flex-shrink: 0;
-    }
-    .btn-white {
-      background: #fff;
-      color: var(--primary);
-      padding: 18px 40px;
-      border-radius: var(--radius-pill);
-      font-weight: 700;
-      font-size: 1rem;
-      display: inline-block;
-      transition: var(--transition);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-    }
-    .btn-white:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 14px 40px rgba(0,0,0,0.3);
-    }
+  .bcard-img{
+    width:100%;overflow:hidden;
+    position:relative;
+  }
+  .bcard.c1 .bcard-img{height:300px}
+  .bcard.c2 .bcard-img,.bcard.c4 .bcard-img,.bcard.c6 .bcard-img{height:200px}
+  .bcard.c3 .bcard-img,.bcard.c5 .bcard-img{height:160px}
+  .bcard-img img{
+    width:100%;height:100%;object-fit:cover;
+    transition:transform .6s var(--ease);
+  }
+  .bcard:hover .bcard-img img{transform:scale(1.07)}
+  .bcard-img::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(to top,rgba(8,6,4,.7) 0%,transparent 60%);
+  }
 
-    /* ── Testimonials ── */
-    #testimonials { padding: var(--gap-section) 0; }
-    .testimonials-header {
-      text-align: center;
-      margin-bottom: 64px;
-    }
-    .testimonials-header .section-sub { margin: 0 auto; }
+  .bcard-tag{
+    position:absolute;top:16px;right:16px;z-index:2;
+    background:rgba(8,6,4,.75);
+    backdrop-filter:blur(12px);
+    border:1px solid var(--border);
+    border-radius:var(--r-xl);
+    padding:5px 14px;
+    font-size:.68rem;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);
+  }
+  .bcard-tag.new{background:rgba(212,168,71,.15);color:var(--gold-light)}
 
-    .reviews-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-    .review-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
-      padding: 32px;
-      backdrop-filter: blur(12px);
-      transition: var(--transition);
-    }
-    .review-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border);
-      transform: translateY(-4px);
-    }
-    .review-card.highlight {
-      border-color: rgba(234,88,12,0.4);
-      background: rgba(234,88,12,0.07);
-    }
-    .review-stars {
-      color: #FACC15;
-      font-size: 1rem;
-      letter-spacing: 2px;
-      margin-bottom: 16px;
-    }
-    .review-text {
-      font-size: 0.95rem;
-      line-height: 1.75;
-      color: var(--fg);
-      margin-bottom: 24px;
-      font-style: italic;
-    }
-    .review-author {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .author-avatar {
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 1rem;
-      color: #fff;
-      flex-shrink: 0;
-    }
-    .author-name {
-      font-weight: 700;
-      font-size: 0.9rem;
-    }
-    .author-meta {
-      font-size: 0.78rem;
-      color: var(--fg-muted);
-    }
+  .bcard-body{padding:20px 22px 22px;position:relative;z-index:2}
+  .bcard-name{
+    font-family:'Bodoni Moda',serif;
+    font-size:1.2rem;font-weight:600;
+    margin-bottom:6px;
+  }
+  .bcard.c1 .bcard-name{font-size:1.5rem}
+  .bcard-desc{
+    font-size:.82rem;color:var(--muted);
+    line-height:1.65;margin-bottom:16px;font-weight:300;
+  }
+  .bcard-footer{
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .bcard-price{
+    font-family:'Bodoni Moda',serif;
+    font-size:1.25rem;color:var(--gold);font-weight:600;
+  }
+  .bcard-price sup{font-size:.65em;vertical-align:super}
+  .add-circle{
+    width:40px;height:40px;border-radius:50%;
+    border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--gold);font-size:1.3rem;
+    transition:background .25s,border-color .25s,transform .25s var(--ease-spring);
+  }
+  .bcard:hover .add-circle{
+    background:var(--gold);color:#080604;
+    border-color:var(--gold);
+    transform:rotate(90deg) scale(1.1);
+  }
 
-    /* ── Gallery ── */
-    #gallery {
-      padding: var(--gap-section) 0;
-      background: var(--surface);
-    }
-    .gallery-header {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-    .gallery-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(2, 200px);
-      gap: 16px;
-    }
-    .gallery-item {
-      border-radius: 20px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 5rem;
-      overflow: hidden;
-      transition: var(--transition);
-      cursor: pointer;
-      position: relative;
-    }
-    .gallery-item::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(234,88,12,0.15), rgba(37,99,235,0.15));
-      opacity: 0;
-      transition: var(--transition);
-    }
-    .gallery-item:hover { transform: scale(1.02); }
-    .gallery-item:hover::after { opacity: 1; }
-    .gallery-item.large {
-      grid-column: span 2;
-      grid-row: span 2;
-      font-size: 9rem;
-    }
+  /* ─── INGREDIENTS SCROLL ─────────────────────────── */
+  #ingredients{
+    background:var(--bg-2);
+    overflow:hidden;
+  }
+  .ingr-header{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    margin-bottom:48px;padding:0 6%;
+    flex-wrap:wrap;gap:20px;
+  }
+  .ingr-scroll-area{
+    display:flex;gap:20px;
+    padding:8px 6% 32px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    scrollbar-width:none;-ms-overflow-style:none;
+    cursor:grab;
+  }
+  .ingr-scroll-area::-webkit-scrollbar{display:none}
+  .ingr-scroll-area:active{cursor:grabbing}
+  .ingr-card{
+    flex:0 0 260px;
+    scroll-snap-align:start;
+    background:var(--surface);
+    border:1px solid var(--border-soft);
+    border-radius:var(--r-lg);
+    padding:28px;
+    transition:border-color .25s,transform .25s;
+  }
+  .ingr-card:hover{
+    border-color:var(--border);
+    transform:translateY(-4px);
+  }
+  .ingr-icon{
+    width:56px;height:56px;
+    background:var(--gold-dim);
+    border-radius:var(--r-sm);
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.6rem;margin-bottom:20px;
+  }
+  .ingr-name{
+    font-family:'Bodoni Moda',serif;
+    font-size:1.1rem;font-weight:600;
+    margin-bottom:8px;
+  }
+  .ingr-desc{font-size:.83rem;color:var(--muted);line-height:1.65;font-weight:300}
+  .ingr-origin{
+    display:inline-block;margin-top:16px;
+    font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);
+  }
 
-    /* ── Contact ── */
-    #contact { padding: var(--gap-section) 0; }
-    .contact-grid {
-      display: grid;
-      grid-template-columns: 1fr 1.3fr;
-      gap: 64px;
-      align-items: start;
-    }
-    .contact-info {}
-    .contact-detail {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      margin-top: 32px;
-    }
-    .contact-icon {
-      width: 48px; height: 48px;
-      background: rgba(234,88,12,0.12);
-      border: 1px solid rgba(234,88,12,0.25);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.3rem;
-      flex-shrink: 0;
-    }
-    .contact-detail-text strong {
-      display: block;
-      font-weight: 700;
-      margin-bottom: 2px;
-    }
-    .contact-detail-text span {
-      font-size: 0.9rem;
-      color: var(--fg-muted);
-    }
+  /* ─── SPECIALS FULLBLEED ─────────────────────────── */
+  #specials{position:relative;overflow:hidden}
+  .specials-inner{
+    position:relative;z-index:1;
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:80px;align-items:center;
+    padding:var(--gap) 6%;max-width:1360px;margin:0 auto;
+  }
+  #specials::before{
+    content:'';position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 60% 60% at 0% 50%,rgba(212,168,71,.12) 0%,transparent 70%),
+      radial-gradient(ellipse 40% 40% at 100% 80%,rgba(212,168,71,.06) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  #specials::after{
+    content:'';position:absolute;
+    top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,var(--border),transparent);
+  }
+  .specials-text{}
+  .specials-promo{
+    display:inline-block;
+    font-family:'Bodoni Moda',serif;
+    font-size:clamp(3.5rem,8vw,7rem);
+    line-height:1;font-weight:700;
+    letter-spacing:-.03em;
+    background:linear-gradient(135deg,var(--gold),var(--gold-light),var(--gold));
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+    margin:16px 0;
+  }
+  .specials-promo span{
+    display:block;font-size:.45em;
+    font-style:italic;font-weight:400;
+    -webkit-text-fill-color:var(--cream-dim);
+    background:none;
+  }
+  .specials-detail{
+    font-size:.9rem;color:var(--muted);
+    line-height:1.8;font-weight:300;margin-bottom:32px;
+  }
+  .specials-visual{
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .specials-pizza{
+    width:min(420px,100%);aspect-ratio:1;
+    border-radius:50%;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 80px rgba(212,168,71,.12);
+  }
+  .specials-pizza img{width:100%;height:100%;object-fit:cover}
+  .deal-badge{
+    position:absolute;
+    top:8%;right:-6%;
+    background:var(--gold);
+    color:#080604;
+    width:100px;height:100px;
+    border-radius:50%;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    font-family:'Bodoni Moda',serif;
+    box-shadow:0 10px 40px rgba(212,168,71,.5);
+    animation:badge-pulse 3s ease-in-out infinite;
+  }
+  .deal-badge strong{font-size:1.5rem;line-height:1}
+  .deal-badge span{font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+  @keyframes badge-pulse{0%,100%{transform:scale(1) rotate(-12deg)}50%{transform:scale(1.06) rotate(-12deg)}}
 
-    .contact-form {
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-lg);
-      padding: 40px;
-      backdrop-filter: blur(12px);
-    }
-    .form-title {
-      font-family: var(--font-display2);
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 28px;
-    }
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    .form-group {
-      margin-bottom: 20px;
-    }
-    .form-group label {
-      display: block;
-      font-size: 0.82rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--fg-muted);
-      margin-bottom: 8px;
-    }
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-      width: 100%;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border-glass);
-      border-radius: 12px;
-      padding: 14px 18px;
-      color: var(--fg);
-      font-family: var(--font-body);
-      font-size: 0.95rem;
-      transition: var(--transition);
-      outline: none;
-    }
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-      border-color: var(--primary);
-      background: rgba(234,88,12,0.05);
-      box-shadow: 0 0 0 3px rgba(234,88,12,0.15);
-    }
-    .form-group textarea { resize: vertical; min-height: 100px; }
-    .form-group select option { background: var(--surface); color: var(--fg); }
-    .form-submit {
-      width: 100%;
-      background: var(--primary);
-      color: #fff;
-      padding: 16px;
-      border-radius: var(--radius-pill);
-      font-weight: 700;
-      font-size: 1rem;
-      letter-spacing: 0.04em;
-      transition: var(--transition);
-      box-shadow: 0 4px 20px rgba(234,88,12,0.4);
-      margin-top: 8px;
-    }
-    .form-submit:hover {
-      background: var(--primary-light);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(234,88,12,0.55);
-    }
+  /* ─── TESTIMONIALS ───────────────────────────────── */
+  #testimonials{background:var(--bg-2)}
+  .reviews-layout{
+    display:grid;
+    grid-template-columns:1fr 1.6fr;
+    gap:80px;align-items:start;
+    margin-top:64px;
+  }
+  .reviews-big-quote{
+    font-family:'Bodoni Moda',serif;
+    font-size:clamp(3rem,6vw,5.5rem);
+    line-height:1.08;font-style:italic;
+    color:var(--cream);
+    position:sticky;top:120px;
+  }
+  .reviews-big-quote em{color:var(--gold-light)}
+  .reviews-big-quote p{
+    font-family:'Jost',sans-serif;
+    font-size:1rem;font-style:normal;
+    color:var(--muted);font-weight:300;
+    margin-top:24px;line-height:1.8;
+  }
+  .avg-stars{
+    display:flex;align-items:center;gap:8px;
+    margin-top:28px;
+  }
+  .stars-row{color:#FACC15;font-size:1.1rem;letter-spacing:2px}
+  .avg-num{
+    font-family:'Bodoni Moda',serif;
+    font-size:1.4rem;font-weight:700;color:var(--gold);
+  }
+  .avg-count{font-size:.8rem;color:var(--muted)}
 
-    /* ── Footer ── */
-    footer {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 64px 5% 32px;
-    }
-    .footer-inner {
-      max-width: 1240px;
-      margin: 0 auto;
-    }
-    .footer-top {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 48px;
-      margin-bottom: 56px;
-    }
-    .footer-brand {}
-    .footer-logo {
-      font-family: var(--font-display);
-      font-size: 1.8rem;
-      color: var(--primary);
-      margin-bottom: 16px;
-    }
-    .footer-logo span { color: var(--fg); }
-    .footer-desc {
-      font-size: 0.9rem;
-      color: var(--fg-muted);
-      line-height: 1.75;
-      margin-bottom: 24px;
-      max-width: 280px;
-    }
-    .social-links {
-      display: flex;
-      gap: 10px;
-    }
-    .social-link {
-      width: 40px; height: 40px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      transition: var(--transition);
-    }
-    .social-link:hover {
-      background: rgba(234,88,12,0.15);
-      border-color: var(--primary);
-      transform: translateY(-2px);
-    }
-    .footer-col h5 {
-      font-weight: 700;
-      font-size: 0.85rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--fg);
-      margin-bottom: 20px;
-    }
-    .footer-links { list-style: none; }
-    .footer-links li { margin-bottom: 12px; }
-    .footer-links a {
-      font-size: 0.9rem;
-      color: var(--fg-muted);
-      transition: var(--transition);
-    }
-    .footer-links a:hover { color: var(--primary); padding-right: 4px; }
-    .footer-bottom {
-      border-top: 1px solid var(--border);
-      padding-top: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .footer-bottom p {
-      font-size: 0.82rem;
-      color: var(--fg-muted);
-    }
-    .footer-bottom span { color: var(--primary); }
+  .reviews-stack{display:flex;flex-direction:column;gap:16px}
+  .rcard{
+    background:var(--surface);
+    border:1px solid var(--border-soft);
+    border-radius:var(--r-lg);
+    padding:28px 32px;
+    transition:border-color .25s,transform .25s;
+  }
+  .rcard:hover{border-color:var(--border);transform:translateX(-6px)}
+  .rcard-head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .rcard-av{
+    width:46px;height:46px;border-radius:50%;
+    overflow:hidden;flex-shrink:0;
+    border:1.5px solid var(--border);
+  }
+  .rcard-av img{width:100%;height:100%;object-fit:cover}
+  .rcard-av-init{
+    width:46px;height:46px;border-radius:50%;flex-shrink:0;
+    background:var(--gold-dim);border:1.5px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;color:var(--gold);font-size:.95rem;
+  }
+  .rcard-name{font-weight:700;font-size:.9rem}
+  .rcard-meta{font-size:.75rem;color:var(--muted)}
+  .rcard-stars{color:#FACC15;font-size:.8rem;letter-spacing:1px;margin-right:auto}
+  .rcard-quote{
+    font-size:.93rem;color:var(--cream-dim);
+    line-height:1.75;font-style:italic;font-weight:300;
+  }
 
-    /* ── Scroll Reveal (only when JS is active) ── */
-    .js-ready .reveal {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.65s cubic-bezier(0.4,0,0.2,1), transform 0.65s cubic-bezier(0.4,0,0.2,1);
-    }
-    .js-ready .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .reveal-delay-1 { transition-delay: 0.1s; }
-    .reveal-delay-2 { transition-delay: 0.2s; }
-    .reveal-delay-3 { transition-delay: 0.3s; }
-    .reveal-delay-4 { transition-delay: 0.4s; }
+  /* ─── RESERVATION ────────────────────────────────── */
+  #reservation{
+    background:var(--bg);
+    position:relative;overflow:hidden;
+  }
+  #reservation::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse 50% 80% at 100% 50%,rgba(212,168,71,.06),transparent 70%);
+    pointer-events:none;
+  }
+  .reservation-grid{
+    display:grid;grid-template-columns:1fr 1.2fr;
+    gap:80px;align-items:start;
+    max-width:1360px;margin:0 auto;padding:var(--gap) 6%;
+  }
+  .res-info h2.section-h2{margin-bottom:20px}
+  .res-info .section-lead{margin-bottom:40px}
+  .res-hours{margin-top:40px}
+  .res-hours h4{
+    font-size:.75rem;font-weight:700;
+    letter-spacing:.15em;text-transform:uppercase;
+    color:var(--gold);margin-bottom:16px;
+  }
+  .hour-row{
+    display:flex;justify-content:space-between;
+    padding:12px 0;
+    border-bottom:1px solid var(--border-soft);
+    font-size:.88rem;
+  }
+  .hour-row:last-child{border-bottom:none}
+  .hour-day{color:var(--muted);font-weight:300}
+  .hour-time{color:var(--cream);font-weight:500}
 
-    /* ── Responsive ── */
-    @media (max-width: 1024px) {
-      .pizza-card.featured {
-        grid-column: span 1;
-        display: block;
-      }
-      .pizza-card.featured .pizza-img-wrap { aspect-ratio: 4/3; height: auto; }
-      .process-grid { grid-template-columns: repeat(2, 1fr); }
-      .process-grid::before { display: none; }
-      .reviews-grid { grid-template-columns: repeat(2, 1fr); }
-      .gallery-grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 160px); }
-      .gallery-item.large { grid-column: span 2; }
-      .contact-grid { grid-template-columns: 1fr; }
-      .footer-top { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 768px) {
-      :root { --gap-section: 80px; }
-      nav { padding: 16px 5%; }
-      .nav-links, .nav-cta { display: none; }
-      .nav-mobile-btn { display: flex; }
-      .hero-float-card { display: none; }
-      .hero-stats { gap: 28px; }
-      .specials-banner {
-        grid-template-columns: 1fr;
-        padding: 48px 32px;
-        text-align: center;
-      }
-      .reviews-grid { grid-template-columns: 1fr; }
-      .gallery-grid { grid-template-columns: repeat(2, 1fr); }
-      .form-row { grid-template-columns: 1fr; }
-      .footer-top { grid-template-columns: 1fr; }
-      .menu-header { flex-direction: column; align-items: flex-start; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-      }
-    }
+  /* Form */
+  .res-form-wrap{
+    background:var(--surface-2);
+    border:1px solid var(--border-soft);
+    border-radius:var(--r-xl);
+    padding:44px;
+  }
+  .form-heading{
+    font-family:'Bodoni Moda',serif;
+    font-size:1.6rem;font-weight:600;
+    margin-bottom:32px;
+  }
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .fg{margin-bottom:20px}
+  .fg label{
+    display:block;font-size:.73rem;font-weight:600;
+    letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:9px;
+  }
+  .fg input,.fg select,.fg textarea{
+    width:100%;
+    background:rgba(250,245,233,.04);
+    border:1px solid var(--border-soft);
+    border-radius:var(--r-sm);
+    padding:14px 18px;
+    color:var(--cream);
+    font-family:'Jost',sans-serif;
+    font-size:.93rem;font-weight:300;
+    outline:none;
+    transition:border-color .25s,background .25s,box-shadow .25s;
+    -webkit-appearance:none;
+  }
+  .fg input:focus,.fg select:focus,.fg textarea:focus{
+    border-color:var(--gold);
+    background:rgba(212,168,71,.04);
+    box-shadow:0 0 0 3px rgba(212,168,71,.1);
+  }
+  .fg input::placeholder{color:var(--muted)}
+  .fg select option{background:var(--surface);color:var(--cream)}
+  .fg textarea{resize:vertical;min-height:96px}
+  .form-submit{
+    width:100%;
+    background:var(--gold);color:#080604;
+    padding:17px;border-radius:var(--r-xl);
+    font-family:'Jost',sans-serif;
+    font-size:.9rem;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;
+    transition:background .25s,transform .25s,box-shadow .25s;
+    box-shadow:0 6px 24px rgba(212,168,71,.3);
+    margin-top:8px;
+  }
+  .form-submit:hover{
+    background:var(--gold-light);
+    transform:translateY(-2px);
+    box-shadow:0 12px 36px rgba(212,168,71,.45);
+  }
+
+  /* ─── FOOTER ─────────────────────────────────────── */
+  footer{
+    background:var(--surface);
+    border-top:1px solid var(--border-soft);
+  }
+  .footer-top-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:28px 6%;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .f-logo{
+    font-family:'Bodoni Moda',serif;
+    font-size:1.5rem;letter-spacing:.06em;color:var(--cream);
+  }
+  .f-socials{display:flex;gap:8px}
+  .f-social-btn{
+    width:38px;height:38px;border-radius:var(--r-sm);
+    border:1px solid var(--border-soft);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);
+    transition:border-color .25s,color .25s,background .25s;
+  }
+  .f-social-btn:hover{
+    border-color:var(--border);
+    color:var(--gold);
+    background:var(--gold-dim);
+  }
+  .footer-cols{
+    display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
+    gap:48px;padding:56px 6%;
+    max-width:1360px;margin:0 auto;
+  }
+  .f-about p{
+    font-size:.87rem;color:var(--muted);
+    line-height:1.8;font-weight:300;max-width:280px;margin-top:16px;
+  }
+  .f-col h5{
+    font-size:.72rem;font-weight:700;
+    letter-spacing:.16em;text-transform:uppercase;
+    color:var(--cream);margin-bottom:20px;
+  }
+  .f-links{list-style:none}
+  .f-links li{margin-bottom:12px}
+  .f-links a{
+    font-size:.87rem;color:var(--muted);font-weight:300;
+    transition:color .2s,padding-right .2s;
+  }
+  .f-links a:hover{color:var(--gold);padding-right:6px}
+  .footer-bottom{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 6%;
+    border-top:1px solid var(--border-soft);
+    flex-wrap:wrap;gap:10px;
+    max-width:1360px;margin:0 auto;
+  }
+  .footer-bottom p{font-size:.78rem;color:var(--muted);font-weight:300}
+
+  /* ─── SCROLL-REVEAL ──────────────────────────────── */
+  .sr{
+    opacity:0;transform:translateY(28px);
+    transition:opacity .7s var(--ease),transform .7s var(--ease);
+  }
+  .sr.in{opacity:1;transform:none}
+  .sr-l{opacity:0;transform:translateX(28px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  .sr-l.in{opacity:1;transform:none}
+  .sr-r{opacity:0;transform:translateX(-28px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+  .sr-r.in{opacity:1;transform:none}
+  .d1{transition-delay:.1s}.d2{transition-delay:.18s}
+  .d3{transition-delay:.26s}.d4{transition-delay:.34s}.d5{transition-delay:.42s}
+
+  /* ─── RESPONSIVE ─────────────────────────────────── */
+  @media(max-width:1100px){
+    .bcard.c1{grid-column:span 6}
+    .bcard.c2{grid-column:span 6}
+    .bcard.c3{grid-column:span 6}
+    .bcard.c4{grid-column:span 6}
+    .bcard.c5{grid-column:span 6}
+    .bcard.c6{grid-column:span 12}
+  }
+  @media(max-width:900px){
+    #hero{grid-template-columns:1fr;padding-top:130px;text-align:center}
+    .hero-eyebrow::before,.hero-eyebrow{justify-content:center}
+    .hero-desc{margin:24px auto 40px}
+    .hero-cta-row{justify-content:center}
+    .hero-awards{justify-content:center}
+    .hero-right{display:none}
+    .about-grid{grid-template-columns:1fr}
+    .about-img-stack{max-width:500px;margin:0 auto}
+    .specials-inner{grid-template-columns:1fr}
+    .reviews-layout{grid-template-columns:1fr}
+    .reviews-big-quote{position:static}
+    .reservation-grid{grid-template-columns:1fr}
+    .footer-cols{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:640px){
+    :root{--gap:64px}
+    .nav-links,.nav-reserve{display:none}
+    .burger{display:flex}
+    .bcard{grid-column:span 12 !important;grid-row:span 1 !important}
+    .bcard.c1 .bcard-img{height:220px}
+    .frow{grid-template-columns:1fr}
+    .footer-cols{grid-template-columns:1fr}
+    .footer-top-bar{flex-direction:column;gap:16px;text-align:center}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+    .sr,.sr-l,.sr-r{opacity:1;transform:none}
+  }
   </style>
 </head>
 <body>
 
-  <!-- NAV -->
-  <nav id="main-nav" role="navigation" aria-label="ניווט ראשי">
-    <a href="#hero" class="nav-logo" aria-label="דף הבית - פיצה אמוורה">פיצה<span>אמוורה</span></a>
-    <ul class="nav-links">
-      <li><a href="#menu">התפריט</a></li>
-      <li><a href="#process">ממה עשויה</a></li>
-      <li><a href="#testimonials">ביקורות</a></li>
-      <li><a href="#contact">צור קשר</a></li>
-    </ul>
-    <a href="#contact" class="nav-cta">הזמן עכשיו</a>
-    <button class="nav-mobile-btn" aria-label="פתח תפריט ניווט" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-  </nav>
+<!-- CURSOR -->
+<div id="cursor" aria-hidden="true"></div>
+<div id="cursor-ring" aria-hidden="true"></div>
 
-  <!-- HERO -->
-  <section id="hero" role="banner">
-    <div class="hero-bg" aria-hidden="true">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-      <!-- Rotating pizza SVG -->
-      <svg class="hero-pizza-bg" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <circle cx="200" cy="200" r="180" fill="#EA580C" opacity="0.6"/>
-        <circle cx="200" cy="200" r="145" fill="#C2410C" opacity="0.5"/>
-        <circle cx="140" cy="140" r="22" fill="#FFF7ED" opacity="0.5"/>
-        <circle cx="260" cy="150" r="18" fill="#FFF7ED" opacity="0.5"/>
-        <circle cx="170" cy="250" r="20" fill="#FFF7ED" opacity="0.5"/>
-        <circle cx="240" cy="240" r="16" fill="#FFF7ED" opacity="0.5"/>
-        <circle cx="200" cy="180" r="14" fill="#FFF7ED" opacity="0.5"/>
-        <path d="M200 20 L380 340 L20 340 Z" fill="none" stroke="#F97316" stroke-width="2" opacity="0.4"/>
-        <path d="M200 20 L380 340" stroke="#F97316" stroke-width="1.5" opacity="0.3"/>
-        <path d="M200 20 L20 340" stroke="#F97316" stroke-width="1.5" opacity="0.3"/>
-        <path d="M20 340 L380 340" stroke="#F97316" stroke-width="1.5" opacity="0.3"/>
-      </svg>
-    </div>
+<!-- PROGRESS BAR -->
+<div id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="התקדמות גלילה"></div>
 
-    <div class="hero-content">
-      <div class="hero-badge">
-        <span>חדש בתפריט 2025</span>
-      </div>
-      <h1 class="hero-title">
-        <span>אמנות</span>
-        <span class="line-orange">הפיצה</span>
-        <span class="line-italic">האיטלקית</span>
-      </h1>
-      <p class="hero-sub">
-        מקמח שחר, ירקות טריים, ומסורת שחוצה דורות — כל פיצה היא יצירת מופת שנאפית בתנור אבן על 485 מעלות.
-      </p>
-      <div class="hero-actions">
-        <a href="#menu" class="btn-primary" aria-label="לצפייה בתפריט הפיצות">
-          לתפריט שלנו
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-            <path d="M19 12H5M12 5l-7 7 7 7"/>
+<!-- NAV -->
+<nav id="site-nav" role="navigation" aria-label="ניווט ראשי">
+  <a href="#hero" class="nav-logo" aria-label="Amora Pizza - דף הבית">
+    <span class="nav-logo-dot" aria-hidden="true"></span>
+    Amora
+  </a>
+  <ul class="nav-links">
+    <li><a href="#about">הסיפור</a></li>
+    <li><a href="#menu">התפריט</a></li>
+    <li><a href="#specials">מבצעים</a></li>
+    <li><a href="#testimonials">ביקורות</a></li>
+  </ul>
+  <a href="#reservation" class="nav-reserve">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+    </svg>
+    הזמן שולחן
+  </a>
+  <button class="burger" aria-label="פתח תפריט" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section id="hero" role="banner">
+  <div class="hero-left">
+    <span class="hero-eyebrow" aria-label="מסורת איטלקית מאז 2009">מסורת איטלקית מאז 2009</span>
+    <h1 class="hero-h1">
+      <em>Pizza</em> שהיא<br>
+      אמנות
+      <span class="line-sub">נאפוליטנה מהתנור לשולחן</span>
+    </h1>
+    <p class="hero-desc">
+      בצק שנח 72 שעות, עגבניות סן מרצנו מנאפולי, מוצרלה פיור דה לאטה. תנור אבן על 485°C — כי פיצה אמיתית לא מתפשרת.
+    </p>
+    <div class="hero-cta-row">
+      <a href="#menu" class="btn-gold" aria-label="לצפייה בתפריט">
+        לתפריט שלנו
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+      </a>
+      <a href="#about" class="btn-ghost" aria-label="קרא את הסיפור שלנו">
+        <span class="btn-ghost-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12l4 4 4-4"/>
           </svg>
-        </a>
-        <a href="#contact" class="btn-outline">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-          </svg>
-          השאר הזמנה
-        </a>
-      </div>
-      <div class="hero-stats" role="list" aria-label="נתונים">
-        <div class="stat-item" role="listitem">
-          <span class="stat-num">+40</span>
-          <span class="stat-label">סוגי פיצה</span>
-        </div>
-        <div class="stat-divider" aria-hidden="true"></div>
-        <div class="stat-item" role="listitem">
-          <span class="stat-num">15+</span>
-          <span class="stat-label">שנות ניסיון</span>
-        </div>
-        <div class="stat-divider" aria-hidden="true"></div>
-        <div class="stat-item" role="listitem">
-          <span class="stat-num">98%</span>
-          <span class="stat-label">לקוחות מרוצים</span>
-        </div>
-      </div>
+        </span>
+        הסיפור שלנו
+      </a>
     </div>
-
-    <!-- Floating card -->
-    <div class="hero-float-card" role="complementary" aria-label="פיצה מובחרת">
-      <div class="pizza-emoji-wrapper" aria-hidden="true">🍕</div>
-      <h4>מרגריטה דה לוקס</h4>
-      <p>מוצרלה בופלה, עגבניות שרי, בזיליקום טרי</p>
-      <div class="rating-row">
-        <span class="stars" aria-label="דירוג 5 כוכבים">★★★★★</span>
-        <span class="price-tag">₪68</span>
+    <div class="hero-awards" role="list" aria-label="הישגים">
+      <div class="award-item" role="listitem">
+        <span class="award-num">+40</span>
+        <span class="award-label">מתכונים</span>
       </div>
-    </div>
-  </section>
-
-  <!-- MARQUEE -->
-  <div class="marquee-strip" role="marquee" aria-label="טקסט גלילה">
-    <div class="marquee-inner" aria-hidden="true">
-      <span class="marquee-item">פיצה אמיתית <span class="dot">✦</span></span>
-      <span class="marquee-item">מהתנור לשולחן <span class="dot">✦</span></span>
-      <span class="marquee-item">מסורת איטלקית <span class="dot">✦</span></span>
-      <span class="marquee-item">קמח שחר טרי <span class="dot">✦</span></span>
-      <span class="marquee-item">משלוחים עד הבית <span class="dot">✦</span></span>
-      <span class="marquee-item">פיצה אמיתית <span class="dot">✦</span></span>
-      <span class="marquee-item">מהתנור לשולחן <span class="dot">✦</span></span>
-      <span class="marquee-item">מסורת איטלקית <span class="dot">✦</span></span>
-      <span class="marquee-item">קמח שחר טרי <span class="dot">✦</span></span>
-      <span class="marquee-item">משלוחים עד הבית <span class="dot">✦</span></span>
+      <div class="award-sep" aria-hidden="true"></div>
+      <div class="award-item" role="listitem">
+        <span class="award-num">15+</span>
+        <span class="award-label">שנות ניסיון</span>
+      </div>
+      <div class="award-sep" aria-hidden="true"></div>
+      <div class="award-item" role="listitem">
+        <span class="award-num">4.9</span>
+        <span class="award-label">דירוג Google</span>
+      </div>
     </div>
   </div>
 
-  <!-- MENU -->
-  <section id="menu" aria-labelledby="menu-title">
-    <div class="section-inner">
-      <div class="menu-header">
+  <div class="hero-right" aria-hidden="true">
+    <div class="pizza-frame">
+      <div class="pizza-ring">
+        <div class="pizza-dot"></div>
+        <div class="pizza-dot"></div>
+        <div class="pizza-dot"></div>
+        <div class="pizza-dot"></div>
+      </div>
+      <div class="pizza-ring-2"></div>
+      <div class="pizza-img-circle">
+        <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=700&q=80&fit=crop" alt="פיצה מרגריטה מהתנור" loading="eager"/>
+      </div>
+      <div class="chip chip-1">
+        <span class="chip-icon" aria-hidden="true">🌿</span>
+        <span class="chip-label">בזיליקום טרי</span>
+        <span class="chip-value">מגינה דמיתי</span>
+      </div>
+      <div class="chip chip-2">
+        <span class="chip-icon" aria-hidden="true">🔥</span>
+        <span class="chip-label">טמפרטורת אפייה</span>
+        <span class="chip-value">485°C</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="m-item">Margherita <span class="m-sep"></span></span>
+    <span class="m-item">Quattro Formaggi <span class="m-sep"></span></span>
+    <span class="m-item">Diavola <span class="m-sep"></span></span>
+    <span class="m-item">Napoli Classica <span class="m-sep"></span></span>
+    <span class="m-item">Truffle Bianca <span class="m-sep"></span></span>
+    <span class="m-item">Bufala DOP <span class="m-sep"></span></span>
+    <span class="m-item">Margherita <span class="m-sep"></span></span>
+    <span class="m-item">Quattro Formaggi <span class="m-sep"></span></span>
+    <span class="m-item">Diavola <span class="m-sep"></span></span>
+    <span class="m-item">Napoli Classica <span class="m-sep"></span></span>
+    <span class="m-item">Truffle Bianca <span class="m-sep"></span></span>
+    <span class="m-item">Bufala DOP <span class="m-sep"></span></span>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<section id="about" aria-labelledby="about-h2">
+  <div class="about-grid">
+    <div class="about-img-stack sr-r">
+      <div class="about-img-main">
+        <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=700&q=80&fit=crop" alt="שף מכין פיצה בתנור"/>
+      </div>
+      <div class="about-img-accent">
+        <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80&fit=crop" alt="פיצה ישר מהתנור"/>
+      </div>
+      <div class="about-badge" aria-label="15 שנות ניסיון">
+        <strong>15</strong>
+        <span>שנות אהבה</span>
+      </div>
+    </div>
+
+    <div class="about-text sr-l">
+      <span class="eyebrow">הסיפור שלנו</span>
+      <h2 id="about-h2" class="section-h2">לא רק פיצה —<br><em>אובססיה</em></h2>
+      <blockquote>
+        "כשאבי בנה את התנור הראשון ב-2009, לא דמיינו שנגיע לכאן. רק ידענו שהפיצה חייבת להיות מושלמת."
+      </blockquote>
+      <p>כל בוקר מגיע קמח שחר טרי מהטחנה. הבצק נלוש ביד, נח 72 שעות, ורק אז נפרש לעיגול מושלם.</p>
+      <p>הרוטב — עגבניות סן מרצנו מאיטליה, מגרסה ביד, ללא בישול. שמן זית כתית מעולה מכרם משפחתי בגליל.</p>
+      <div class="chef-row">
+        <div class="chef-avatar">
+          <img src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=120&q=80&fit=crop" alt="שף אמיר ליאור"/>
+        </div>
         <div>
-          <span class="section-tag reveal">התפריט שלנו</span>
-          <h2 id="menu-title" class="section-title reveal reveal-delay-1">הפיצות שלנו</h2>
-          <p class="section-sub reveal reveal-delay-2">כל פיצה מכינה בתנור אבן בטמפרטורה של 485°C, אופה תוך 90 שניות בלבד.</p>
-        </div>
-        <div class="menu-tabs reveal" role="tablist" aria-label="קטגוריות תפריט">
-          <button class="tab-btn active" role="tab" aria-selected="true">הכל</button>
-          <button class="tab-btn" role="tab" aria-selected="false">קלאסיות</button>
-          <button class="tab-btn" role="tab" aria-selected="false">גורמה</button>
-          <button class="tab-btn" role="tab" aria-selected="false">ויגן</button>
-        </div>
-      </div>
-
-      <div class="pizza-grid" role="list">
-        <!-- Featured -->
-        <article class="pizza-card featured reveal" role="listitem" aria-label="פיצה מובחרת - מרגריטה ביאנקה">
-          <div class="pizza-badge">הכי מוזמן</div>
-          <div class="pizza-img-wrap" aria-hidden="true">
-            <span class="pizza-img-inner">🍕</span>
-          </div>
-          <div class="pizza-info">
-            <div class="pizza-tags">
-              <span class="pizza-tag">קלאסיק</span>
-              <span class="pizza-tag">בסט סלר</span>
-            </div>
-            <h3 class="pizza-name">מרגריטה ביאנקה</h3>
-            <p class="pizza-desc">בצק דק ופריך, רוטב עגבניות סן מרצנו, מוצרלה בופלה, בזיליקום טרי, שמן זית כתית מעולה. המתכון המקורי מנאפולי.</p>
-            <div class="pizza-footer">
-              <div class="pizza-price"><small>מ-</small>₪62</div>
-              <button class="add-btn" aria-label="הוסף מרגריטה ביאנקה לסל">+</button>
-            </div>
-          </div>
-        </article>
-
-        <!-- Card 2 -->
-        <article class="pizza-card reveal reveal-delay-1" role="listitem" aria-label="פיצה טרופיקנה">
-          <div class="pizza-badge new">חדש</div>
-          <div class="pizza-img-wrap" aria-hidden="true">
-            <span class="pizza-img-inner" style="font-size:6.5rem">🌺</span>
-          </div>
-          <div class="pizza-info">
-            <div class="pizza-tags">
-              <span class="pizza-tag">גורמה</span>
-              <span class="pizza-tag">חדש</span>
-            </div>
-            <h3 class="pizza-name">טרופיקנה סייזון</h3>
-            <p class="pizza-desc">אננס קרמל, ג'מון איבריקו, ריקוטה, ג'לפניו, דבש טרפל.</p>
-            <div class="pizza-footer">
-              <div class="pizza-price">₪88</div>
-              <button class="add-btn" aria-label="הוסף טרופיקנה לסל">+</button>
-            </div>
-          </div>
-        </article>
-
-        <!-- Card 3 -->
-        <article class="pizza-card reveal reveal-delay-2" role="listitem" aria-label="פיצה ארבעת הגבינות">
-          <div class="pizza-img-wrap" aria-hidden="true">
-            <span class="pizza-img-inner" style="font-size:6.5rem">🧀</span>
-          </div>
-          <div class="pizza-info">
-            <div class="pizza-tags">
-              <span class="pizza-tag">גורמה</span>
-              <span class="pizza-tag">נימוחה</span>
-            </div>
-            <h3 class="pizza-name">קוואטרו פורמג'י</h3>
-            <p class="pizza-desc">גורגונזולה, פרמז'ן, פונטינה, מוצרלה, ולוז קרמליזים.</p>
-            <div class="pizza-footer">
-              <div class="pizza-price">₪79</div>
-              <button class="add-btn" aria-label="הוסף קוואטרו פורמג'י לסל">+</button>
-            </div>
-          </div>
-        </article>
-
-        <!-- Card 4 -->
-        <article class="pizza-card reveal reveal-delay-1" role="listitem" aria-label="פיצה ירקות גינה">
-          <div class="pizza-img-wrap" aria-hidden="true">
-            <span class="pizza-img-inner" style="font-size:6.5rem">🥦</span>
-          </div>
-          <div class="pizza-info">
-            <div class="pizza-tags">
-              <span class="pizza-tag">ויגן</span>
-              <span class="pizza-tag">בריא</span>
-            </div>
-            <h3 class="pizza-name">גינה ירוקה</h3>
-            <p class="pizza-desc">ברוקולי, זוקיני, פלפל צהוב, עגבניות שרי, טחינה לבנה ועשבי תיבול.</p>
-            <div class="pizza-footer">
-              <div class="pizza-price">₪66</div>
-              <button class="add-btn" aria-label="הוסף גינה ירוקה לסל">+</button>
-            </div>
-          </div>
-        </article>
-
-        <!-- Card 5 -->
-        <article class="pizza-card reveal reveal-delay-2" role="listitem" aria-label="פיצה ספייסי">
-          <div class="pizza-img-wrap" aria-hidden="true">
-            <span class="pizza-img-inner" style="font-size:6.5rem">🌶️</span>
-          </div>
-          <div class="pizza-info">
-            <div class="pizza-tags">
-              <span class="pizza-tag">חריף</span>
-              <span class="pizza-tag">סיגנטורה</span>
-            </div>
-            <h3 class="pizza-name">דיאבולה רוסה</h3>
-            <p class="pizza-desc">סלמי חריף, ג'לפניו, פלפרוני, רוטב עגבניות ספייסי, מוצרלה.</p>
-            <div class="pizza-footer">
-              <div class="pizza-price">₪74</div>
-              <button class="add-btn" aria-label="הוסף דיאבולה רוסה לסל">+</button>
-            </div>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- PROCESS -->
-  <section id="process" aria-labelledby="process-title">
-    <div class="section-inner">
-      <div style="text-align:center; margin-bottom: 0;">
-        <span class="section-tag reveal">איך זה עובד</span>
-        <h2 id="process-title" class="section-title reveal reveal-delay-1">מהבצק לשולחנך</h2>
-        <p class="section-sub reveal reveal-delay-2" style="margin: 0 auto;">תהליך מסורתי שנשמר ללא פשרות כבר יותר מ-15 שנה.</p>
-      </div>
-      <div class="process-grid" role="list">
-        <div class="process-step reveal" role="listitem">
-          <div class="step-icon" aria-hidden="true">
-            <span class="step-num">1</span>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-              <path d="M8 12h8M12 8v8"/>
-            </svg>
-          </div>
-          <h3 class="step-title">לישת הבצק</h3>
-          <p class="step-desc">קמח שחר טחון טרי, מים צוננים ושמרים טבעיים. הבצק נח 48 שעות לפיתוח הטעם המושלם.</p>
-        </div>
-        <div class="process-step reveal reveal-delay-1" role="listitem">
-          <div class="step-icon" aria-hidden="true">
-            <span class="step-num">2</span>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="12" r="9"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-          </div>
-          <h3 class="step-title">הכנת המצרכים</h3>
-          <p class="step-desc">ירקות טריים שמגיעים מדי בוקר מהשוק. רוטב עגבניות סן מרצנו מאיטליה.</p>
-        </div>
-        <div class="process-step reveal reveal-delay-2" role="listitem">
-          <div class="step-icon" aria-hidden="true">
-            <span class="step-num">3</span>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="2" y="7" width="20" height="14" rx="2"/>
-              <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
-            </svg>
-          </div>
-          <h3 class="step-title">אפייה בתנור אבן</h3>
-          <p class="step-desc">תנור אבן מ-1962 מחומם ל-485°C. כל פיצה נאפית תוך 90 שניות בלבד.</p>
-        </div>
-        <div class="process-step reveal reveal-delay-3" role="listitem">
-          <div class="step-icon" aria-hidden="true">
-            <span class="step-num">4</span>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/>
-              <path d="M12 12h.01"/>
-            </svg>
-          </div>
-          <h3 class="step-title">הגשה חמה</h3>
-          <p class="step-desc">ישירות מהתנור לשולחנך. אם הזמנת משלוח — מגיע בתיבה מחוממת תוך 30 דקות.</p>
+          <div class="chef-name">אמיר ליאור</div>
+          <div class="chef-title">שף ומייסד — Amora Pizza</div>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- SPECIALS BANNER -->
-  <section id="specials" aria-labelledby="specials-title">
-    <div class="section-inner">
-      <div class="specials-banner reveal">
-        <div class="specials-text">
-          <span class="section-tag">מבצע השבוע</span>
-          <h2 id="specials-title" class="section-title">2 פיצות במחיר של 1</h2>
-          <p>כל יום שני ושלישי בין 12:00-16:00. בחר מכל התפריט.</p>
-        </div>
-        <div class="specials-cta">
-          <a href="#contact" class="btn-white" aria-label="הזמן עכשיו במבצע">הזמן במבצע</a>
-        </div>
+<!-- BENTO MENU -->
+<section id="menu" aria-labelledby="menu-h2">
+  <div class="section-wrap">
+    <div class="menu-header">
+      <div>
+        <span class="eyebrow sr">התפריט שלנו</span>
+        <h2 id="menu-h2" class="section-h2 sr d1">הפיצות <em>שלנו</em></h2>
+      </div>
+      <div class="menu-pills sr d2" role="tablist" aria-label="סנן לפי קטגוריה">
+        <button class="pill on" role="tab" aria-selected="true">הכל</button>
+        <button class="pill" role="tab" aria-selected="false">קלאסיות</button>
+        <button class="pill" role="tab" aria-selected="false">גורמה</button>
+        <button class="pill" role="tab" aria-selected="false">ויגן</button>
       </div>
     </div>
-  </section>
 
-  <!-- TESTIMONIALS -->
-  <section id="testimonials" aria-labelledby="testimonials-title">
-    <div class="section-inner">
-      <div class="testimonials-header">
-        <span class="section-tag reveal">מה אומרים עלינו</span>
-        <h2 id="testimonials-title" class="section-title reveal reveal-delay-1">הלקוחות מספרים</h2>
-        <p class="section-sub reveal reveal-delay-2">יותר מ-15,000 ביקורות חיוביות ב-Google ובדליברו.</p>
+    <div class="bento" role="list">
+      <!-- Featured: Margherita -->
+      <article class="bcard c1 sr" role="listitem" aria-label="פיצה מרגריטה בופלה">
+        <div class="bcard-tag">הבסט סלר</div>
+        <div class="bcard-img">
+          <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=700&q=80&fit=crop&crop=center" alt="מרגריטה בופלה — פיצה עם מוצרלה ובזיליקום" loading="lazy"/>
+        </div>
+        <div class="bcard-body">
+          <h3 class="bcard-name">Margherita Bufala</h3>
+          <p class="bcard-desc">מוצרלה בופלה DOP, עגבניות סן מרצנו, בזיליקום טרי, שמן זית כתית. המקורית מנאפולי.</p>
+          <div class="bcard-footer">
+            <div class="bcard-price"><sup>₪</sup>64</div>
+            <button class="add-circle" aria-label="הוסף מרגריטה בופלה לסל">+</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Diavola -->
+      <article class="bcard c2 sr d1" role="listitem" aria-label="פיצה דיאבולה">
+        <div class="bcard-tag">חריף</div>
+        <div class="bcard-img">
+          <img src="https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=600&q=80&fit=crop" alt="דיאבולה — פיצה חריפה עם סלמי" loading="lazy"/>
+        </div>
+        <div class="bcard-body">
+          <h3 class="bcard-name">Diavola Rossa</h3>
+          <p class="bcard-desc">סלמי פיקנטה, ג'לפניו, מוצרלה, רוטב ספייסי.</p>
+          <div class="bcard-footer">
+            <div class="bcard-price"><sup>₪</sup>74</div>
+            <button class="add-circle" aria-label="הוסף דיאבולה לסל">+</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Truffle -->
+      <article class="bcard c3 sr d2" role="listitem" aria-label="פיצה טרופל">
+        <div class="bcard-tag new">חדש</div>
+        <div class="bcard-img">
+          <img src="https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=500&q=80&fit=crop" alt="פיצה ביאנקה עם שמן כמהין" loading="lazy"/>
+        </div>
+        <div class="bcard-body">
+          <h3 class="bcard-name">Bianca Tartufo</h3>
+          <p class="bcard-desc">שמן כמהין שחור, פונטינה, פרמז'ן, ארוגולה.</p>
+          <div class="bcard-footer">
+            <div class="bcard-price"><sup>₪</sup>96</div>
+            <button class="add-circle" aria-label="הוסף ביאנקה טרופל לסל">+</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Quattro -->
+      <article class="bcard c4 sr d1" role="listitem" aria-label="פיצה ארבעת גבינות">
+        <div class="bcard-img">
+          <img src="https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f?w=600&q=80&fit=crop" alt="קוואטרו פורמג'י — ארבע גבינות" loading="lazy"/>
+        </div>
+        <div class="bcard-body">
+          <h3 class="bcard-name">Quattro Formaggi</h3>
+          <p class="bcard-desc">גורגונזולה, פונטינה, פרמז'ן, ריקוטה, דבש.</p>
+          <div class="bcard-footer">
+            <div class="bcard-price"><sup>₪</sup>82</div>
+            <button class="add-circle" aria-label="הוסף קוואטרו פורמג'י לסל">+</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Vegana -->
+      <article class="bcard c5 sr d2" role="listitem" aria-label="פיצה ויגן">
+        <div class="bcard-tag" style="background:rgba(34,197,94,.15);color:#4ade80;border-color:rgba(34,197,94,.25)">ויגן</div>
+        <div class="bcard-img">
+          <img src="https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=500&q=80&fit=crop" alt="פיצה ויגן עם ירקות טריים" loading="lazy"/>
+        </div>
+        <div class="bcard-body">
+          <h3 class="bcard-name">Giardino Verde</h3>
+          <p class="bcard-desc">זוקיני, פלפל קלוי, זיתים, בייבי ספינאצ', שמן זית.</p>
+          <div class="bcard-footer">
+            <div class="bcard-price"><sup>₪</sup>66</div>
+            <button class="add-circle" aria-label="הוסף ג'ארדינו ורדה לסל">+</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Special wide -->
+      <article class="bcard c6 sr d3" role="listitem" aria-label="פיצה ספיישל">
+        <div class="bcard-tag" style="background:rgba(212,168,71,.15)">סיגנטורה</div>
+        <div class="bcard-img" style="height:240px">
+          <img src="https://images.unsplash.com/photo-1528137871618-79d2761e3fd5?w=900&q=80&fit=crop" alt="פיצה סיגנטורה של שף אמיר" loading="lazy"/>
+        </div>
+        <div class="bcard-body">
+          <h3 class="bcard-name">Chef's Signature — Amora Speciale</h3>
+          <p class="bcard-desc">ג'מון סן דניאלה 24 חודשים, דמסון פיגי, ריקוטה קרמלית, צנוברים, דבש טרפל לבן — המנה שהפכה אותנו לאגדה.</p>
+          <div class="bcard-footer">
+            <div class="bcard-price"><sup>₪</sup>118</div>
+            <button class="add-circle" aria-label="הוסף Amora Speciale לסל">+</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- INGREDIENTS -->
+<section id="ingredients" aria-labelledby="ingr-h2">
+  <div class="ingr-header section-wrap" style="padding-bottom:0">
+    <div>
+      <span class="eyebrow sr">המרכיבים שלנו</span>
+      <h2 id="ingr-h2" class="section-h2 sr d1">רק <em>הטובים</em> ביותר</h2>
+    </div>
+    <p class="section-lead sr d2">אנחנו לא מתפשרים על כלום. כל מרכיב נבחר ביד אחרי ביקור אישי אצל הספק.</p>
+  </div>
+  <div class="ingr-scroll-area" role="list" aria-label="רשימת מרכיבים">
+    <div class="ingr-card" role="listitem">
+      <div class="ingr-icon" aria-hidden="true">🌾</div>
+      <div class="ingr-name">קמח שחר</div>
+      <p class="ingr-desc">Type 00 איטלקי, טחון טרי כל בוקר. גלוטן נמוך לבצק קליל ונימוח.</p>
+      <span class="ingr-origin">נאפולי, איטליה</span>
+    </div>
+    <div class="ingr-card" role="listitem">
+      <div class="ingr-icon" aria-hidden="true">🍅</div>
+      <div class="ingr-name">עגבניות סן מרצנו</div>
+      <p class="ingr-desc">מ-DOP מוגן, גדלות באדמת הר וזוב. מתיקות טבעית ללא צורך בסוכר.</p>
+      <span class="ingr-origin">קמפניה, איטליה</span>
+    </div>
+    <div class="ingr-card" role="listitem">
+      <div class="ingr-icon" aria-hidden="true">🧀</div>
+      <div class="ingr-name">מוצרלה בופלה</div>
+      <p class="ingr-desc">תוצרת בוקר מחלב בופלה טרי. מוכנסת לפיצה שניות לפני ההגשה.</p>
+      <span class="ingr-origin">Caserta, איטליה</span>
+    </div>
+    <div class="ingr-card" role="listitem">
+      <div class="ingr-icon" aria-hidden="true">🫒</div>
+      <div class="ingr-name">שמן זית EVO</div>
+      <p class="ingr-desc">כתית מעולה מכרם משפחתי בגליל. חומציות 0.2%, קצור ידני.</p>
+      <span class="ingr-origin">הגליל, ישראל</span>
+    </div>
+    <div class="ingr-card" role="listitem">
+      <div class="ingr-icon" aria-hidden="true">🌿</div>
+      <div class="ingr-name">בזיליקום גנובה</div>
+      <p class="ingr-desc">עלים טריים שנקטפים מדי בוקר. אף פעם לא מחוממים — רק על הפיצה שיצאה מהתנור.</p>
+      <span class="ingr-origin">לוקה, איטליה</span>
+    </div>
+    <div class="ingr-card" role="listitem">
+      <div class="ingr-icon" aria-hidden="true">🔥</div>
+      <div class="ingr-name">תנור אבן 1962</div>
+      <p class="ingr-desc">תנור עץ שנבנה ב-1962. מחמם ל-485°C, אופה בדיוק 90 שניות. אי אפשר לחקות.</p>
+      <span class="ingr-origin">תל אביב, ישראל</span>
+    </div>
+  </div>
+</section>
+
+<!-- SPECIALS -->
+<section id="specials" aria-labelledby="specials-h2">
+  <div class="specials-inner">
+    <div class="specials-text">
+      <span class="eyebrow sr">מבצע שוטף</span>
+      <h2 id="specials-h2" class="section-h2 sr d1">מבצע<br><em>Happy Hour</em></h2>
+      <div class="specials-promo sr d2">
+        2+1
+        <span>בכל ימי א׳–ג׳</span>
       </div>
-      <div class="reviews-grid">
-        <article class="review-card highlight reveal" aria-label="ביקורת של מיכל לוי">
-          <div class="review-stars" aria-label="דירוג 5 כוכבים">★★★★★</div>
-          <blockquote class="review-text">"הפיצה הטובה ביותר שאכלתי בחיים. הבצק כל כך דק ופריך, והמוצרלה נמסת בפה. מגיעה כל שבוע!"</blockquote>
-          <div class="review-author">
-            <div class="author-avatar" aria-hidden="true">מ</div>
+      <p class="specials-detail sr d3">
+        בין 12:00 ל-16:00 מקבלים פיצה שלישית במתנה. בחרו מכל התפריט, ללא הגבלה. מחר כבר אי אפשר לדעת.
+      </p>
+      <a href="#reservation" class="btn-gold sr d4" aria-label="הזמן שולחן עכשיו">
+        הזמן עכשיו
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path d="M19 12H5M12 5l-7 7 7 7"/>
+        </svg>
+      </a>
+    </div>
+    <div class="specials-visual sr-l">
+      <div class="specials-pizza">
+        <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=700&q=80&fit=crop" alt="פיצה מרגריטה קלאסית"/>
+      </div>
+      <div class="deal-badge" aria-label="הנחה 33 אחוז">
+        <strong>33%</strong>
+        <span>הנחה</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials" aria-labelledby="test-h2">
+  <div class="section-wrap">
+    <span class="eyebrow sr">מה אומרים עלינו</span>
+    <h2 id="test-h2" class="section-h2 sr d1">הלקוחות <em>מספרים</em></h2>
+    <div class="reviews-layout">
+      <div class="reviews-big-quote sr-r">
+        "הפיצה הכי טובה<br>שאכלתי<br><em>מחוץ לנאפולי.</em>"
+        <p>יותר מ-4,800 ביקורות Google בדירוג ממוצע 4.9. שנה אחר שנה, האנשים ממשיכים לחזור.</p>
+        <div class="avg-stars">
+          <span class="stars-row" aria-label="5 כוכבים">★★★★★</span>
+          <span class="avg-num">4.9</span>
+          <span class="avg-count">/ 4,800+ ביקורות</span>
+        </div>
+      </div>
+      <div class="reviews-stack">
+        <article class="rcard sr d1" aria-label="ביקורת של מיכל לוי">
+          <div class="rcard-head">
+            <div class="rcard-av-init" aria-hidden="true">מ</div>
             <div>
-              <div class="author-name">מיכל לוי</div>
-              <div class="author-meta">תל אביב • 3 חודשים</div>
+              <div class="rcard-name">מיכל לוי</div>
+              <div class="rcard-meta">תל אביב · לפני שבוע</div>
             </div>
+            <span class="rcard-stars" aria-label="5 כוכבים">★★★★★</span>
           </div>
+          <blockquote class="rcard-quote">"הבצק הכי דק שאכלתי, הגבינה נמסת בפה. הגעתי פעם אחת ומאז כל שבת אני כאן. הסרביס מדהים, האווירה מושלמת."</blockquote>
         </article>
-        <article class="review-card reveal reveal-delay-1" aria-label="ביקורת של דניאל כהן">
-          <div class="review-stars" aria-label="דירוג 5 כוכבים">★★★★★</div>
-          <blockquote class="review-text">"הזמנתי משלוח לראשונה והייתי בהלם — הפיצה הגיעה חמה וטרייה כאילו רק יצאה מהתנור. 10/10!"</blockquote>
-          <div class="review-author">
-            <div class="author-avatar" aria-hidden="true">ד</div>
+        <article class="rcard sr d2" aria-label="ביקורת של דניאל כהן">
+          <div class="rcard-head">
+            <div class="rcard-av">
+              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80" alt="תמונת פרופיל דניאל כהן" loading="lazy"/>
+            </div>
             <div>
-              <div class="author-name">דניאל כהן</div>
-              <div class="author-meta">הרצליה • שבוע אחד</div>
+              <div class="rcard-name">דניאל כהן</div>
+              <div class="rcard-meta">הרצליה · לפני חודש</div>
             </div>
+            <span class="rcard-stars" aria-label="5 כוכבים">★★★★★</span>
           </div>
+          <blockquote class="rcard-quote">"הזמנתי את Amora Speciale ולא האמנתי שפיצה יכולה להגיע לרמה כזו. ג'מון, דבש טרפל — זה פשוט מושלם."</blockquote>
         </article>
-        <article class="review-card reveal reveal-delay-2" aria-label="ביקורת של שירה אברהם">
-          <div class="review-stars" aria-label="דירוג 5 כוכבים">★★★★★</div>
-          <blockquote class="review-text">"הדיאבולה רוסה — חריף בדיוק כמו שצריך, לא יותר מדי. ניהול ההזמנה והשירות מעולה לחלוטין."</blockquote>
-          <div class="review-author">
-            <div class="author-avatar" aria-hidden="true">ש</div>
+        <article class="rcard sr d3" aria-label="ביקורת של שירה אברהם">
+          <div class="rcard-head">
+            <div class="rcard-av-init" aria-hidden="true">ש</div>
             <div>
-              <div class="author-name">שירה אברהם</div>
-              <div class="author-meta">פתח תקווה • חודש</div>
+              <div class="rcard-name">שירה אברהם</div>
+              <div class="rcard-meta">פתח תקווה · לפני 3 שבועות</div>
             </div>
+            <span class="rcard-stars" aria-label="5 כוכבים">★★★★★</span>
           </div>
+          <blockquote class="rcard-quote">"ביקרתי עם ילדים ועם חברים — כל פעם עם קהל שונה והשירות תמיד אותו הדבר: מעולה. המרגריטה בופלה חייבת להיות בצלחת של כל ישראלי."</blockquote>
         </article>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- GALLERY -->
-  <section id="gallery" aria-labelledby="gallery-title">
-    <div class="section-inner">
-      <div class="gallery-header">
-        <span class="section-tag reveal">גלריה</span>
-        <h2 id="gallery-title" class="section-title reveal reveal-delay-1">ישר מהתנור</h2>
-      </div>
-      <div class="gallery-grid" role="list" aria-label="גלריית תמונות">
-        <div class="gallery-item large reveal" role="listitem" aria-label="פיצה גדולה">🍕</div>
-        <div class="gallery-item reveal reveal-delay-1" role="listitem" aria-label="ציוד בישול">🍳</div>
-        <div class="gallery-item reveal reveal-delay-2" role="listitem" aria-label="עגבניות טריות">🍅</div>
-        <div class="gallery-item reveal reveal-delay-1" role="listitem" aria-label="גבינה">🧀</div>
-        <div class="gallery-item reveal reveal-delay-2" role="listitem" aria-label="בזיליקום">🌿</div>
-        <div class="gallery-item reveal reveal-delay-3" role="listitem" aria-label="שף">👨‍🍳</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CONTACT -->
-  <section id="contact" aria-labelledby="contact-title">
-    <div class="section-inner">
-      <div class="contact-grid">
-        <div class="contact-info">
-          <span class="section-tag reveal">צור קשר</span>
-          <h2 id="contact-title" class="section-title reveal reveal-delay-1">הגיע הזמן<br>לשים הזמנה</h2>
-          <p class="section-sub reveal reveal-delay-2">מחפש את הפיצה המושלמת? השאר פרטים ונחזור אליך תוך 5 דקות.</p>
-
-          <div class="contact-detail reveal reveal-delay-1">
-            <div class="contact-icon" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-            </div>
-            <div class="contact-detail-text">
-              <strong>הכתובת שלנו</strong>
-              <span>רחוב דיזנגוף 130, תל אביב</span>
-            </div>
-          </div>
-
-          <div class="contact-detail reveal reveal-delay-2">
-            <div class="contact-icon" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-              </svg>
-            </div>
-            <div class="contact-detail-text">
-              <strong>טלפון</strong>
-              <span dir="ltr">03-555-1234</span>
-            </div>
-          </div>
-
-          <div class="contact-detail reveal reveal-delay-3">
-            <div class="contact-icon" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-            </div>
-            <div class="contact-detail-text">
-              <strong>שעות פעילות</strong>
-              <span>א׳–ה׳: 11:00–23:00 | ו׳–ש׳: 10:00–00:00</span>
-            </div>
-          </div>
+<!-- RESERVATION -->
+<section id="reservation" aria-labelledby="res-h2">
+  <div class="reservation-grid">
+    <div class="res-info">
+      <span class="eyebrow sr">הגיע הזמן</span>
+      <h2 id="res-h2" class="section-h2 sr d1">הזמן <em>שולחן</em><br>או משלוח</h2>
+      <p class="section-lead sr d2">תפריט מלא זמין לאיסוף ומשלוח. לשולחן — מומלץ להזמין מראש, במיוחד בסופי שבוע.</p>
+      <div class="res-hours sr d3">
+        <h4>שעות פעילות</h4>
+        <div class="hour-row">
+          <span class="hour-day">ראשון – חמישי</span>
+          <span class="hour-time">12:00 – 23:00</span>
         </div>
-
-        <div class="contact-form reveal reveal-delay-1" role="form" aria-labelledby="form-title">
-          <h3 id="form-title" class="form-title">הזמן פיצה</h3>
-          <form novalidate>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="name">שם מלא <span aria-hidden="true" style="color:var(--primary)">*</span></label>
-                <input type="text" id="name" name="name" autocomplete="name" required aria-required="true" placeholder="ישראל ישראלי" />
-              </div>
-              <div class="form-group">
-                <label for="phone">טלפון <span aria-hidden="true" style="color:var(--primary)">*</span></label>
-                <input type="tel" id="phone" name="phone" autocomplete="tel" required aria-required="true" placeholder="050-000-0000" dir="ltr" />
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="address">כתובת למשלוח</label>
-              <input type="text" id="address" name="address" autocomplete="street-address" placeholder="רחוב, עיר" />
-            </div>
-            <div class="form-group">
-              <label for="pizza">בחר פיצה <span aria-hidden="true" style="color:var(--primary)">*</span></label>
-              <select id="pizza" name="pizza" required aria-required="true">
-                <option value="">-- בחר סוג פיצה --</option>
-                <option value="margherita">מרגריטה ביאנקה — ₪62</option>
-                <option value="tropicana">טרופיקנה סייזון — ₪88</option>
-                <option value="quattro">קוואטרו פורמג'י — ₪79</option>
-                <option value="green">גינה ירוקה — ₪66</option>
-                <option value="diavola">דיאבולה רוסה — ₪74</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="notes">הערות מיוחדות</label>
-              <textarea id="notes" name="notes" placeholder="אלרגיות, בקשות מיוחדות..."></textarea>
-            </div>
-            <button type="submit" class="form-submit" aria-label="שלח הזמנה">
-              שלח הזמנה עכשיו →
-            </button>
-          </form>
+        <div class="hour-row">
+          <span class="hour-day">שישי</span>
+          <span class="hour-time">11:00 – שעה לפני שבת</span>
+        </div>
+        <div class="hour-row">
+          <span class="hour-day">מוצאי שבת</span>
+          <span class="hour-time">שעה אחרי שבת – 00:30</span>
+        </div>
+        <div class="hour-row">
+          <span class="hour-day">שבת</span>
+          <span class="hour-time">סגור</span>
         </div>
       </div>
     </div>
-  </section>
 
-  <!-- FOOTER -->
-  <footer role="contentinfo">
-    <div class="footer-inner">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <div class="footer-logo">פיצה<span>אמוורה</span></div>
-          <p class="footer-desc">אמנות הפיצה האיטלקית מ-2009. מסורת, איכות, ואהבה בכל פרוסה.</p>
-          <div class="social-links" aria-label="רשתות חברתיות">
-            <a href="#" class="social-link" aria-label="אינסטגרם">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-              </svg>
-            </a>
-            <a href="#" class="social-link" aria-label="פייסבוק">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
-              </svg>
-            </a>
-            <a href="#" class="social-link" aria-label="טיקטוק">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.73a4.85 4.85 0 01-1.01-.04z"/>
-              </svg>
-            </a>
+    <div class="res-form-wrap sr-l">
+      <h3 class="form-heading">השאר פרטים</h3>
+      <form novalidate aria-label="טופס הזמנה">
+        <div class="frow">
+          <div class="fg">
+            <label for="res-name">שם מלא <span aria-hidden="true" style="color:var(--gold)">*</span></label>
+            <input id="res-name" type="text" name="name" autocomplete="name" required aria-required="true" placeholder="ישראל ישראלי"/>
+          </div>
+          <div class="fg">
+            <label for="res-phone">טלפון <span aria-hidden="true" style="color:var(--gold)">*</span></label>
+            <input id="res-phone" type="tel" name="phone" autocomplete="tel" required aria-required="true" placeholder="050-000-0000" dir="ltr"/>
           </div>
         </div>
-        <div class="footer-col">
-          <h5>תפריט</h5>
-          <ul class="footer-links">
-            <li><a href="#menu">פיצות קלאסיות</a></li>
-            <li><a href="#menu">פיצות גורמה</a></li>
-            <li><a href="#menu">אפשרויות ויגן</a></li>
-            <li><a href="#menu">משקאות</a></li>
-            <li><a href="#menu">קינוחים</a></li>
-          </ul>
+        <div class="frow">
+          <div class="fg">
+            <label for="res-type">סוג הזמנה</label>
+            <select id="res-type" name="type">
+              <option value="table">שולחן במסעדה</option>
+              <option value="delivery">משלוח לבית</option>
+              <option value="takeaway">איסוף עצמי</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label for="res-guests">מספר סועדים</label>
+            <select id="res-guests" name="guests">
+              <option value="1">1–2 אנשים</option>
+              <option value="3" selected>3–4 אנשים</option>
+              <option value="5">5–6 אנשים</option>
+              <option value="7">7+ אנשים</option>
+            </select>
+          </div>
         </div>
-        <div class="footer-col">
-          <h5>אודות</h5>
-          <ul class="footer-links">
-            <li><a href="#process">הסיפור שלנו</a></li>
-            <li><a href="#process">שיטת הבישול</a></li>
-            <li><a href="#testimonials">ביקורות</a></li>
-            <li><a href="#contact">דרושים</a></li>
-            <li><a href="#contact">זכיינות</a></li>
-          </ul>
+        <div class="fg">
+          <label for="res-pizza">פיצה מועדפת</label>
+          <select id="res-pizza" name="pizza">
+            <option value="">ללא העדפה</option>
+            <option>Margherita Bufala — ₪64</option>
+            <option>Diavola Rossa — ₪74</option>
+            <option>Bianca Tartufo — ₪96</option>
+            <option>Quattro Formaggi — ₪82</option>
+            <option>Giardino Verde — ₪66</option>
+            <option>Amora Speciale — ₪118</option>
+          </select>
         </div>
-        <div class="footer-col">
-          <h5>שירות</h5>
-          <ul class="footer-links">
-            <li><a href="#contact">הזמנת משלוח</a></li>
-            <li><a href="#contact">הזמנת מקום</a></li>
-            <li><a href="#contact">אירועים</a></li>
-            <li><a href="#contact">שירות לקוחות</a></li>
-            <li><a href="#contact">פנו אלינו</a></li>
-          </ul>
+        <div class="fg">
+          <label for="res-notes">הערות</label>
+          <textarea id="res-notes" name="notes" placeholder="אלרגיות, בקשות מיוחדות, תאריך ושעה מבוקשים..."></textarea>
         </div>
-      </div>
-      <div class="footer-bottom">
-        <p>© 2025 <span>פיצה אמוורה</span>. כל הזכויות שמורות.</p>
-        <p>עוצב עם <span>♥</span> בתל אביב</p>
-      </div>
+        <button type="submit" class="form-submit" aria-label="שלח הזמנה">
+          שלח הזמנה →
+        </button>
+      </form>
     </div>
-  </footer>
+  </div>
+</section>
 
-  <script>
-    // Mark body so reveal CSS activates only with JS
-    document.body.classList.add('js-ready');
+<!-- FOOTER -->
+<footer role="contentinfo">
+  <div class="footer-top-bar">
+    <a href="#hero" class="f-logo" aria-label="Amora Pizza - חזרה לדף הבית">Amora</a>
+    <nav class="f-socials" aria-label="רשתות חברתיות">
+      <a href="#" class="f-social-btn" aria-label="אינסטגרם">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+        </svg>
+      </a>
+      <a href="#" class="f-social-btn" aria-label="פייסבוק">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
+        </svg>
+      </a>
+      <a href="#" class="f-social-btn" aria-label="טיקטוק">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 100 12.68 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.73a4.85 4.85 0 01-1-.04z"/>
+        </svg>
+      </a>
+      <a href="#" class="f-social-btn" aria-label="גוגל">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057c.003.028.015.054.038.067a19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.038-.068c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/>
+        </svg>
+      </a>
+    </nav>
+  </div>
 
-    // ── Scroll: nav shrink ──
-    const nav = document.getElementById('main-nav');
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('scrolled', window.scrollY > 60);
-    }, { passive: true });
+  <div class="footer-cols">
+    <div class="f-about">
+      <div class="f-logo">Amora</div>
+      <p>אמנות הפיצה הנאפוליטנית מ-2009. מסורת, איכות בלתי מתפשרת, ואהבה אמיתית בכל פרוסה.</p>
+    </div>
+    <div class="f-col">
+      <h5>תפריט</h5>
+      <ul class="f-links">
+        <li><a href="#menu">Margherita Bufala</a></li>
+        <li><a href="#menu">Diavola Rossa</a></li>
+        <li><a href="#menu">Bianca Tartufo</a></li>
+        <li><a href="#menu">Quattro Formaggi</a></li>
+        <li><a href="#menu">Amora Speciale</a></li>
+      </ul>
+    </div>
+    <div class="f-col">
+      <h5>אודות</h5>
+      <ul class="f-links">
+        <li><a href="#about">הסיפור שלנו</a></li>
+        <li><a href="#about">השף שלנו</a></li>
+        <li><a href="#ingredients">המרכיבים</a></li>
+        <li><a href="#testimonials">ביקורות</a></li>
+        <li><a href="#reservation">דרושים</a></li>
+      </ul>
+    </div>
+    <div class="f-col">
+      <h5>שירות</h5>
+      <ul class="f-links">
+        <li><a href="#reservation">הזמנת שולחן</a></li>
+        <li><a href="#reservation">משלוחים</a></li>
+        <li><a href="#specials">מבצעים</a></li>
+        <li><a href="#reservation">אירועים פרטיים</a></li>
+        <li><a href="#reservation">צור קשר</a></li>
+      </ul>
+    </div>
+  </div>
 
-    // ── Scroll Reveal ──
-    const revealEls = document.querySelectorAll('.reveal');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('visible');
-          observer.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-    revealEls.forEach(el => observer.observe(el));
+  <div class="footer-bottom">
+    <p>© 2025 Amora Pizza. כל הזכויות שמורות.</p>
+    <p>רחוב דיזנגוף 130, תל אביב &nbsp;·&nbsp; <span dir="ltr">03-555-1234</span></p>
+  </div>
+</footer>
 
-    // ── Menu tabs (visual only) ──
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-selected', 'false');
-        });
-        btn.classList.add('active');
-        btn.setAttribute('aria-selected', 'true');
-      });
+<script>
+(function(){
+  'use strict';
+
+  /* ── Progress bar ── */
+  const bar = document.getElementById('progress-bar');
+  function updateProgress(){
+    const h = document.documentElement;
+    const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+    bar.style.width = pct + '%';
+    bar.setAttribute('aria-valuenow', Math.round(pct));
+  }
+  window.addEventListener('scroll', updateProgress, {passive:true});
+
+  /* ── Nav compact ── */
+  const nav = document.getElementById('site-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('compact', window.scrollY > 70);
+  }, {passive:true});
+
+  /* ── Custom cursor (desktop only) ── */
+  if(window.matchMedia('(pointer:fine)').matches){
+    const c = document.getElementById('cursor');
+    const r = document.getElementById('cursor-ring');
+    let mx=0,my=0,rx=0,ry=0;
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      c.style.left = mx+'px'; c.style.top = my+'px';
     });
-
-    // ── Add to cart feedback ──
-    document.querySelectorAll('.add-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const original = this.textContent;
-        this.textContent = '✓';
-        this.style.background = '#16A34A';
-        setTimeout(() => {
-          this.textContent = original;
-          this.style.background = '';
-        }, 1200);
-      });
-    });
-
-    // ── Form submit ──
-    document.querySelector('form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const btn = this.querySelector('.form-submit');
-      btn.textContent = 'שולח...';
-      btn.disabled = true;
-      setTimeout(() => {
-        btn.textContent = 'ההזמנה נשלחה! ✓';
-        btn.style.background = '#16A34A';
-      }, 1000);
-    });
-
-    // ── Reduced motion ──
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
+    function animRing(){
+      rx += (mx-rx)*.12;
+      ry += (my-ry)*.12;
+      r.style.left = rx+'px'; r.style.top = ry+'px';
+      requestAnimationFrame(animRing);
     }
-  </script>
+    animRing();
+    document.querySelectorAll('a,button,.bcard,.rcard,.pill').forEach(el=>{
+      el.addEventListener('mouseenter',()=>document.body.classList.add('cursor-hover'));
+      el.addEventListener('mouseleave',()=>document.body.classList.remove('cursor-hover'));
+    });
+  }
+
+  /* ── Scroll reveal ── */
+  const srEls = document.querySelectorAll('.sr,.sr-l,.sr-r');
+  const io = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  },{threshold:.1,rootMargin:'0px 0px -40px 0px'});
+  srEls.forEach(el=>io.observe(el));
+
+  /* ── Menu pills ── */
+  document.querySelectorAll('.pill').forEach(p=>{
+    p.addEventListener('click',()=>{
+      document.querySelectorAll('.pill').forEach(x=>{x.classList.remove('on');x.setAttribute('aria-selected','false')});
+      p.classList.add('on'); p.setAttribute('aria-selected','true');
+    });
+  });
+
+  /* ── Add to cart ── */
+  document.querySelectorAll('.add-circle').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      const o=this.textContent;
+      this.textContent='✓';
+      this.style.cssText='background:var(--gold);color:#080604;border-color:var(--gold);transform:rotate(0) scale(1.15)';
+      setTimeout(()=>{this.textContent=o;this.removeAttribute('style')},1200);
+    });
+  });
+
+  /* ── Horizontal scroll drag ── */
+  const sl = document.querySelector('.ingr-scroll-area');
+  if(sl){
+    let down=false,startX,scrollL;
+    sl.addEventListener('mousedown',e=>{down=true;startX=e.pageX-sl.offsetLeft;scrollL=sl.scrollLeft});
+    sl.addEventListener('mouseleave',()=>down=false);
+    sl.addEventListener('mouseup',()=>down=false);
+    sl.addEventListener('mousemove',e=>{
+      if(!down)return; e.preventDefault();
+      sl.scrollLeft=scrollL-(e.pageX-sl.offsetLeft-startX);
+    });
+  }
+
+  /* ── Form submit ── */
+  const form = document.querySelector('form');
+  if(form){
+    form.addEventListener('submit',function(e){
+      e.preventDefault();
+      const btn=this.querySelector('.form-submit');
+      btn.textContent='שולח...'; btn.disabled=true;
+      setTimeout(()=>{
+        btn.textContent='ההזמנה נשלחה בהצלחה ✓';
+        btn.style.background='#16a34a';
+      },900);
+    });
+  }
+
+  /* ── Reduced motion fallback ── */
+  if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){
+    srEls.forEach(el=>el.classList.add('in'));
+  }
+
+})();
+</script>
 </body>
 </html>
