@@ -1,1606 +1,736 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Amora Pizza — אמנות האיטלקית</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Jost:wght@200;300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <style>
-  /* ─── TOKENS ─────────────────────────────────────── */
-  :root {
-    --bg:          #080604;
-    --bg-2:        #0f0d0b;
-    --surface:     #161310;
-    --surface-2:   #1e1a17;
-    --gold:        #D4A847;
-    --gold-light:  #E8C470;
-    --gold-dim:    rgba(212,168,71,.18);
-    --cream:       #FAF5E9;
-    --cream-dim:   rgba(250,245,233,.55);
-    --muted:       rgba(250,245,233,.35);
-    --border:      rgba(212,168,71,.18);
-    --border-soft: rgba(250,245,233,.08);
-    --r-sm:  12px;
-    --r-md:  20px;
-    --r-lg:  32px;
-    --r-xl:  48px;
-    --gap:   clamp(80px,10vw,140px);
-    --ease:  cubic-bezier(.4,0,.2,1);
-    --ease-spring: cubic-bezier(.34,1.56,.64,1);
-  }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amora Pizza — נפולי בלב תל אביב</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=Montserrat:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0C0A08;--ink2:#141210;--surface:#1C1916;
+  --paper:#F6F0E4;--pdim:rgba(246,240,228,.6);--pghost:rgba(246,240,228,.08);
+  --gold:#C8922A;--goldb:#E4AF4C;--goldd:rgba(200,146,42,.15);
+  --muted:rgba(246,240,228,.4);
+  --bdr:rgba(200,146,42,.2);--bdrs:rgba(246,240,228,.1);
+  --r:4px;--rl:16px;
+  --sec:clamp(96px,12vw,160px);
+  --ease:cubic-bezier(.4,0,.2,1);--eout:cubic-bezier(0,0,.2,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:'Montserrat',sans-serif;background:var(--ink);color:var(--paper);overflow-x:hidden;line-height:1.6}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+::-webkit-scrollbar{width:2px}::-webkit-scrollbar-thumb{background:var(--gold)}
 
-  /* ─── RESET ──────────────────────────────────────── */
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html{font-size:16px;scroll-behavior:smooth}
-  body{
-    font-family:'Jost',sans-serif;
-    background:var(--bg);
-    color:var(--cream);
-    overflow-x:hidden;
-    line-height:1.65;
-  }
-  img{display:block;max-width:100%;height:auto}
-  a{color:inherit;text-decoration:none}
-  button{cursor:pointer;font-family:'Jost',sans-serif;border:none;background:none}
-  ::-webkit-scrollbar{width:3px}
-  ::-webkit-scrollbar-track{background:var(--bg)}
-  ::-webkit-scrollbar-thumb{background:var(--gold);border-radius:3px}
+/* PROGRESS */
+#pb{position:fixed;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--gold),var(--goldb));transform:scaleX(0);transform-origin:left;z-index:500;box-shadow:0 0 8px var(--gold)}
 
-  /* ─── PROGRESS BAR ───────────────────────────────── */
-  #progress-bar{
-    position:fixed;top:0;left:0;height:2px;
-    background:linear-gradient(90deg,var(--gold),var(--gold-light));
-    width:0%;z-index:200;transition:width .1s linear;
-    box-shadow:0 0 10px rgba(212,168,71,.6);
-  }
+/* CURSOR */
+#cur,#cur-r{position:fixed;border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
+#cur{width:6px;height:6px;background:var(--gold);z-index:9999}
+#cur-r{width:32px;height:32px;border:1px solid rgba(200,146,42,.5);z-index:9998;transition:width .3s,height .3s}
+.hov #cur-r{width:56px;height:56px;border-color:rgba(200,146,42,.2)}
 
-  /* ─── CUSTOM CURSOR ──────────────────────────────── */
-  #cursor{
-    width:8px;height:8px;
-    background:var(--gold);
-    border-radius:50%;
-    position:fixed;pointer-events:none;
-    z-index:9999;
-    transform:translate(-50%,-50%);
-    transition:width .25s var(--ease),height .25s var(--ease),background .25s;
-    mix-blend-mode:difference;
-  }
-  #cursor-ring{
-    width:36px;height:36px;
-    border:1.5px solid rgba(212,168,71,.55);
-    border-radius:50%;
-    position:fixed;pointer-events:none;
-    z-index:9998;
-    transform:translate(-50%,-50%);
-    transition:transform .12s linear,width .3s var(--ease),height .3s var(--ease),opacity .3s;
-  }
-  body.cursor-hover #cursor{width:48px;height:48px;background:rgba(212,168,71,.15)}
-  body.cursor-hover #cursor-ring{opacity:0}
+/* NAV */
+#nav{position:fixed;top:0;inset-inline:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:32px 6%;transition:padding .5s var(--ease),background .5s,backdrop-filter .5s}
+#nav.s{padding:18px 6%;background:rgba(12,10,8,.9);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--bdrs)}
+.nav-logo{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;letter-spacing:.08em;display:flex;align-items:center;gap:4px}
+.nav-logo em{font-style:italic;color:var(--gold)}
+.nav-links{display:flex;gap:36px;list-style:none;font-size:.72rem;font-weight:500;letter-spacing:.2em;text-transform:uppercase}
+.nav-links a{color:var(--muted);transition:color .25s}.nav-links a:hover{color:var(--paper)}
+.nav-cta{font-size:.7rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);padding:12px 28px;border:1px solid var(--bdr);border-radius:40px;transition:background .25s,border-color .25s}
+.nav-cta:hover{background:var(--goldd);border-color:var(--gold)}
 
-  /* ─── NAV ────────────────────────────────────────── */
-  nav{
-    position:fixed;top:0;left:0;right:0;
-    z-index:100;
-    display:flex;align-items:center;justify-content:space-between;
-    padding:28px 6%;
-    transition:padding .4s var(--ease),background .4s,backdrop-filter .4s;
-  }
-  nav.compact{
-    padding:16px 6%;
-    background:rgba(8,6,4,.82);
-    backdrop-filter:blur(24px);
-    -webkit-backdrop-filter:blur(24px);
-    border-bottom:1px solid var(--border-soft);
-  }
-  .nav-logo{
-    font-family:'Bodoni Moda',serif;
-    font-size:1.4rem;
-    letter-spacing:.06em;
-    color:var(--cream);
-    display:flex;align-items:center;gap:10px;
-  }
-  .nav-logo-dot{
-    width:8px;height:8px;border-radius:50%;
-    background:var(--gold);
-    box-shadow:0 0 12px var(--gold);
-  }
-  .nav-links{
-    display:flex;gap:40px;list-style:none;
-  }
-  .nav-links a{
-    font-size:.82rem;font-weight:500;
-    letter-spacing:.12em;text-transform:uppercase;
-    color:var(--muted);
-    transition:color .25s;
-  }
-  .nav-links a:hover{color:var(--cream)}
-  .nav-reserve{
-    display:flex;align-items:center;gap:8px;
-    border:1px solid var(--border);
-    padding:11px 26px;border-radius:var(--r-xl);
-    font-size:.8rem;font-weight:600;
-    letter-spacing:.1em;text-transform:uppercase;
-    color:var(--gold);
-    transition:background .25s,border-color .25s,color .25s;
-  }
-  .nav-reserve:hover{background:var(--gold-dim);border-color:var(--gold)}
-  .burger{display:none;flex-direction:column;gap:5px;padding:6px}
-  .burger span{
-    display:block;width:22px;height:1.5px;
-    background:var(--cream);border-radius:2px;transition:.3s
-  }
+/* HERO */
+#hero{position:relative;height:100vh;min-height:700px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden}
+#hero-bg{position:absolute;inset:-10%;background:url('https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=2000&auto=format&fit=crop&q=90') center/cover no-repeat;will-change:transform}
+#hero-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(12,10,8,1) 0%,rgba(12,10,8,.5) 45%,rgba(12,10,8,.25) 70%,rgba(12,10,8,.65) 100%)}
+.hero-c{position:relative;z-index:2;max-width:940px;padding:0 24px}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:14px;font-size:.65rem;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:36px}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:block;width:28px;height:1px;background:var(--gold)}
+.hero-h1{font-family:'Cormorant Garamond',serif;font-size:clamp(3.8rem,9.5vw,9rem);font-weight:300;line-height:.92;letter-spacing:-.03em}
+.hero-h1 em{display:block;font-style:italic;color:var(--goldb);font-weight:300}
+.hero-sub{font-size:clamp(.85rem,1.2vw,1rem);font-weight:300;color:var(--pdim);letter-spacing:.06em;margin:30px auto 0;max-width:500px;line-height:1.85}
+.hero-btns{display:flex;align-items:center;justify-content:center;gap:24px;margin-top:48px;flex-wrap:wrap}
+.btn-p{display:inline-flex;align-items:center;gap:10px;background:var(--gold);color:var(--ink);padding:18px 44px;border-radius:var(--r);font-size:.78rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;box-shadow:0 12px 40px rgba(200,146,42,.3);transition:background .25s,transform .25s,box-shadow .25s}
+.btn-p:hover{background:var(--goldb);transform:translateY(-2px);box-shadow:0 20px 60px rgba(200,146,42,.45)}
+.btn-t{font-size:.76rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--pdim);display:flex;align-items:center;gap:8px;transition:color .25s}
+.btn-t:hover{color:var(--paper)}
+.hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.6rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);animation:sc 2.2s ease-in-out infinite}
+.hero-scroll-ln{width:1px;height:40px;background:linear-gradient(to bottom,transparent,var(--gold))}
+@keyframes sc{0%,100%{opacity:.5;transform:translateX(-50%) translateY(0)}50%{opacity:1;transform:translateX(-50%) translateY(6px)}}
 
-  /* ─── HERO ───────────────────────────────────────── */
-  #hero{
-    min-height:100vh;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    align-items:center;
-    padding:120px 6% 80px;
-    position:relative;overflow:hidden;
-    gap:60px;
-  }
-  /* Radial vignette */
-  #hero::before{
-    content:'';position:absolute;inset:0;
-    background:radial-gradient(ellipse 80% 80% at 70% 50%,rgba(212,168,71,.06) 0%,transparent 70%);
-    pointer-events:none;
-  }
+/* MARQUEE */
+.mq-w{overflow:hidden;border-top:1px solid var(--bdrs);border-bottom:1px solid var(--bdrs);background:var(--ink2);padding:16px 0}
+.mq-t{display:flex;gap:60px;align-items:center;white-space:nowrap;animation:mqs 24s linear infinite;width:max-content}
+@keyframes mqs{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.mq-i{font-size:.65rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:60px}
+.mq-i::after{content:'✦';color:var(--gold);font-size:.55rem}
 
-  .hero-left{position:relative;z-index:2}
-  .hero-eyebrow{
-    display:inline-flex;align-items:center;gap:10px;
-    font-size:.75rem;font-weight:600;
-    letter-spacing:.2em;text-transform:uppercase;
-    color:var(--gold);margin-bottom:32px;
-  }
-  .hero-eyebrow::before{
-    content:'';display:block;
-    width:36px;height:1px;background:var(--gold);
-  }
-  .hero-h1{
-    font-family:'Bodoni Moda',serif;
-    font-size:clamp(3.2rem,6vw,6.2rem);
-    font-weight:700;
-    line-height:1.02;
-    letter-spacing:-.02em;
-    margin-bottom:8px;
-  }
-  .hero-h1 em{
-    font-style:italic;font-weight:400;
-    color:var(--gold-light);
-  }
-  .hero-h1 .line-sub{
-    display:block;
-    font-size:.42em;font-style:italic;font-weight:400;
-    letter-spacing:.01em;
-    color:var(--cream-dim);
-    margin-top:4px;
-  }
-  .hero-desc{
-    font-size:1rem;color:var(--muted);
-    line-height:1.8;max-width:400px;
-    margin:28px 0 44px;font-weight:300;
-  }
-  .hero-cta-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-  .btn-gold{
-    display:inline-flex;align-items:center;gap:10px;
-    background:var(--gold);color:#080604;
-    padding:17px 36px;border-radius:var(--r-xl);
-    font-size:.9rem;font-weight:700;
-    letter-spacing:.06em;text-transform:uppercase;
-    transition:background .25s,transform .25s,box-shadow .25s;
-    box-shadow:0 8px 32px rgba(212,168,71,.3);
-  }
-  .btn-gold:hover{
-    background:var(--gold-light);
-    transform:translateY(-3px);
-    box-shadow:0 16px 48px rgba(212,168,71,.45);
-  }
-  .btn-gold svg{transition:transform .25s}
-  .btn-gold:hover svg{transform:translateX(-5px)}
-  .btn-ghost{
-    display:inline-flex;align-items:center;gap:8px;
-    font-size:.82rem;color:var(--cream-dim);
-    letter-spacing:.06em;
-    transition:color .25s;
-  }
-  .btn-ghost:hover{color:var(--cream)}
-  .btn-ghost-icon{
-    width:44px;height:44px;border-radius:50%;
-    border:1px solid var(--border-soft);
-    display:flex;align-items:center;justify-content:center;
-    transition:border-color .25s,background .25s;
-  }
-  .btn-ghost:hover .btn-ghost-icon{
-    border-color:var(--border);
-    background:rgba(250,245,233,.05);
-  }
+/* STORY */
+#story{padding:var(--sec) 6%;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
+.story-media{position:relative;padding-bottom:40px}
+.story-img-a{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:var(--r);filter:brightness(.92) contrast(1.05)}
+.story-img-b{position:absolute;bottom:0;left:-36px;width:54%;aspect-ratio:1;object-fit:cover;border-radius:var(--r);border:4px solid var(--ink);box-shadow:0 24px 80px rgba(0,0,0,.65)}
+.story-txt{padding-inline-start:16px}
+.lbl{font-size:.62rem;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.lbl::before{content:'';display:block;width:22px;height:1px;background:var(--gold)}
+.sh{font-family:'Cormorant Garamond',serif;font-size:clamp(2.2rem,3.8vw,3.6rem);font-weight:400;line-height:1.08;letter-spacing:-.01em;margin-bottom:26px}
+.sh em{font-style:italic;color:var(--goldb)}
+.sb{font-size:.9rem;font-weight:300;color:var(--pdim);line-height:1.9;max-width:440px}
+.sb+.sb{margin-top:18px}
+.story-sig{margin-top:44px;padding-top:28px;border-top:1px solid var(--bdrs);display:flex;align-items:center;gap:18px}
+.sig-av{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--bdr)}
+.sig-n{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-style:italic}
+.sig-r{font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:2px}
 
-  .hero-awards{
-    display:flex;gap:32px;margin-top:56px;
-    padding-top:40px;
-    border-top:1px solid var(--border-soft);
-  }
-  .award-item{text-align:right}
-  .award-num{
-    font-family:'Bodoni Moda',serif;
-    font-size:2rem;font-weight:700;
-    color:var(--gold);line-height:1;display:block;
-  }
-  .award-label{
-    font-size:.72rem;letter-spacing:.12em;
-    text-transform:uppercase;color:var(--muted);
-    margin-top:4px;
-  }
-  .award-sep{width:1px;background:var(--border-soft);align-self:stretch}
+/* QUOTE */
+.fq{padding:clamp(80px,10vw,140px) 6%;text-align:center;position:relative;overflow:hidden}
+.fq::before{content:'';position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1565299624946-b68b3f9f759f?w=1800&auto=format&fit=crop&q=60') center/cover;opacity:.1}
+.fq blockquote{position:relative;z-index:1;font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,4.5vw,4.2rem);font-weight:300;font-style:italic;line-height:1.22;max-width:880px;margin:0 auto}
+.fq cite{display:block;margin-top:28px;font-family:'Montserrat',sans-serif;font-size:.68rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-style:normal}
 
-  /* Hero right — pizza visual */
-  .hero-right{
-    position:relative;z-index:2;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .pizza-frame{
-    position:relative;
-    width:min(520px,50vw);
-    aspect-ratio:1;
-  }
-  .pizza-ring{
-    position:absolute;inset:-24px;
-    border-radius:50%;
-    border:1px solid var(--border);
-    animation:spin-slow 30s linear infinite;
-  }
-  .pizza-ring-2{
-    position:absolute;inset:-52px;
-    border-radius:50%;
-    border:1px dashed rgba(212,168,71,.12);
-    animation:spin-slow 50s linear infinite reverse;
-  }
-  @keyframes spin-slow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-  .pizza-dot{
-    position:absolute;
-    width:6px;height:6px;background:var(--gold);
-    border-radius:50%;
-    box-shadow:0 0 10px var(--gold);
-  }
-  .pizza-dot:nth-child(1){top:0;left:50%;transform:translateX(-50%)}
-  .pizza-dot:nth-child(2){bottom:0;left:50%;transform:translateX(-50%)}
-  .pizza-dot:nth-child(3){left:0;top:50%;transform:translateY(-50%)}
-  .pizza-dot:nth-child(4){right:0;top:50%;transform:translateY(-50%)}
+/* MENU */
+#menu{padding:var(--sec) 6%}
+.mh{text-align:center;margin-bottom:60px}
+.tabs{display:flex;justify-content:center;border:1px solid var(--bdrs);border-radius:40px;padding:4px;width:fit-content;margin:32px auto 0}
+.tb{padding:12px 28px;border-radius:36px;font-size:.68rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);transition:background .25s,color .25s}
+.tb.on{background:var(--gold);color:var(--ink)}.tb:hover:not(.on){color:var(--paper)}
+.panel{display:none}.panel.on{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.mc{position:relative;overflow:hidden;aspect-ratio:3/4;cursor:pointer;background:var(--ink2)}
+.mc img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease),filter .8s;filter:brightness(.78)}
+.mc:hover img{transform:scale(1.06);filter:brightness(.55)}
+.mc-info{position:absolute;bottom:0;inset-inline:0;padding:28px 24px;background:linear-gradient(to top,rgba(12,10,8,.95) 0%,transparent 100%);transform:translateY(6px);transition:transform .4s var(--ease)}
+.mc:hover .mc-info{transform:translateY(0)}
+.mc-name{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:400;font-style:italic}
+.mc-desc{font-size:.73rem;color:var(--muted);margin-top:6px;line-height:1.6;font-weight:300;max-height:0;overflow:hidden;transition:max-height .4s var(--ease),opacity .4s;opacity:0}
+.mc:hover .mc-desc{max-height:60px;opacity:1}
+.mc-price{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--gold);margin-top:12px}
 
-  .pizza-img-circle{
-    width:100%;aspect-ratio:1;
-    border-radius:50%;
-    overflow:hidden;
-    position:relative;
-    box-shadow:0 40px 120px rgba(0,0,0,.8),0 0 60px rgba(212,168,71,.15);
-    transition:transform .6s var(--ease);
-  }
-  .pizza-img-circle:hover{transform:scale(1.03) rotate(3deg)}
-  .pizza-img-circle img{
-    width:100%;height:100%;
-    object-fit:cover;
-    transition:transform 6s var(--ease);
-  }
-  .pizza-img-circle:hover img{transform:scale(1.08)}
+/* INGREDIENTS */
+#ing{padding:var(--sec) 0;background:var(--ink2)}
+.ing-hd{padding:0 6%;margin-bottom:44px}
+.ing-s{display:flex;gap:20px;overflow-x:auto;padding:0 6% 20px;scrollbar-width:none;cursor:grab}
+.ing-s::-webkit-scrollbar{display:none}.ing-s.drag{cursor:grabbing;user-select:none}
+.ing-i{flex:0 0 210px;position:relative;overflow:hidden;border-radius:var(--r)}
+.ing-i img{width:210px;height:270px;object-fit:cover;transition:transform .6s var(--ease);filter:saturate(1.1)}
+.ing-i:hover img{transform:scale(1.06)}
+.ing-il{position:absolute;bottom:0;inset-inline:0;padding:16px;background:linear-gradient(to top,rgba(12,10,8,.9),transparent)}
+.ing-in{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-style:italic}
+.ing-or{font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-top:2px}
 
-  /* Floating chips */
-  .chip{
-    position:absolute;
-    background:rgba(8,6,4,.78);
-    backdrop-filter:blur(20px);
-    -webkit-backdrop-filter:blur(20px);
-    border:1px solid var(--border);
-    border-radius:var(--r-md);
-    padding:14px 20px;
-    white-space:nowrap;
-    animation:chip-float 6s ease-in-out infinite;
-  }
-  .chip-1{
-    bottom:16%;left:-14%;
-    animation-delay:0s;
-  }
-  .chip-2{
-    top:14%;right:-12%;
-    animation-delay:-3s;
-  }
-  @keyframes chip-float{
-    0%,100%{transform:translateY(0)}
-    50%{transform:translateY(-10px)}
-  }
-  .chip-icon{font-size:1.4rem;display:block;margin-bottom:6px}
-  .chip-label{font-size:.7rem;color:var(--muted);letter-spacing:.08em;display:block}
-  .chip-value{font-weight:700;font-size:.9rem;color:var(--cream)}
+/* SPECIALS */
+#sp{padding:var(--sec) 6%}
+.sp-hd{text-align:center;margin-bottom:52px}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.sp-card{position:relative;overflow:hidden;border-radius:var(--rl);border:1px solid var(--bdrs);background:var(--ink2);display:grid;grid-template-columns:1fr 1fr;min-height:280px;transition:border-color .3s}
+.sp-card:hover{border-color:var(--bdr)}
+.sp-ct{padding:40px;display:flex;flex-direction:column;justify-content:center}
+.sp-tag{font-size:.6rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:6px;margin-bottom:18px}
+.sp-name{font-family:'Cormorant Garamond',serif;font-size:1.9rem;font-weight:400;line-height:1.1;margin-bottom:10px}
+.sp-desc{font-size:.8rem;color:var(--pdim);line-height:1.75;font-weight:300}
+.sp-price{margin-top:24px;font-family:'Cormorant Garamond',serif;font-size:2.6rem;font-weight:300;color:var(--gold);line-height:1}
+.sp-price small{font-size:.5em;font-family:'Montserrat';letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.sp-ci{overflow:hidden}.sp-ci img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease)}
+.sp-card:hover .sp-ci img{transform:scale(1.06)}
 
-  /* ─── MARQUEE ────────────────────────────────────── */
-  .marquee-wrap{
-    overflow:hidden;
-    border-top:1px solid var(--border-soft);
-    border-bottom:1px solid var(--border-soft);
-    padding:18px 0;
-  }
-  .marquee-track{
-    display:flex;width:max-content;
-    animation:marquee 22s linear infinite;
-  }
-  .marquee-track:hover{animation-play-state:paused}
-  @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-  .m-item{
-    display:flex;align-items:center;gap:20px;
-    padding:0 40px;
-    font-size:.78rem;letter-spacing:.18em;
-    text-transform:uppercase;color:var(--muted);font-weight:500;
-  }
-  .m-sep{width:4px;height:4px;border-radius:50%;background:var(--gold);flex-shrink:0}
+/* GALLERY */
+.gal{overflow:hidden;margin-block:var(--sec);display:flex;gap:8px}
+.gal-t{display:flex;gap:8px;width:max-content;animation:galm 32s linear infinite}
+@keyframes galm{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.gal-t img{height:320px;width:auto;flex-shrink:0;object-fit:cover;border-radius:var(--r);filter:saturate(.82);transition:filter .4s}
+.gal-t img:hover{filter:saturate(1.2)}
 
-  /* ─── SECTION SHARED ─────────────────────────────── */
-  .section-wrap{
-    padding:var(--gap) 6%;
-    max-width:1360px;
-    margin:0 auto;
-  }
-  .section-wrap.wide{max-width:none;padding-left:6%;padding-right:6%}
-  .eyebrow{
-    display:inline-flex;align-items:center;gap:10px;
-    font-size:.75rem;font-weight:600;letter-spacing:.18em;
-    text-transform:uppercase;color:var(--gold);
-    margin-bottom:20px;
-  }
-  .eyebrow::before{content:'';width:24px;height:1px;background:var(--gold)}
-  h2.section-h2{
-    font-family:'Bodoni Moda',serif;
-    font-size:clamp(2.2rem,4.5vw,4rem);
-    font-weight:700;line-height:1.1;
-    letter-spacing:-.02em;margin-bottom:16px;
-  }
-  h2.section-h2 em{font-style:italic;font-weight:400;color:var(--gold-light)}
-  .section-lead{
-    font-size:1rem;color:var(--muted);
-    line-height:1.8;max-width:520px;font-weight:300;
-  }
+/* REVIEWS */
+#rev{padding:var(--sec) 6%}
+.rev-hd{text-align:center;margin-bottom:52px}
+.rev-g{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.rv{background:var(--ink2);border:1px solid var(--bdrs);border-radius:var(--rl);padding:36px 30px;transition:border-color .3s,transform .3s}
+.rv:hover{border-color:var(--bdr);transform:translateY(-4px)}
+.rv-stars{display:flex;gap:3px;margin-bottom:18px}
+.st{width:13px;height:13px;fill:var(--gold)}
+.rv-txt{font-family:'Cormorant Garamond',serif;font-size:1.18rem;font-weight:300;font-style:italic;line-height:1.65;margin-bottom:24px}
+.rv-au{display:flex;align-items:center;gap:14px;padding-top:18px;border-top:1px solid var(--bdrs)}
+.rv-av{width:42px;height:42px;border-radius:50%;object-fit:cover}
+.rv-n{font-size:.8rem;font-weight:600}
+.rv-m{font-size:.66rem;color:var(--muted);letter-spacing:.06em;margin-top:2px}
+.rv-pl{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
 
-  /* ─── ABOUT SPLIT ────────────────────────────────── */
-  #about{background:var(--bg-2)}
-  .about-grid{
-    display:grid;grid-template-columns:1fr 1fr;
-    gap:80px;align-items:center;
-    max-width:1360px;margin:0 auto;padding:var(--gap) 6%;
-  }
-  .about-img-stack{
-    position:relative;
-  }
-  .about-img-main{
-    width:100%;aspect-ratio:4/5;
-    border-radius:var(--r-lg);overflow:hidden;
-    box-shadow:0 40px 80px rgba(0,0,0,.6);
-  }
-  .about-img-main img{width:100%;height:100%;object-fit:cover}
-  .about-img-accent{
-    position:absolute;
-    bottom:-28px;left:-28px;
-    width:55%;aspect-ratio:1;
-    border-radius:var(--r-md);overflow:hidden;
-    border:4px solid var(--bg-2);
-    box-shadow:0 20px 60px rgba(0,0,0,.5);
-  }
-  .about-img-accent img{width:100%;height:100%;object-fit:cover}
-  .about-badge{
-    position:absolute;top:32px;right:-20px;
-    background:var(--gold);
-    width:80px;height:80px;border-radius:50%;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    text-align:center;
-    box-shadow:0 10px 40px rgba(212,168,71,.4);
-    font-family:'Bodoni Moda',serif;
-  }
-  .about-badge strong{font-size:1.5rem;line-height:1;color:#080604}
-  .about-badge span{font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:#080604;opacity:.75}
+/* RESERVE */
+#res{padding:var(--sec) 6%;background:var(--ink2);position:relative;overflow:hidden}
+#res::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(200,146,42,.05) 0%,transparent 70%);pointer-events:none}
+.res-g{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start}
+.res-form{display:grid;gap:16px;margin-top:44px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fd{display:flex;flex-direction:column;gap:8px}
+.fd label{font-size:.65rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.fd input,.fd select{background:rgba(246,240,228,.04);border:1px solid var(--bdrs);border-radius:var(--r);padding:16px 18px;color:var(--paper);font-family:inherit;font-size:.86rem;font-weight:300;transition:border-color .25s,background .25s;outline:none}
+.fd input::placeholder{color:var(--muted)}
+.fd input:focus,.fd select:focus{border-color:var(--gold);background:rgba(200,146,42,.04)}
+.fd select option{background:var(--ink2)}
+.btn-res{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--gold);color:var(--ink);padding:20px;border-radius:var(--r);font-size:.78rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-top:8px;transition:background .25s,transform .25s}
+.btn-res:hover{background:var(--goldb);transform:translateY(-2px)}
+.res-info{padding-top:56px}
+.hrs{width:100%;border-collapse:collapse;margin-top:24px}
+.hrs td{padding:14px 0;font-size:.84rem;border-bottom:1px solid var(--bdrs)}
+.hrs td:first-child{color:var(--pdim);font-weight:300}
+.hrs td:last-child{text-align:start;font-weight:500}
+.ctr{display:flex;align-items:center;gap:12px;margin-top:28px;font-size:.82rem;color:var(--pdim)}
 
-  .about-text .eyebrow{display:flex}
-  .about-text blockquote{
-    font-family:'Bodoni Moda',serif;
-    font-style:italic;font-size:1.5rem;
-    line-height:1.55;color:var(--cream-dim);
-    border-right:2px solid var(--gold);
-    padding-right:24px;margin:32px 0;
-  }
-  .about-text p{
-    font-size:.97rem;color:var(--muted);
-    line-height:1.85;font-weight:300;margin-bottom:16px;
-  }
-  .chef-row{
-    display:flex;align-items:center;gap:16px;
-    margin-top:40px;padding-top:32px;
-    border-top:1px solid var(--border-soft);
-  }
-  .chef-avatar{
-    width:56px;height:56px;border-radius:50%;
-    overflow:hidden;flex-shrink:0;
-    border:2px solid var(--border);
-  }
-  .chef-avatar img{width:100%;height:100%;object-fit:cover}
-  .chef-name{font-weight:700;font-size:.95rem}
-  .chef-title{font-size:.78rem;color:var(--muted)}
+/* FOOTER */
+footer{background:var(--ink);border-top:1px solid var(--bdrs);padding:72px 6% 36px}
+.ft{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:48px;padding-bottom:52px;border-bottom:1px solid var(--bdrs)}
+.fb-n{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:400;font-style:italic;color:var(--gold);margin-bottom:14px}
+.fb-d{font-size:.8rem;color:var(--muted);line-height:1.85;font-weight:300;max-width:230px}
+.fct{font-size:.6rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-bottom:18px}
+.fl{display:flex;flex-direction:column;gap:12px;list-style:none}
+.fl a{font-size:.8rem;color:var(--muted);font-weight:300;transition:color .25s}.fl a:hover{color:var(--paper)}
+.fb{display:flex;justify-content:space-between;align-items:center;padding-top:26px;font-size:.68rem;color:var(--muted);font-weight:300;flex-wrap:wrap;gap:16px}
+.soc{display:flex;gap:14px}
+.sl{width:34px;height:34px;border-radius:50%;border:1px solid var(--bdrs);display:flex;align-items:center;justify-content:center;transition:border-color .25s,background .25s}
+.sl:hover{border-color:var(--gold);background:var(--goldd)}
 
-  /* ─── BENTO MENU ─────────────────────────────────── */
-  #menu{background:var(--bg)}
-  .menu-header{
-    display:flex;align-items:flex-end;justify-content:space-between;
-    margin-bottom:52px;flex-wrap:wrap;gap:24px;
-  }
-  .menu-pills{
-    display:flex;gap:8px;
-    background:var(--surface);
-    padding:5px;border-radius:var(--r-xl);
-    border:1px solid var(--border-soft);
-  }
-  .pill{
-    padding:9px 22px;border-radius:var(--r-xl);
-    font-size:.78rem;font-weight:600;letter-spacing:.08em;
-    text-transform:uppercase;color:var(--muted);
-    transition:background .25s,color .25s;cursor:pointer;
-  }
-  .pill.on{
-    background:var(--gold);color:#080604;
-    box-shadow:0 4px 20px rgba(212,168,71,.3);
-  }
-  .pill:hover:not(.on){color:var(--cream)}
+/* SCROLL REVEAL */
+.sr{opacity:0;transform:translateY(22px);transition:opacity .85s var(--eout),transform .85s var(--eout)}
+.sr.in{opacity:1;transform:none}
+.sl-{opacity:0;transform:translateX(22px);transition:opacity .85s var(--eout),transform .85s var(--eout)}
+.sl-.in{opacity:1;transform:none}
+.sr-{opacity:0;transform:translateX(-22px);transition:opacity .85s var(--eout),transform .85s var(--eout)}
+.sr-.in{opacity:1;transform:none}
+.d1{transition-delay:.12s}.d2{transition-delay:.22s}.d3{transition-delay:.33s}
+.d4{transition-delay:.44s}.d5{transition-delay:.55s}.d6{transition-delay:.66s}
 
-  /* Bento grid */
-  .bento{
-    display:grid;
-    grid-template-columns:repeat(12,1fr);
-    gap:16px;
-  }
-  .bcard{
-    background:var(--surface);
-    border:1px solid var(--border-soft);
-    border-radius:var(--r-lg);
-    overflow:hidden;
-    position:relative;
-    cursor:pointer;
-    transition:border-color .3s,transform .3s var(--ease),box-shadow .3s;
-  }
-  .bcard:hover{
-    border-color:rgba(212,168,71,.35);
-    transform:translateY(-5px);
-    box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 40px rgba(212,168,71,.08);
-  }
-  /* Animated gradient border on hover */
-  .bcard::before{
-    content:'';
-    position:absolute;inset:0;border-radius:inherit;
-    background:linear-gradient(135deg,rgba(212,168,71,.15),transparent,rgba(212,168,71,.08));
-    opacity:0;transition:opacity .3s;pointer-events:none;z-index:1;
-  }
-  .bcard:hover::before{opacity:1}
-
-  .bcard.c1{grid-column:span 5;grid-row:span 2}
-  .bcard.c2{grid-column:span 4}
-  .bcard.c3{grid-column:span 3}
-  .bcard.c4{grid-column:span 4}
-  .bcard.c5{grid-column:span 3}
-  .bcard.c6{grid-column:span 5}
-
-  .bcard-img{
-    width:100%;overflow:hidden;
-    position:relative;
-  }
-  .bcard.c1 .bcard-img{height:300px}
-  .bcard.c2 .bcard-img,.bcard.c4 .bcard-img,.bcard.c6 .bcard-img{height:200px}
-  .bcard.c3 .bcard-img,.bcard.c5 .bcard-img{height:160px}
-  .bcard-img img{
-    width:100%;height:100%;object-fit:cover;
-    transition:transform .6s var(--ease);
-  }
-  .bcard:hover .bcard-img img{transform:scale(1.07)}
-  .bcard-img::after{
-    content:'';position:absolute;inset:0;
-    background:linear-gradient(to top,rgba(8,6,4,.7) 0%,transparent 60%);
-  }
-
-  .bcard-tag{
-    position:absolute;top:16px;right:16px;z-index:2;
-    background:rgba(8,6,4,.75);
-    backdrop-filter:blur(12px);
-    border:1px solid var(--border);
-    border-radius:var(--r-xl);
-    padding:5px 14px;
-    font-size:.68rem;font-weight:700;
-    letter-spacing:.1em;text-transform:uppercase;
-    color:var(--gold);
-  }
-  .bcard-tag.new{background:rgba(212,168,71,.15);color:var(--gold-light)}
-
-  .bcard-body{padding:20px 22px 22px;position:relative;z-index:2}
-  .bcard-name{
-    font-family:'Bodoni Moda',serif;
-    font-size:1.2rem;font-weight:600;
-    margin-bottom:6px;
-  }
-  .bcard.c1 .bcard-name{font-size:1.5rem}
-  .bcard-desc{
-    font-size:.82rem;color:var(--muted);
-    line-height:1.65;margin-bottom:16px;font-weight:300;
-  }
-  .bcard-footer{
-    display:flex;align-items:center;justify-content:space-between;
-  }
-  .bcard-price{
-    font-family:'Bodoni Moda',serif;
-    font-size:1.25rem;color:var(--gold);font-weight:600;
-  }
-  .bcard-price sup{font-size:.65em;vertical-align:super}
-  .add-circle{
-    width:40px;height:40px;border-radius:50%;
-    border:1px solid var(--border);
-    display:flex;align-items:center;justify-content:center;
-    color:var(--gold);font-size:1.3rem;
-    transition:background .25s,border-color .25s,transform .25s var(--ease-spring);
-  }
-  .bcard:hover .add-circle{
-    background:var(--gold);color:#080604;
-    border-color:var(--gold);
-    transform:rotate(90deg) scale(1.1);
-  }
-
-  /* ─── INGREDIENTS SCROLL ─────────────────────────── */
-  #ingredients{
-    background:var(--bg-2);
-    overflow:hidden;
-  }
-  .ingr-header{
-    display:flex;align-items:flex-end;justify-content:space-between;
-    margin-bottom:48px;padding:0 6%;
-    flex-wrap:wrap;gap:20px;
-  }
-  .ingr-scroll-area{
-    display:flex;gap:20px;
-    padding:8px 6% 32px;
-    overflow-x:auto;
-    scroll-snap-type:x mandatory;
-    scrollbar-width:none;-ms-overflow-style:none;
-    cursor:grab;
-  }
-  .ingr-scroll-area::-webkit-scrollbar{display:none}
-  .ingr-scroll-area:active{cursor:grabbing}
-  .ingr-card{
-    flex:0 0 260px;
-    scroll-snap-align:start;
-    background:var(--surface);
-    border:1px solid var(--border-soft);
-    border-radius:var(--r-lg);
-    padding:28px;
-    transition:border-color .25s,transform .25s;
-  }
-  .ingr-card:hover{
-    border-color:var(--border);
-    transform:translateY(-4px);
-  }
-  .ingr-icon{
-    width:56px;height:56px;
-    background:var(--gold-dim);
-    border-radius:var(--r-sm);
-    display:flex;align-items:center;justify-content:center;
-    font-size:1.6rem;margin-bottom:20px;
-  }
-  .ingr-name{
-    font-family:'Bodoni Moda',serif;
-    font-size:1.1rem;font-weight:600;
-    margin-bottom:8px;
-  }
-  .ingr-desc{font-size:.83rem;color:var(--muted);line-height:1.65;font-weight:300}
-  .ingr-origin{
-    display:inline-block;margin-top:16px;
-    font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
-    color:var(--gold);
-  }
-
-  /* ─── SPECIALS FULLBLEED ─────────────────────────── */
-  #specials{position:relative;overflow:hidden}
-  .specials-inner{
-    position:relative;z-index:1;
-    display:grid;grid-template-columns:1fr 1fr;
-    gap:80px;align-items:center;
-    padding:var(--gap) 6%;max-width:1360px;margin:0 auto;
-  }
-  #specials::before{
-    content:'';position:absolute;inset:0;
-    background:
-      radial-gradient(ellipse 60% 60% at 0% 50%,rgba(212,168,71,.12) 0%,transparent 70%),
-      radial-gradient(ellipse 40% 40% at 100% 80%,rgba(212,168,71,.06) 0%,transparent 70%);
-    pointer-events:none;
-  }
-  #specials::after{
-    content:'';position:absolute;
-    top:0;left:0;right:0;height:1px;
-    background:linear-gradient(90deg,transparent,var(--border),transparent);
-  }
-  .specials-text{}
-  .specials-promo{
-    display:inline-block;
-    font-family:'Bodoni Moda',serif;
-    font-size:clamp(3.5rem,8vw,7rem);
-    line-height:1;font-weight:700;
-    letter-spacing:-.03em;
-    background:linear-gradient(135deg,var(--gold),var(--gold-light),var(--gold));
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-    background-clip:text;
-    margin:16px 0;
-  }
-  .specials-promo span{
-    display:block;font-size:.45em;
-    font-style:italic;font-weight:400;
-    -webkit-text-fill-color:var(--cream-dim);
-    background:none;
-  }
-  .specials-detail{
-    font-size:.9rem;color:var(--muted);
-    line-height:1.8;font-weight:300;margin-bottom:32px;
-  }
-  .specials-visual{
-    position:relative;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .specials-pizza{
-    width:min(420px,100%);aspect-ratio:1;
-    border-radius:50%;overflow:hidden;
-    box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 80px rgba(212,168,71,.12);
-  }
-  .specials-pizza img{width:100%;height:100%;object-fit:cover}
-  .deal-badge{
-    position:absolute;
-    top:8%;right:-6%;
-    background:var(--gold);
-    color:#080604;
-    width:100px;height:100px;
-    border-radius:50%;
-    display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    font-family:'Bodoni Moda',serif;
-    box-shadow:0 10px 40px rgba(212,168,71,.5);
-    animation:badge-pulse 3s ease-in-out infinite;
-  }
-  .deal-badge strong{font-size:1.5rem;line-height:1}
-  .deal-badge span{font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
-  @keyframes badge-pulse{0%,100%{transform:scale(1) rotate(-12deg)}50%{transform:scale(1.06) rotate(-12deg)}}
-
-  /* ─── TESTIMONIALS ───────────────────────────────── */
-  #testimonials{background:var(--bg-2)}
-  .reviews-layout{
-    display:grid;
-    grid-template-columns:1fr 1.6fr;
-    gap:80px;align-items:start;
-    margin-top:64px;
-  }
-  .reviews-big-quote{
-    font-family:'Bodoni Moda',serif;
-    font-size:clamp(3rem,6vw,5.5rem);
-    line-height:1.08;font-style:italic;
-    color:var(--cream);
-    position:sticky;top:120px;
-  }
-  .reviews-big-quote em{color:var(--gold-light)}
-  .reviews-big-quote p{
-    font-family:'Jost',sans-serif;
-    font-size:1rem;font-style:normal;
-    color:var(--muted);font-weight:300;
-    margin-top:24px;line-height:1.8;
-  }
-  .avg-stars{
-    display:flex;align-items:center;gap:8px;
-    margin-top:28px;
-  }
-  .stars-row{color:#FACC15;font-size:1.1rem;letter-spacing:2px}
-  .avg-num{
-    font-family:'Bodoni Moda',serif;
-    font-size:1.4rem;font-weight:700;color:var(--gold);
-  }
-  .avg-count{font-size:.8rem;color:var(--muted)}
-
-  .reviews-stack{display:flex;flex-direction:column;gap:16px}
-  .rcard{
-    background:var(--surface);
-    border:1px solid var(--border-soft);
-    border-radius:var(--r-lg);
-    padding:28px 32px;
-    transition:border-color .25s,transform .25s;
-  }
-  .rcard:hover{border-color:var(--border);transform:translateX(-6px)}
-  .rcard-head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
-  .rcard-av{
-    width:46px;height:46px;border-radius:50%;
-    overflow:hidden;flex-shrink:0;
-    border:1.5px solid var(--border);
-  }
-  .rcard-av img{width:100%;height:100%;object-fit:cover}
-  .rcard-av-init{
-    width:46px;height:46px;border-radius:50%;flex-shrink:0;
-    background:var(--gold-dim);border:1.5px solid var(--border);
-    display:flex;align-items:center;justify-content:center;
-    font-weight:700;color:var(--gold);font-size:.95rem;
-  }
-  .rcard-name{font-weight:700;font-size:.9rem}
-  .rcard-meta{font-size:.75rem;color:var(--muted)}
-  .rcard-stars{color:#FACC15;font-size:.8rem;letter-spacing:1px;margin-right:auto}
-  .rcard-quote{
-    font-size:.93rem;color:var(--cream-dim);
-    line-height:1.75;font-style:italic;font-weight:300;
-  }
-
-  /* ─── RESERVATION ────────────────────────────────── */
-  #reservation{
-    background:var(--bg);
-    position:relative;overflow:hidden;
-  }
-  #reservation::before{
-    content:'';position:absolute;inset:0;
-    background:radial-gradient(ellipse 50% 80% at 100% 50%,rgba(212,168,71,.06),transparent 70%);
-    pointer-events:none;
-  }
-  .reservation-grid{
-    display:grid;grid-template-columns:1fr 1.2fr;
-    gap:80px;align-items:start;
-    max-width:1360px;margin:0 auto;padding:var(--gap) 6%;
-  }
-  .res-info h2.section-h2{margin-bottom:20px}
-  .res-info .section-lead{margin-bottom:40px}
-  .res-hours{margin-top:40px}
-  .res-hours h4{
-    font-size:.75rem;font-weight:700;
-    letter-spacing:.15em;text-transform:uppercase;
-    color:var(--gold);margin-bottom:16px;
-  }
-  .hour-row{
-    display:flex;justify-content:space-between;
-    padding:12px 0;
-    border-bottom:1px solid var(--border-soft);
-    font-size:.88rem;
-  }
-  .hour-row:last-child{border-bottom:none}
-  .hour-day{color:var(--muted);font-weight:300}
-  .hour-time{color:var(--cream);font-weight:500}
-
-  /* Form */
-  .res-form-wrap{
-    background:var(--surface-2);
-    border:1px solid var(--border-soft);
-    border-radius:var(--r-xl);
-    padding:44px;
-  }
-  .form-heading{
-    font-family:'Bodoni Moda',serif;
-    font-size:1.6rem;font-weight:600;
-    margin-bottom:32px;
-  }
-  .frow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .fg{margin-bottom:20px}
-  .fg label{
-    display:block;font-size:.73rem;font-weight:600;
-    letter-spacing:.1em;text-transform:uppercase;
-    color:var(--muted);margin-bottom:9px;
-  }
-  .fg input,.fg select,.fg textarea{
-    width:100%;
-    background:rgba(250,245,233,.04);
-    border:1px solid var(--border-soft);
-    border-radius:var(--r-sm);
-    padding:14px 18px;
-    color:var(--cream);
-    font-family:'Jost',sans-serif;
-    font-size:.93rem;font-weight:300;
-    outline:none;
-    transition:border-color .25s,background .25s,box-shadow .25s;
-    -webkit-appearance:none;
-  }
-  .fg input:focus,.fg select:focus,.fg textarea:focus{
-    border-color:var(--gold);
-    background:rgba(212,168,71,.04);
-    box-shadow:0 0 0 3px rgba(212,168,71,.1);
-  }
-  .fg input::placeholder{color:var(--muted)}
-  .fg select option{background:var(--surface);color:var(--cream)}
-  .fg textarea{resize:vertical;min-height:96px}
-  .form-submit{
-    width:100%;
-    background:var(--gold);color:#080604;
-    padding:17px;border-radius:var(--r-xl);
-    font-family:'Jost',sans-serif;
-    font-size:.9rem;font-weight:700;
-    letter-spacing:.08em;text-transform:uppercase;
-    transition:background .25s,transform .25s,box-shadow .25s;
-    box-shadow:0 6px 24px rgba(212,168,71,.3);
-    margin-top:8px;
-  }
-  .form-submit:hover{
-    background:var(--gold-light);
-    transform:translateY(-2px);
-    box-shadow:0 12px 36px rgba(212,168,71,.45);
-  }
-
-  /* ─── FOOTER ─────────────────────────────────────── */
-  footer{
-    background:var(--surface);
-    border-top:1px solid var(--border-soft);
-  }
-  .footer-top-bar{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:28px 6%;
-    border-bottom:1px solid var(--border-soft);
-  }
-  .f-logo{
-    font-family:'Bodoni Moda',serif;
-    font-size:1.5rem;letter-spacing:.06em;color:var(--cream);
-  }
-  .f-socials{display:flex;gap:8px}
-  .f-social-btn{
-    width:38px;height:38px;border-radius:var(--r-sm);
-    border:1px solid var(--border-soft);
-    display:flex;align-items:center;justify-content:center;
-    color:var(--muted);
-    transition:border-color .25s,color .25s,background .25s;
-  }
-  .f-social-btn:hover{
-    border-color:var(--border);
-    color:var(--gold);
-    background:var(--gold-dim);
-  }
-  .footer-cols{
-    display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
-    gap:48px;padding:56px 6%;
-    max-width:1360px;margin:0 auto;
-  }
-  .f-about p{
-    font-size:.87rem;color:var(--muted);
-    line-height:1.8;font-weight:300;max-width:280px;margin-top:16px;
-  }
-  .f-col h5{
-    font-size:.72rem;font-weight:700;
-    letter-spacing:.16em;text-transform:uppercase;
-    color:var(--cream);margin-bottom:20px;
-  }
-  .f-links{list-style:none}
-  .f-links li{margin-bottom:12px}
-  .f-links a{
-    font-size:.87rem;color:var(--muted);font-weight:300;
-    transition:color .2s,padding-right .2s;
-  }
-  .f-links a:hover{color:var(--gold);padding-right:6px}
-  .footer-bottom{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:20px 6%;
-    border-top:1px solid var(--border-soft);
-    flex-wrap:wrap;gap:10px;
-    max-width:1360px;margin:0 auto;
-  }
-  .footer-bottom p{font-size:.78rem;color:var(--muted);font-weight:300}
-
-  /* ─── SCROLL-REVEAL ──────────────────────────────── */
-  .sr{
-    opacity:0;transform:translateY(28px);
-    transition:opacity .7s var(--ease),transform .7s var(--ease);
-  }
-  .sr.in{opacity:1;transform:none}
-  .sr-l{opacity:0;transform:translateX(28px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
-  .sr-l.in{opacity:1;transform:none}
-  .sr-r{opacity:0;transform:translateX(-28px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
-  .sr-r.in{opacity:1;transform:none}
-  .d1{transition-delay:.1s}.d2{transition-delay:.18s}
-  .d3{transition-delay:.26s}.d4{transition-delay:.34s}.d5{transition-delay:.42s}
-
-  /* ─── RESPONSIVE ─────────────────────────────────── */
-  @media(max-width:1100px){
-    .bcard.c1{grid-column:span 6}
-    .bcard.c2{grid-column:span 6}
-    .bcard.c3{grid-column:span 6}
-    .bcard.c4{grid-column:span 6}
-    .bcard.c5{grid-column:span 6}
-    .bcard.c6{grid-column:span 12}
-  }
-  @media(max-width:900px){
-    #hero{grid-template-columns:1fr;padding-top:130px;text-align:center}
-    .hero-eyebrow::before,.hero-eyebrow{justify-content:center}
-    .hero-desc{margin:24px auto 40px}
-    .hero-cta-row{justify-content:center}
-    .hero-awards{justify-content:center}
-    .hero-right{display:none}
-    .about-grid{grid-template-columns:1fr}
-    .about-img-stack{max-width:500px;margin:0 auto}
-    .specials-inner{grid-template-columns:1fr}
-    .reviews-layout{grid-template-columns:1fr}
-    .reviews-big-quote{position:static}
-    .reservation-grid{grid-template-columns:1fr}
-    .footer-cols{grid-template-columns:1fr 1fr}
-  }
-  @media(max-width:640px){
-    :root{--gap:64px}
-    .nav-links,.nav-reserve{display:none}
-    .burger{display:flex}
-    .bcard{grid-column:span 12 !important;grid-row:span 1 !important}
-    .bcard.c1 .bcard-img{height:220px}
-    .frow{grid-template-columns:1fr}
-    .footer-cols{grid-template-columns:1fr}
-    .footer-top-bar{flex-direction:column;gap:16px;text-align:center}
-  }
-  @media(prefers-reduced-motion:reduce){
-    *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
-    .sr,.sr-l,.sr-r{opacity:1;transform:none}
-  }
-  </style>
+/* RESPONSIVE */
+@media(max-width:1024px){
+  #story{grid-template-columns:1fr;gap:48px}
+  .story-img-b{display:none}
+  .panel.on{grid-template-columns:repeat(2,1fr)}
+  .sp-grid{grid-template-columns:1fr}
+  .sp-card{grid-template-columns:1fr}
+  .sp-ci{height:220px}
+  .rev-g{grid-template-columns:1fr 1fr}
+  .res-g{grid-template-columns:1fr;gap:48px}
+  .ft{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .nav-links,.nav-cta{display:none}
+  .hero-btns{flex-direction:column;gap:14px}
+  .panel.on{grid-template-columns:1fr}
+  .rev-g{grid-template-columns:1fr}
+  .fr{grid-template-columns:1fr}
+  .ft{grid-template-columns:1fr}
+  .fb{flex-direction:column;text-align:center}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+</style>
 </head>
 <body>
 
-<!-- CURSOR -->
-<div id="cursor" aria-hidden="true"></div>
-<div id="cursor-ring" aria-hidden="true"></div>
-
-<!-- PROGRESS BAR -->
-<div id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="התקדמות גלילה"></div>
+<div id="pb" aria-hidden="true"></div>
+<div id="cur" aria-hidden="true"></div>
+<div id="cur-r" aria-hidden="true"></div>
 
 <!-- NAV -->
-<nav id="site-nav" role="navigation" aria-label="ניווט ראשי">
-  <a href="#hero" class="nav-logo" aria-label="Amora Pizza - דף הבית">
-    <span class="nav-logo-dot" aria-hidden="true"></span>
-    Amora
+<nav id="nav" role="navigation" aria-label="ניווט ראשי">
+  <a href="/" class="nav-logo" aria-label="Amora Pizza">
+    <em>Amora</em><span>&nbsp;Pizza</span>
   </a>
   <ul class="nav-links">
-    <li><a href="#about">הסיפור</a></li>
-    <li><a href="#menu">התפריט</a></li>
-    <li><a href="#specials">מבצעים</a></li>
-    <li><a href="#testimonials">ביקורות</a></li>
+    <li><a href="#story">הסיפור</a></li>
+    <li><a href="#menu">תפריט</a></li>
+    <li><a href="#sp">מבצעים</a></li>
+    <li><a href="#rev">ביקורות</a></li>
   </ul>
-  <a href="#reservation" class="nav-reserve">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-      <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-    </svg>
-    הזמן שולחן
-  </a>
-  <button class="burger" aria-label="פתח תפריט" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
+  <a href="#res" class="nav-cta">הזמן שולחן</a>
 </nav>
 
 <!-- HERO -->
-<section id="hero" role="banner">
-  <div class="hero-left">
-    <span class="hero-eyebrow" aria-label="מסורת איטלקית מאז 2009">מסורת איטלקית מאז 2009</span>
+<section id="hero" aria-label="כותרת">
+  <div id="hero-bg" aria-hidden="true"></div>
+  <div id="hero-ov" aria-hidden="true"></div>
+  <div class="hero-c">
+    <div class="hero-eyebrow" aria-hidden="true">אמנות · נפולי · תל אביב</div>
     <h1 class="hero-h1">
-      <em>Pizza</em> שהיא<br>
-      אמנות
-      <span class="line-sub">נאפוליטנה מהתנור לשולחן</span>
+      פיצה<em>איטלקית אמיתית</em>
     </h1>
-    <p class="hero-desc">
-      בצק שנח 72 שעות, עגבניות סן מרצנו מנאפולי, מוצרלה פיור דה לאטה. תנור אבן על 485°C — כי פיצה אמיתית לא מתפשרת.
-    </p>
-    <div class="hero-cta-row">
-      <a href="#menu" class="btn-gold" aria-label="לצפייה בתפריט">
-        לתפריט שלנו
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-          <path d="M19 12H5M12 5l-7 7 7 7"/>
-        </svg>
-      </a>
-      <a href="#about" class="btn-ghost" aria-label="קרא את הסיפור שלנו">
-        <span class="btn-ghost-icon" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12l4 4 4-4"/>
-          </svg>
-        </span>
-        הסיפור שלנו
+    <p class="hero-sub">72 שעות התפחה. תנור עצים ב-485°. מרגריטה שתשנה את ההגדרות שלך לנצח.</p>
+    <div class="hero-btns">
+      <a href="#menu" class="btn-p">לתפריט</a>
+      <a href="#res" class="btn-t">
+        הזמן שולחן
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M10 7H4M4 7L6.5 4.5M4 7L6.5 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
     </div>
-    <div class="hero-awards" role="list" aria-label="הישגים">
-      <div class="award-item" role="listitem">
-        <span class="award-num">+40</span>
-        <span class="award-label">מתכונים</span>
-      </div>
-      <div class="award-sep" aria-hidden="true"></div>
-      <div class="award-item" role="listitem">
-        <span class="award-num">15+</span>
-        <span class="award-label">שנות ניסיון</span>
-      </div>
-      <div class="award-sep" aria-hidden="true"></div>
-      <div class="award-item" role="listitem">
-        <span class="award-num">4.9</span>
-        <span class="award-label">דירוג Google</span>
-      </div>
-    </div>
   </div>
-
-  <div class="hero-right" aria-hidden="true">
-    <div class="pizza-frame">
-      <div class="pizza-ring">
-        <div class="pizza-dot"></div>
-        <div class="pizza-dot"></div>
-        <div class="pizza-dot"></div>
-        <div class="pizza-dot"></div>
-      </div>
-      <div class="pizza-ring-2"></div>
-      <div class="pizza-img-circle">
-        <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=700&q=80&fit=crop" alt="פיצה מרגריטה מהתנור" loading="eager"/>
-      </div>
-      <div class="chip chip-1">
-        <span class="chip-icon" aria-hidden="true">🌿</span>
-        <span class="chip-label">בזיליקום טרי</span>
-        <span class="chip-value">מגינה דמיתי</span>
-      </div>
-      <div class="chip chip-2">
-        <span class="chip-icon" aria-hidden="true">🔥</span>
-        <span class="chip-label">טמפרטורת אפייה</span>
-        <span class="chip-value">485°C</span>
-      </div>
-    </div>
-  </div>
+  <div class="hero-scroll" aria-hidden="true"><span>גלול</span><div class="hero-scroll-ln"></div></div>
 </section>
 
 <!-- MARQUEE -->
-<div class="marquee-wrap" aria-hidden="true">
-  <div class="marquee-track">
-    <span class="m-item">Margherita <span class="m-sep"></span></span>
-    <span class="m-item">Quattro Formaggi <span class="m-sep"></span></span>
-    <span class="m-item">Diavola <span class="m-sep"></span></span>
-    <span class="m-item">Napoli Classica <span class="m-sep"></span></span>
-    <span class="m-item">Truffle Bianca <span class="m-sep"></span></span>
-    <span class="m-item">Bufala DOP <span class="m-sep"></span></span>
-    <span class="m-item">Margherita <span class="m-sep"></span></span>
-    <span class="m-item">Quattro Formaggi <span class="m-sep"></span></span>
-    <span class="m-item">Diavola <span class="m-sep"></span></span>
-    <span class="m-item">Napoli Classica <span class="m-sep"></span></span>
-    <span class="m-item">Truffle Bianca <span class="m-sep"></span></span>
-    <span class="m-item">Bufala DOP <span class="m-sep"></span></span>
+<div class="mq-w" aria-hidden="true">
+  <div class="mq-t">
+    <div class="mq-i">מקום מס׳ 1 תל אביב 2024</div>
+    <div class="mq-i">72 שעות התפחה</div>
+    <div class="mq-i">תנור עצים 485°</div>
+    <div class="mq-i">פארינה טייפ 00</div>
+    <div class="mq-i">עגבניות סן מרצנו DOP</div>
+    <div class="mq-i">מוצרלה די בופאלה</div>
+    <div class="mq-i">שמן זית DOP סיציליה</div>
+    <div class="mq-i">מקום מס׳ 1 תל אביב 2024</div>
+    <div class="mq-i">72 שעות התפחה</div>
+    <div class="mq-i">תנור עצים 485°</div>
+    <div class="mq-i">פארינה טייפ 00</div>
+    <div class="mq-i">עגבניות סן מרצנו DOP</div>
+    <div class="mq-i">מוצרלה די בופאלה</div>
+    <div class="mq-i">שמן זית DOP סיציליה</div>
   </div>
 </div>
 
-<!-- ABOUT -->
-<section id="about" aria-labelledby="about-h2">
-  <div class="about-grid">
-    <div class="about-img-stack sr-r">
-      <div class="about-img-main">
-        <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=700&q=80&fit=crop" alt="שף מכין פיצה בתנור"/>
-      </div>
-      <div class="about-img-accent">
-        <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80&fit=crop" alt="פיצה ישר מהתנור"/>
-      </div>
-      <div class="about-badge" aria-label="15 שנות ניסיון">
-        <strong>15</strong>
-        <span>שנות אהבה</span>
-      </div>
-    </div>
-
-    <div class="about-text sr-l">
-      <span class="eyebrow">הסיפור שלנו</span>
-      <h2 id="about-h2" class="section-h2">לא רק פיצה —<br><em>אובססיה</em></h2>
-      <blockquote>
-        "כשאבי בנה את התנור הראשון ב-2009, לא דמיינו שנגיע לכאן. רק ידענו שהפיצה חייבת להיות מושלמת."
-      </blockquote>
-      <p>כל בוקר מגיע קמח שחר טרי מהטחנה. הבצק נלוש ביד, נח 72 שעות, ורק אז נפרש לעיגול מושלם.</p>
-      <p>הרוטב — עגבניות סן מרצנו מאיטליה, מגרסה ביד, ללא בישול. שמן זית כתית מעולה מכרם משפחתי בגליל.</p>
-      <div class="chef-row">
-        <div class="chef-avatar">
-          <img src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=120&q=80&fit=crop" alt="שף אמיר ליאור"/>
-        </div>
-        <div>
-          <div class="chef-name">אמיר ליאור</div>
-          <div class="chef-title">שף ומייסד — Amora Pizza</div>
-        </div>
+<!-- STORY -->
+<section id="story" aria-label="הסיפור שלנו">
+  <div class="story-media sr-">
+    <img class="story-img-a" src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=900&auto=format&fit=crop&q=90" alt="שף מכין פיצה בתנור עצים" loading="lazy">
+    <img class="story-img-b" src="https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=600&auto=format&fit=crop&q=85" alt="בצק פיצה טרי" loading="lazy" aria-hidden="true">
+  </div>
+  <div class="story-txt">
+    <div class="lbl sr d1">הסיפור שלנו</div>
+    <h2 class="sh sr d2">המתכון שנסע<em>4,000 קילומטר</em></h2>
+    <p class="sb sr d3">ג'וזפה מרינו, מאסטר פיצאיולו מנפולי, ארז את המתכון המשפחתי בן שלושה הדורות והגיע לתל אביב עם חלום אחד — להביא את הפיצה האמיתית לעיר הזאת.</p>
+    <p class="sb sr d4">כל בצק מתפח 72 שעות. כל רוטב עשוי מעגבניות סן מרצנו מקמפניה. כל עיגול נאפה 90 שניות בתנור עצים ב-485 מעלות בדיוק.</p>
+    <div class="story-sig sr d5">
+      <img class="sig-av" src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=200&auto=format&fit=crop&q=80" alt="ג'וזפה מרינו שף ראשי" loading="lazy">
+      <div>
+        <div class="sig-n">Giuseppe Marino</div>
+        <div class="sig-r">מאסטר פיצאיולו — נפולי, 1987</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- BENTO MENU -->
-<section id="menu" aria-labelledby="menu-h2">
-  <div class="section-wrap">
-    <div class="menu-header">
-      <div>
-        <span class="eyebrow sr">התפריט שלנו</span>
-        <h2 id="menu-h2" class="section-h2 sr d1">הפיצות <em>שלנו</em></h2>
-      </div>
-      <div class="menu-pills sr d2" role="tablist" aria-label="סנן לפי קטגוריה">
-        <button class="pill on" role="tab" aria-selected="true">הכל</button>
-        <button class="pill" role="tab" aria-selected="false">קלאסיות</button>
-        <button class="pill" role="tab" aria-selected="false">גורמה</button>
-        <button class="pill" role="tab" aria-selected="false">ויגן</button>
+<!-- QUOTE BREAK -->
+<div class="fq sr">
+  <blockquote>
+    "פיצה טובה היא שירה —<br>כמה מילים, אבל כולן מדויקות."
+    <cite>— Giuseppe Marino, Amora Pizza</cite>
+  </blockquote>
+</div>
+
+<!-- MENU -->
+<section id="menu" aria-label="תפריט">
+  <div class="mh">
+    <div class="lbl sr" style="justify-content:center">התפריט שלנו</div>
+    <h2 class="sh sr d1" style="text-align:center">כל פיצה,<em>סיפור בפני עצמו</em></h2>
+    <div class="tabs" role="tablist" aria-label="קטגוריות תפריט">
+      <button class="tb on" role="tab" aria-selected="true" aria-controls="t-c" data-t="c">קלאסיק</button>
+      <button class="tb" role="tab" aria-selected="false" aria-controls="t-s" data-t="s">ספציאלה</button>
+      <button class="tb" role="tab" aria-selected="false" aria-controls="t-v" data-t="v">צמחוני</button>
+    </div>
+  </div>
+
+  <div id="t-c" class="panel on" role="tabpanel">
+    <div class="mc sr">
+      <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&auto=format&fit=crop&q=80" alt="מרגריטה — עגבניות סן מרצנו, מוצרלה, בזיליקום" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Margherita</div>
+        <div class="mc-desc">עגבניות סן מרצנו · מוצרלה DOP · בזיליקום · שמן זית</div>
+        <div class="mc-price">₪62</div>
       </div>
     </div>
+    <div class="mc sr d1">
+      <img src="https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=800&auto=format&fit=crop&q=80" alt="קרבונרה — ביצה, גוינצ'לה, פקורינו" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Carbonara</div>
+        <div class="mc-desc">ביצה · גוינצ'לה · פקורינו רומאנו · פלפל שחור</div>
+        <div class="mc-price">₪79</div>
+      </div>
+    </div>
+    <div class="mc sr d2">
+      <img src="https://images.unsplash.com/photo-1528137871618-79d2761e3fd5?w=800&auto=format&fit=crop&q=80" alt="דיאבולה — סלמי חריף, צ'ילי, פפרוני" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Diavola</div>
+        <div class="mc-desc">סלמי ספיאנטה · פיור דה לאטה · פפרוני · צ'ילי</div>
+        <div class="mc-price">₪75</div>
+      </div>
+    </div>
+  </div>
 
-    <div class="bento" role="list">
-      <!-- Featured: Margherita -->
-      <article class="bcard c1 sr" role="listitem" aria-label="פיצה מרגריטה בופלה">
-        <div class="bcard-tag">הבסט סלר</div>
-        <div class="bcard-img">
-          <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=700&q=80&fit=crop&crop=center" alt="מרגריטה בופלה — פיצה עם מוצרלה ובזיליקום" loading="lazy"/>
-        </div>
-        <div class="bcard-body">
-          <h3 class="bcard-name">Margherita Bufala</h3>
-          <p class="bcard-desc">מוצרלה בופלה DOP, עגבניות סן מרצנו, בזיליקום טרי, שמן זית כתית. המקורית מנאפולי.</p>
-          <div class="bcard-footer">
-            <div class="bcard-price"><sup>₪</sup>64</div>
-            <button class="add-circle" aria-label="הוסף מרגריטה בופלה לסל">+</button>
-          </div>
-        </div>
-      </article>
+  <div id="t-s" class="panel" role="tabpanel">
+    <div class="mc sr">
+      <img src="https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=800&auto=format&fit=crop&q=80" alt="טרטופו — כמהין שחורה, מסקרפונה, פורצ'יני" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Tartufo Nero</div>
+        <div class="mc-desc">כמהין שחורה · מסקרפונה · פורצ'יני · שמן כמהין</div>
+        <div class="mc-price">₪118</div>
+      </div>
+    </div>
+    <div class="mc sr d1">
+      <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&auto=format&fit=crop&q=80" alt="פיסטוק ביאנקה — קרם פיסטוק, מוצרלה" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Pistacchio Bianca</div>
+        <div class="mc-desc">קרם פיסטוק · פיור דה לאטה · מוצרלה · פיסטוקים</div>
+        <div class="mc-price">₪94</div>
+      </div>
+    </div>
+    <div class="mc sr d2">
+      <img src="https://images.unsplash.com/photo-1565299624946-b68b3f9f759f?w=800&auto=format&fit=crop&q=80" alt="פרושוטו ארוגולה — שינקן פרמה, ארוגולה" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Prosciutto e Rucola</div>
+        <div class="mc-desc">פרושוטו דה פארמה 24 חודש · ארוגולה · פרמיג'אנו · בלזמיק</div>
+        <div class="mc-price">₪105</div>
+      </div>
+    </div>
+  </div>
 
-      <!-- Diavola -->
-      <article class="bcard c2 sr d1" role="listitem" aria-label="פיצה דיאבולה">
-        <div class="bcard-tag">חריף</div>
-        <div class="bcard-img">
-          <img src="https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=600&q=80&fit=crop" alt="דיאבולה — פיצה חריפה עם סלמי" loading="lazy"/>
-        </div>
-        <div class="bcard-body">
-          <h3 class="bcard-name">Diavola Rossa</h3>
-          <p class="bcard-desc">סלמי פיקנטה, ג'לפניו, מוצרלה, רוטב ספייסי.</p>
-          <div class="bcard-footer">
-            <div class="bcard-price"><sup>₪</sup>74</div>
-            <button class="add-circle" aria-label="הוסף דיאבולה לסל">+</button>
-          </div>
-        </div>
-      </article>
-
-      <!-- Truffle -->
-      <article class="bcard c3 sr d2" role="listitem" aria-label="פיצה טרופל">
-        <div class="bcard-tag new">חדש</div>
-        <div class="bcard-img">
-          <img src="https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=500&q=80&fit=crop" alt="פיצה ביאנקה עם שמן כמהין" loading="lazy"/>
-        </div>
-        <div class="bcard-body">
-          <h3 class="bcard-name">Bianca Tartufo</h3>
-          <p class="bcard-desc">שמן כמהין שחור, פונטינה, פרמז'ן, ארוגולה.</p>
-          <div class="bcard-footer">
-            <div class="bcard-price"><sup>₪</sup>96</div>
-            <button class="add-circle" aria-label="הוסף ביאנקה טרופל לסל">+</button>
-          </div>
-        </div>
-      </article>
-
-      <!-- Quattro -->
-      <article class="bcard c4 sr d1" role="listitem" aria-label="פיצה ארבעת גבינות">
-        <div class="bcard-img">
-          <img src="https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f?w=600&q=80&fit=crop" alt="קוואטרו פורמג'י — ארבע גבינות" loading="lazy"/>
-        </div>
-        <div class="bcard-body">
-          <h3 class="bcard-name">Quattro Formaggi</h3>
-          <p class="bcard-desc">גורגונזולה, פונטינה, פרמז'ן, ריקוטה, דבש.</p>
-          <div class="bcard-footer">
-            <div class="bcard-price"><sup>₪</sup>82</div>
-            <button class="add-circle" aria-label="הוסף קוואטרו פורמג'י לסל">+</button>
-          </div>
-        </div>
-      </article>
-
-      <!-- Vegana -->
-      <article class="bcard c5 sr d2" role="listitem" aria-label="פיצה ויגן">
-        <div class="bcard-tag" style="background:rgba(34,197,94,.15);color:#4ade80;border-color:rgba(34,197,94,.25)">ויגן</div>
-        <div class="bcard-img">
-          <img src="https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=500&q=80&fit=crop" alt="פיצה ויגן עם ירקות טריים" loading="lazy"/>
-        </div>
-        <div class="bcard-body">
-          <h3 class="bcard-name">Giardino Verde</h3>
-          <p class="bcard-desc">זוקיני, פלפל קלוי, זיתים, בייבי ספינאצ', שמן זית.</p>
-          <div class="bcard-footer">
-            <div class="bcard-price"><sup>₪</sup>66</div>
-            <button class="add-circle" aria-label="הוסף ג'ארדינו ורדה לסל">+</button>
-          </div>
-        </div>
-      </article>
-
-      <!-- Special wide -->
-      <article class="bcard c6 sr d3" role="listitem" aria-label="פיצה ספיישל">
-        <div class="bcard-tag" style="background:rgba(212,168,71,.15)">סיגנטורה</div>
-        <div class="bcard-img" style="height:240px">
-          <img src="https://images.unsplash.com/photo-1528137871618-79d2761e3fd5?w=900&q=80&fit=crop" alt="פיצה סיגנטורה של שף אמיר" loading="lazy"/>
-        </div>
-        <div class="bcard-body">
-          <h3 class="bcard-name">Chef's Signature — Amora Speciale</h3>
-          <p class="bcard-desc">ג'מון סן דניאלה 24 חודשים, דמסון פיגי, ריקוטה קרמלית, צנוברים, דבש טרפל לבן — המנה שהפכה אותנו לאגדה.</p>
-          <div class="bcard-footer">
-            <div class="bcard-price"><sup>₪</sup>118</div>
-            <button class="add-circle" aria-label="הוסף Amora Speciale לסל">+</button>
-          </div>
-        </div>
-      </article>
+  <div id="t-v" class="panel" role="tabpanel">
+    <div class="mc sr">
+      <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80" alt="ירקות גרילים, פסטו, עגבניות צ'רי" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Verdure al Grill</div>
+        <div class="mc-desc">ירקות גרילים · פסטו בזיליקום · עגבניות צ'רי · פרמיג'אנו</div>
+        <div class="mc-price">₪74</div>
+      </div>
+    </div>
+    <div class="mc sr d1">
+      <img src="https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=800&auto=format&fit=crop&q=80" alt="ארבע גבינות — גורגונזולה, מוצרלה, פרמיג'אנו, פקורינו" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Quattro Formaggi</div>
+        <div class="mc-desc">גורגונזולה · פיור דה לאטה · פרמיג'אנו · פקורינו · דבש</div>
+        <div class="mc-price">₪82</div>
+      </div>
+    </div>
+    <div class="mc sr d2">
+      <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&auto=format&fit=crop&q=80" alt="מרינרה קלאסיקה — שום, עגבניות, אורגנו" loading="lazy">
+      <div class="mc-info">
+        <div class="mc-name">Marinara Classica</div>
+        <div class="mc-desc">עגבניות סן מרצנו · שום · אורגנו · שמן זית — ללא גבינה</div>
+        <div class="mc-price">₪54</div>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- INGREDIENTS -->
-<section id="ingredients" aria-labelledby="ingr-h2">
-  <div class="ingr-header section-wrap" style="padding-bottom:0">
-    <div>
-      <span class="eyebrow sr">המרכיבים שלנו</span>
-      <h2 id="ingr-h2" class="section-h2 sr d1">רק <em>הטובים</em> ביותר</h2>
-    </div>
-    <p class="section-lead sr d2">אנחנו לא מתפשרים על כלום. כל מרכיב נבחר ביד אחרי ביקור אישי אצל הספק.</p>
+<section id="ing" aria-label="המרכיבים שלנו">
+  <div class="ing-hd">
+    <div class="lbl sr">המרכיבים</div>
+    <h2 class="sh sr d1">רק מה<em>שהאדמה נותנת</em></h2>
   </div>
-  <div class="ingr-scroll-area" role="list" aria-label="רשימת מרכיבים">
-    <div class="ingr-card" role="listitem">
-      <div class="ingr-icon" aria-hidden="true">🌾</div>
-      <div class="ingr-name">קמח שחר</div>
-      <p class="ingr-desc">Type 00 איטלקי, טחון טרי כל בוקר. גלוטן נמוך לבצק קליל ונימוח.</p>
-      <span class="ingr-origin">נאפולי, איטליה</span>
+  <div class="ing-s" id="ing-s">
+    <div class="ing-i">
+      <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&auto=format&fit=crop&q=80" alt="עגבניות סן מרצנו DOP" loading="lazy">
+      <div class="ing-il"><div class="ing-in">San Marzano</div><div class="ing-or">קמפניה, איטליה</div></div>
     </div>
-    <div class="ingr-card" role="listitem">
-      <div class="ingr-icon" aria-hidden="true">🍅</div>
-      <div class="ingr-name">עגבניות סן מרצנו</div>
-      <p class="ingr-desc">מ-DOP מוגן, גדלות באדמת הר וזוב. מתיקות טבעית ללא צורך בסוכר.</p>
-      <span class="ingr-origin">קמפניה, איטליה</span>
+    <div class="ing-i">
+      <img src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80" alt="מוצרלה di בופאלה DOP" loading="lazy">
+      <div class="ing-il"><div class="ing-in">Mozzarella DOP</div><div class="ing-or">קזרטה, קמפניה</div></div>
     </div>
-    <div class="ingr-card" role="listitem">
-      <div class="ingr-icon" aria-hidden="true">🧀</div>
-      <div class="ingr-name">מוצרלה בופלה</div>
-      <p class="ingr-desc">תוצרת בוקר מחלב בופלה טרי. מוכנסת לפיצה שניות לפני ההגשה.</p>
-      <span class="ingr-origin">Caserta, איטליה</span>
+    <div class="ing-i">
+      <img src="https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=400&auto=format&fit=crop&q=80" alt="קמח טייפ 00 מולינו קפוטו" loading="lazy">
+      <div class="ing-il"><div class="ing-in">Farina Tipo 00</div><div class="ing-or">מולינו קפוטו, נפולי</div></div>
     </div>
-    <div class="ingr-card" role="listitem">
-      <div class="ingr-icon" aria-hidden="true">🫒</div>
-      <div class="ingr-name">שמן זית EVO</div>
-      <p class="ingr-desc">כתית מעולה מכרם משפחתי בגליל. חומציות 0.2%, קצור ידני.</p>
-      <span class="ingr-origin">הגליל, ישראל</span>
+    <div class="ing-i">
+      <img src="https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=80" alt="שמן זית כתית מיוחד DOP" loading="lazy">
+      <div class="ing-il"><div class="ing-in">Olio EVO DOP</div><div class="ing-or">סיציליה, איטליה</div></div>
     </div>
-    <div class="ingr-card" role="listitem">
-      <div class="ingr-icon" aria-hidden="true">🌿</div>
-      <div class="ingr-name">בזיליקום גנובה</div>
-      <p class="ingr-desc">עלים טריים שנקטפים מדי בוקר. אף פעם לא מחוממים — רק על הפיצה שיצאה מהתנור.</p>
-      <span class="ingr-origin">לוקה, איטליה</span>
+    <div class="ing-i">
+      <img src="https://images.unsplash.com/photo-1444930694458-01babf71870c?w=400&auto=format&fit=crop&q=80" alt="בזיליקום ג'נובזה טרי" loading="lazy">
+      <div class="ing-il"><div class="ing-in">Basilico Genovese</div><div class="ing-or">ליגוריה, איטליה</div></div>
     </div>
-    <div class="ingr-card" role="listitem">
-      <div class="ingr-icon" aria-hidden="true">🔥</div>
-      <div class="ingr-name">תנור אבן 1962</div>
-      <p class="ingr-desc">תנור עץ שנבנה ב-1962. מחמם ל-485°C, אופה בדיוק 90 שניות. אי אפשר לחקות.</p>
-      <span class="ingr-origin">תל אביב, ישראל</span>
+    <div class="ing-i">
+      <img src="https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=400&auto=format&fit=crop&q=80" alt="פלפלים קלבריים מיובשים" loading="lazy">
+      <div class="ing-il"><div class="ing-in">Peperoni Calabresi</div><div class="ing-or">קלבריה, איטליה</div></div>
     </div>
   </div>
 </section>
 
 <!-- SPECIALS -->
-<section id="specials" aria-labelledby="specials-h2">
-  <div class="specials-inner">
-    <div class="specials-text">
-      <span class="eyebrow sr">מבצע שוטף</span>
-      <h2 id="specials-h2" class="section-h2 sr d1">מבצע<br><em>Happy Hour</em></h2>
-      <div class="specials-promo sr d2">
-        2+1
-        <span>בכל ימי א׳–ג׳</span>
+<section id="sp" aria-label="מבצעים מיוחדים">
+  <div class="sp-hd">
+    <div class="lbl sr" style="justify-content:center">מבצעים</div>
+    <h2 class="sh sr d1" style="text-align:center">הצעות<em>שלא כדאי לפספס</em></h2>
+  </div>
+  <div class="sp-grid">
+    <div class="sp-card sr">
+      <div class="sp-ct">
+        <div class="sp-tag">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="var(--gold)" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
+          מבצע שבועי
+        </div>
+        <div class="sp-name">2+1 על כל פיצה</div>
+        <div class="sp-desc">ראשון עד שלישי — קנה שתי פיצות וקבל את השלישית במתנה. ללא הגבלת סוג.</div>
+        <div class="sp-price">Free<br><small>פיצה שלישית</small></div>
       </div>
-      <p class="specials-detail sr d3">
-        בין 12:00 ל-16:00 מקבלים פיצה שלישית במתנה. בחרו מכל התפריט, ללא הגבלה. מחר כבר אי אפשר לדעת.
-      </p>
-      <a href="#reservation" class="btn-gold sr d4" aria-label="הזמן שולחן עכשיו">
-        הזמן עכשיו
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-          <path d="M19 12H5M12 5l-7 7 7 7"/>
-        </svg>
-      </a>
+      <div class="sp-ci" aria-hidden="true">
+        <img src="https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=700&auto=format&fit=crop&q=80" alt="">
+      </div>
     </div>
-    <div class="specials-visual sr-l">
-      <div class="specials-pizza">
-        <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=700&q=80&fit=crop" alt="פיצה מרגריטה קלאסית"/>
+    <div class="sp-card sr d2">
+      <div class="sp-ct">
+        <div class="sp-tag">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="var(--gold)" aria-hidden="true"><path d="M5 0L6.12 3.38H9.51L6.94 5.47L7.94 8.85L5 6.88L2.06 8.85L3.06 5.47L.49 3.38H3.88L5 0Z"/></svg>
+          Happy Hour
+        </div>
+        <div class="sp-name">17:00 — 19:00 כל יום</div>
+        <div class="sp-desc">20% הנחה על כל ההזמנה כולל שתיה. בוקינג מראש בלבד.</div>
+        <div class="sp-price">‎−20%<br><small>על כל ההזמנה</small></div>
       </div>
-      <div class="deal-badge" aria-label="הנחה 33 אחוז">
-        <strong>33%</strong>
-        <span>הנחה</span>
+      <div class="sp-ci" aria-hidden="true">
+        <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=700&auto=format&fit=crop&q=80" alt="">
       </div>
     </div>
   </div>
 </section>
 
-<!-- TESTIMONIALS -->
-<section id="testimonials" aria-labelledby="test-h2">
-  <div class="section-wrap">
-    <span class="eyebrow sr">מה אומרים עלינו</span>
-    <h2 id="test-h2" class="section-h2 sr d1">הלקוחות <em>מספרים</em></h2>
-    <div class="reviews-layout">
-      <div class="reviews-big-quote sr-r">
-        "הפיצה הכי טובה<br>שאכלתי<br><em>מחוץ לנאפולי.</em>"
-        <p>יותר מ-4,800 ביקורות Google בדירוג ממוצע 4.9. שנה אחר שנה, האנשים ממשיכים לחזור.</p>
-        <div class="avg-stars">
-          <span class="stars-row" aria-label="5 כוכבים">★★★★★</span>
-          <span class="avg-num">4.9</span>
-          <span class="avg-count">/ 4,800+ ביקורות</span>
-        </div>
+<!-- GALLERY -->
+<div class="gal" aria-hidden="true">
+  <div class="gal-t">
+    <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1565299624946-b68b3f9f759f?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1565299624946-b68b3f9f759f?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+    <img src="https://images.unsplash.com/photo-1506354666786-959d6d497f1a?w=480&h=320&auto=format&fit=crop&q=70" alt="" loading="lazy">
+  </div>
+</div>
+
+<!-- REVIEWS -->
+<section id="rev" aria-label="ביקורות לקוחות">
+  <div class="rev-hd">
+    <div class="lbl sr" style="justify-content:center">ביקורות</div>
+    <h2 class="sh sr d1" style="text-align:center">מה אומרים<em>האורחים שלנו</em></h2>
+  </div>
+  <div class="rev-g">
+    <div class="rv sr">
+      <div class="rv-stars" aria-label="5 כוכבים">
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
       </div>
-      <div class="reviews-stack">
-        <article class="rcard sr d1" aria-label="ביקורת של מיכל לוי">
-          <div class="rcard-head">
-            <div class="rcard-av-init" aria-hidden="true">מ</div>
-            <div>
-              <div class="rcard-name">מיכל לוי</div>
-              <div class="rcard-meta">תל אביב · לפני שבוע</div>
-            </div>
-            <span class="rcard-stars" aria-label="5 כוכבים">★★★★★</span>
-          </div>
-          <blockquote class="rcard-quote">"הבצק הכי דק שאכלתי, הגבינה נמסת בפה. הגעתי פעם אחת ומאז כל שבת אני כאן. הסרביס מדהים, האווירה מושלמת."</blockquote>
-        </article>
-        <article class="rcard sr d2" aria-label="ביקורת של דניאל כהן">
-          <div class="rcard-head">
-            <div class="rcard-av">
-              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80" alt="תמונת פרופיל דניאל כהן" loading="lazy"/>
-            </div>
-            <div>
-              <div class="rcard-name">דניאל כהן</div>
-              <div class="rcard-meta">הרצליה · לפני חודש</div>
-            </div>
-            <span class="rcard-stars" aria-label="5 כוכבים">★★★★★</span>
-          </div>
-          <blockquote class="rcard-quote">"הזמנתי את Amora Speciale ולא האמנתי שפיצה יכולה להגיע לרמה כזו. ג'מון, דבש טרפל — זה פשוט מושלם."</blockquote>
-        </article>
-        <article class="rcard sr d3" aria-label="ביקורת של שירה אברהם">
-          <div class="rcard-head">
-            <div class="rcard-av-init" aria-hidden="true">ש</div>
-            <div>
-              <div class="rcard-name">שירה אברהם</div>
-              <div class="rcard-meta">פתח תקווה · לפני 3 שבועות</div>
-            </div>
-            <span class="rcard-stars" aria-label="5 כוכבים">★★★★★</span>
-          </div>
-          <blockquote class="rcard-quote">"ביקרתי עם ילדים ועם חברים — כל פעם עם קהל שונה והשירות תמיד אותו הדבר: מעולה. המרגריטה בופלה חייבת להיות בצלחת של כל ישראלי."</blockquote>
-        </article>
+      <p class="rv-txt">"הפיצה הכי טובה שאכלתי מחוץ לנפולי. הבצק קריספי מבחוץ, רך ואוורירי מבפנים — בדיוק כמו שצריך."</p>
+      <div class="rv-au">
+        <img class="rv-av" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80" alt="ליאור בן-דוד" loading="lazy">
+        <div><div class="rv-n">ליאור בן-דוד</div><div class="rv-m">תל אביב · 14 ביקורים</div><div class="rv-pl">Google ★★★★★</div></div>
+      </div>
+    </div>
+    <div class="rv sr d2">
+      <div class="rv-stars" aria-label="5 כוכבים">
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>
+      <p class="rv-txt">"האווירה, השירות, הפיצה — הכל מושלם. הטרטופו נרו שינה לי את החיים. אני חוזרת כל שבוע."</p>
+      <div class="rv-au">
+        <img class="rv-av" src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&auto=format&fit=crop&q=80" alt="מאיה כהן" loading="lazy">
+        <div><div class="rv-n">מאיה כהן</div><div class="rv-m">רמת גן · 28 ביקורים</div><div class="rv-pl">TripAdvisor ★★★★★</div></div>
+      </div>
+    </div>
+    <div class="rv sr d4">
+      <div class="rv-stars" aria-label="5 כוכבים">
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <svg class="st" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>
+      <p class="rv-txt">"הגעתי מרומא וזאת הפיצה הכי קרובה לנפולי שמצאתי מחוץ לאיטליה. Giuseppe — bravo!"</p>
+      <div class="rv-au">
+        <img class="rv-av" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80" alt="Marco Rossi" loading="lazy">
+        <div><div class="rv-n">Marco Rossi</div><div class="rv-m">רומא · תייר</div><div class="rv-pl">Google ★★★★★</div></div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- RESERVATION -->
-<section id="reservation" aria-labelledby="res-h2">
-  <div class="reservation-grid">
-    <div class="res-info">
-      <span class="eyebrow sr">הגיע הזמן</span>
-      <h2 id="res-h2" class="section-h2 sr d1">הזמן <em>שולחן</em><br>או משלוח</h2>
-      <p class="section-lead sr d2">תפריט מלא זמין לאיסוף ומשלוח. לשולחן — מומלץ להזמין מראש, במיוחד בסופי שבוע.</p>
-      <div class="res-hours sr d3">
-        <h4>שעות פעילות</h4>
-        <div class="hour-row">
-          <span class="hour-day">ראשון – חמישי</span>
-          <span class="hour-time">12:00 – 23:00</span>
-        </div>
-        <div class="hour-row">
-          <span class="hour-day">שישי</span>
-          <span class="hour-time">11:00 – שעה לפני שבת</span>
-        </div>
-        <div class="hour-row">
-          <span class="hour-day">מוצאי שבת</span>
-          <span class="hour-time">שעה אחרי שבת – 00:30</span>
-        </div>
-        <div class="hour-row">
-          <span class="hour-day">שבת</span>
-          <span class="hour-time">סגור</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="res-form-wrap sr-l">
-      <h3 class="form-heading">השאר פרטים</h3>
-      <form novalidate aria-label="טופס הזמנה">
-        <div class="frow">
-          <div class="fg">
-            <label for="res-name">שם מלא <span aria-hidden="true" style="color:var(--gold)">*</span></label>
-            <input id="res-name" type="text" name="name" autocomplete="name" required aria-required="true" placeholder="ישראל ישראלי"/>
+<section id="res" aria-label="הזמנת שולחן">
+  <div class="res-g">
+    <div>
+      <div class="lbl sr">הזמן שולחן</div>
+      <h2 class="sh sr d1">נשמח לראותך<em>בקרוב</em></h2>
+      <p class="sb sr d2" style="max-width:400px">הזמן שולחן ל-Amora Pizza. עד 12 אורחים. לאירועים גדולים — צור קשר ישיר.</p>
+      <form class="res-form sr d3" id="res-form" novalidate>
+        <div class="fr">
+          <div class="fd">
+            <label for="rn">שם מלא</label>
+            <input id="rn" type="text" placeholder="ישראל ישראלי" required autocomplete="name">
           </div>
-          <div class="fg">
-            <label for="res-phone">טלפון <span aria-hidden="true" style="color:var(--gold)">*</span></label>
-            <input id="res-phone" type="tel" name="phone" autocomplete="tel" required aria-required="true" placeholder="050-000-0000" dir="ltr"/>
+          <div class="fd">
+            <label for="rp">טלפון</label>
+            <input id="rp" type="tel" placeholder="050-0000000" required autocomplete="tel">
           </div>
         </div>
-        <div class="frow">
-          <div class="fg">
-            <label for="res-type">סוג הזמנה</label>
-            <select id="res-type" name="type">
-              <option value="table">שולחן במסעדה</option>
-              <option value="delivery">משלוח לבית</option>
-              <option value="takeaway">איסוף עצמי</option>
-            </select>
+        <div class="fr">
+          <div class="fd">
+            <label for="rd">תאריך</label>
+            <input id="rd" type="date" required>
           </div>
-          <div class="fg">
-            <label for="res-guests">מספר סועדים</label>
-            <select id="res-guests" name="guests">
-              <option value="1">1–2 אנשים</option>
-              <option value="3" selected>3–4 אנשים</option>
-              <option value="5">5–6 אנשים</option>
-              <option value="7">7+ אנשים</option>
-            </select>
+          <div class="fd">
+            <label for="rt">שעה</label>
+            <input id="rt" type="time" min="12:00" max="23:00" required>
           </div>
         </div>
-        <div class="fg">
-          <label for="res-pizza">פיצה מועדפת</label>
-          <select id="res-pizza" name="pizza">
-            <option value="">ללא העדפה</option>
-            <option>Margherita Bufala — ₪64</option>
-            <option>Diavola Rossa — ₪74</option>
-            <option>Bianca Tartufo — ₪96</option>
-            <option>Quattro Formaggi — ₪82</option>
-            <option>Giardino Verde — ₪66</option>
-            <option>Amora Speciale — ₪118</option>
+        <div class="fd">
+          <label for="rg">מספר סועדים</label>
+          <select id="rg" required>
+            <option value="">בחר מספר</option>
+            <option>1–2 אנשים</option>
+            <option>3–4 אנשים</option>
+            <option>5–6 אנשים</option>
+            <option>7–8 אנשים</option>
+            <option>9–12 אנשים</option>
           </select>
         </div>
-        <div class="fg">
-          <label for="res-notes">הערות</label>
-          <textarea id="res-notes" name="notes" placeholder="אלרגיות, בקשות מיוחדות, תאריך ושעה מבוקשים..."></textarea>
-        </div>
-        <button type="submit" class="form-submit" aria-label="שלח הזמנה">
-          שלח הזמנה →
-        </button>
+        <button type="submit" class="btn-res">שלח הזמנה</button>
       </form>
+      <div id="res-ok" style="display:none;padding:40px;text-align:center">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-style:italic;color:var(--gold);margin-bottom:10px">ההזמנה נשלחה!</div>
+        <p style="font-size:.84rem;color:var(--muted)">ניצור קשר תוך 24 שעות לאישור.</p>
+      </div>
+    </div>
+    <div class="res-info sl- d1">
+      <div class="lbl">שעות פתיחה</div>
+      <table class="hrs" aria-label="שעות פתיחה">
+        <tbody>
+          <tr><td>ראשון — שלישי</td><td>12:00 — 23:00</td></tr>
+          <tr><td>רביעי — חמישי</td><td>12:00 — 00:00</td></tr>
+          <tr><td>שישי</td><td>12:00 — 01:00</td></tr>
+          <tr><td>שבת (מוצ"ש)</td><td>20:00 — 01:00</td></tr>
+        </tbody>
+      </table>
+      <div class="ctr">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 11c0 .36-.08.7-.25 1.03-.17.34-.4.65-.68.88-.44.43-.9.65-1.38.65-.36 0-.75-.1-1.18-.3C8 12.55 6.8 11.7 5.68 10.6 4.6 9.5 3.73 8.28 3.12 7c-.2-.44-.3-.84-.3-1.2 0-.5.2-.96.62-1.38.25-.28.54-.5.86-.62.25-.15.6-.25.85-.25.17 0 .28 0 .43.1.17.1.3.2.43.38l1.38 1.9c.14.22.26.44.26.62 0 .2-.08.42-.2.6l-.6.6c-.08.17-.18.28-.18.43 0 .1 0 .2.08.28.1.1.18.26.28.36.35.52.78.96 1.3 1.3.1.1.18.18.35.28.12.08.24.1.36.1.17 0 .28-.08.44-.18l.6-.6c.18-.1.36-.18.6-.18.18 0 .36 0 .6.18l1.9 1.38c.18.14.3.28.36.44.08.16.1.28.1.44z" stroke="currentColor" stroke-width="1.1"/></svg>
+        03-123-4567
+      </div>
+      <div class="ctr">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1" stroke="currentColor" stroke-width="1.1"/><path d="M2 5l6 4 6-4" stroke="currentColor" stroke-width="1.1"/></svg>
+        info@amorapizza.co.il
+      </div>
+      <div class="ctr">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5C5.5 1.5 3.5 3.5 3.5 6c0 3.9 4.5 8.5 4.5 8.5S12.5 9.9 12.5 6c0-2.5-2-4.5-4.5-4.5zm0 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" stroke="currentColor" stroke-width="1.1"/></svg>
+        רחוב דיזנגוף 150, תל אביב
+      </div>
     </div>
   </div>
 </section>
 
 <!-- FOOTER -->
-<footer role="contentinfo">
-  <div class="footer-top-bar">
-    <a href="#hero" class="f-logo" aria-label="Amora Pizza - חזרה לדף הבית">Amora</a>
-    <nav class="f-socials" aria-label="רשתות חברתיות">
-      <a href="#" class="f-social-btn" aria-label="אינסטגרם">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-        </svg>
-      </a>
-      <a href="#" class="f-social-btn" aria-label="פייסבוק">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
-        </svg>
-      </a>
-      <a href="#" class="f-social-btn" aria-label="טיקטוק">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 100 12.68 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.73a4.85 4.85 0 01-1-.04z"/>
-        </svg>
-      </a>
-      <a href="#" class="f-social-btn" aria-label="גוגל">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057c.003.028.015.054.038.067a19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.038-.068c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/>
-        </svg>
-      </a>
-    </nav>
-  </div>
-
-  <div class="footer-cols">
-    <div class="f-about">
-      <div class="f-logo">Amora</div>
-      <p>אמנות הפיצה הנאפוליטנית מ-2009. מסורת, איכות בלתי מתפשרת, ואהבה אמיתית בכל פרוסה.</p>
+<footer>
+  <div class="ft">
+    <div>
+      <div class="fb-n">Amora Pizza</div>
+      <p class="fb-d">פיצה נפוליטנה אמיתית בלב תל אביב. בצק 72 שעות, תנור עצים, מרכיבים DOP מאיטליה.</p>
     </div>
-    <div class="f-col">
-      <h5>תפריט</h5>
-      <ul class="f-links">
-        <li><a href="#menu">Margherita Bufala</a></li>
-        <li><a href="#menu">Diavola Rossa</a></li>
-        <li><a href="#menu">Bianca Tartufo</a></li>
-        <li><a href="#menu">Quattro Formaggi</a></li>
-        <li><a href="#menu">Amora Speciale</a></li>
+    <div>
+      <div class="fct">תפריט</div>
+      <ul class="fl">
+        <li><a href="#menu">קלאסיק</a></li>
+        <li><a href="#menu">ספציאלה</a></li>
+        <li><a href="#menu">צמחוני</a></li>
+        <li><a href="#sp">מבצעים</a></li>
       </ul>
     </div>
-    <div class="f-col">
-      <h5>אודות</h5>
-      <ul class="f-links">
-        <li><a href="#about">הסיפור שלנו</a></li>
-        <li><a href="#about">השף שלנו</a></li>
-        <li><a href="#ingredients">המרכיבים</a></li>
-        <li><a href="#testimonials">ביקורות</a></li>
-        <li><a href="#reservation">דרושים</a></li>
+    <div>
+      <div class="fct">מידע</div>
+      <ul class="fl">
+        <li><a href="#story">הסיפור שלנו</a></li>
+        <li><a href="#res">הזמן שולחן</a></li>
+        <li><a href="#rev">ביקורות</a></li>
       </ul>
     </div>
-    <div class="f-col">
-      <h5>שירות</h5>
-      <ul class="f-links">
-        <li><a href="#reservation">הזמנת שולחן</a></li>
-        <li><a href="#reservation">משלוחים</a></li>
-        <li><a href="#specials">מבצעים</a></li>
-        <li><a href="#reservation">אירועים פרטיים</a></li>
-        <li><a href="#reservation">צור קשר</a></li>
+    <div>
+      <div class="fct">צור קשר</div>
+      <ul class="fl">
+        <li><a href="tel:0312345678">03-123-4567</a></li>
+        <li><a href="mailto:info@amorapizza.co.il">info@amorapizza</a></li>
+        <li><a href="#">Instagram</a></li>
+        <li><a href="#">Facebook</a></li>
       </ul>
     </div>
   </div>
-
-  <div class="footer-bottom">
-    <p>© 2025 Amora Pizza. כל הזכויות שמורות.</p>
-    <p>רחוב דיזנגוף 130, תל אביב &nbsp;·&nbsp; <span dir="ltr">03-555-1234</span></p>
+  <div class="fb">
+    <span>© 2024 Amora Pizza. כל הזכויות שמורות.</span>
+    <div class="soc">
+      <a href="#" class="sl" aria-label="Instagram">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>
+      </a>
+      <a href="#" class="sl" aria-label="Facebook">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+      </a>
+    </div>
   </div>
 </footer>
 
 <script>
-(function(){
-  'use strict';
+// Progress bar
+const pb=document.getElementById('pb');
+window.addEventListener('scroll',()=>{
+  const p=window.scrollY/(document.body.scrollHeight-window.innerHeight);
+  pb.style.transform='scaleX('+p+')';
+  document.getElementById('nav').classList.toggle('s',window.scrollY>60);
+},{passive:true});
 
-  /* ── Progress bar ── */
-  const bar = document.getElementById('progress-bar');
-  function updateProgress(){
-    const h = document.documentElement;
-    const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
-    bar.style.width = pct + '%';
-    bar.setAttribute('aria-valuenow', Math.round(pct));
-  }
-  window.addEventListener('scroll', updateProgress, {passive:true});
+// Hero parallax
+const hbg=document.getElementById('hero-bg');
+window.addEventListener('scroll',()=>{
+  if(window.scrollY<window.innerHeight*1.4)
+    hbg.style.transform='translateY('+(window.scrollY*.32)+'px)';
+},{passive:true});
 
-  /* ── Nav compact ── */
-  const nav = document.getElementById('site-nav');
-  window.addEventListener('scroll', () => {
-    nav.classList.toggle('compact', window.scrollY > 70);
-  }, {passive:true});
+// Scroll reveal
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
+},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.sr,.sl-,.sr-').forEach(el=>io.observe(el));
 
-  /* ── Custom cursor (desktop only) ── */
-  if(window.matchMedia('(pointer:fine)').matches){
-    const c = document.getElementById('cursor');
-    const r = document.getElementById('cursor-ring');
-    let mx=0,my=0,rx=0,ry=0;
-    document.addEventListener('mousemove', e => {
-      mx = e.clientX; my = e.clientY;
-      c.style.left = mx+'px'; c.style.top = my+'px';
-    });
-    function animRing(){
-      rx += (mx-rx)*.12;
-      ry += (my-ry)*.12;
-      r.style.left = rx+'px'; r.style.top = ry+'px';
-      requestAnimationFrame(animRing);
-    }
-    animRing();
-    document.querySelectorAll('a,button,.bcard,.rcard,.pill').forEach(el=>{
-      el.addEventListener('mouseenter',()=>document.body.classList.add('cursor-hover'));
-      el.addEventListener('mouseleave',()=>document.body.classList.remove('cursor-hover'));
-    });
-  }
+// Custom cursor
+const c=document.getElementById('cur'),cr=document.getElementById('cur-r');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;c.style.left=mx+'px';c.style.top=my+'px';});
+(function animR(){rx+=(mx-rx)*.09;ry+=(my-ry)*.09;cr.style.left=rx+'px';cr.style.top=ry+'px';requestAnimationFrame(animR);})();
+document.querySelectorAll('a,button,.mc,.sp-card,.rv').forEach(el=>{
+  el.addEventListener('mouseenter',()=>document.body.classList.add('hov'));
+  el.addEventListener('mouseleave',()=>document.body.classList.remove('hov'));
+});
 
-  /* ── Scroll reveal ── */
-  const srEls = document.querySelectorAll('.sr,.sr-l,.sr-r');
-  const io = new IntersectionObserver(entries=>{
-    entries.forEach(e=>{
-      if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
-    });
-  },{threshold:.1,rootMargin:'0px 0px -40px 0px'});
-  srEls.forEach(el=>io.observe(el));
-
-  /* ── Menu pills ── */
-  document.querySelectorAll('.pill').forEach(p=>{
-    p.addEventListener('click',()=>{
-      document.querySelectorAll('.pill').forEach(x=>{x.classList.remove('on');x.setAttribute('aria-selected','false')});
-      p.classList.add('on'); p.setAttribute('aria-selected','true');
-    });
+// Menu tabs
+document.querySelectorAll('.tb').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const t=btn.dataset.t;
+    document.querySelectorAll('.tb').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-selected','false');});
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    btn.classList.add('on');btn.setAttribute('aria-selected','true');
+    const panel=document.getElementById('t-'+t);
+    panel.classList.add('on');
+    panel.querySelectorAll('.sr').forEach(el=>{if(!el.classList.contains('in'))io.observe(el);});
   });
+});
 
-  /* ── Add to cart ── */
-  document.querySelectorAll('.add-circle').forEach(btn=>{
-    btn.addEventListener('click',function(){
-      const o=this.textContent;
-      this.textContent='✓';
-      this.style.cssText='background:var(--gold);color:#080604;border-color:var(--gold);transform:rotate(0) scale(1.15)';
-      setTimeout(()=>{this.textContent=o;this.removeAttribute('style')},1200);
-    });
-  });
+// Drag-scroll ingredients
+const is=document.getElementById('ing-s');
+let dn=false,sx,sl;
+is.addEventListener('mousedown',e=>{dn=true;is.classList.add('drag');sx=e.pageX-is.offsetLeft;sl=is.scrollLeft;});
+['mouseleave','mouseup'].forEach(ev=>is.addEventListener(ev,()=>{dn=false;is.classList.remove('drag');}));
+is.addEventListener('mousemove',e=>{if(!dn)return;e.preventDefault();is.scrollLeft=sl-(e.pageX-is.offsetLeft-sx)*2;});
 
-  /* ── Horizontal scroll drag ── */
-  const sl = document.querySelector('.ingr-scroll-area');
-  if(sl){
-    let down=false,startX,scrollL;
-    sl.addEventListener('mousedown',e=>{down=true;startX=e.pageX-sl.offsetLeft;scrollL=sl.scrollLeft});
-    sl.addEventListener('mouseleave',()=>down=false);
-    sl.addEventListener('mouseup',()=>down=false);
-    sl.addEventListener('mousemove',e=>{
-      if(!down)return; e.preventDefault();
-      sl.scrollLeft=scrollL-(e.pageX-sl.offsetLeft-startX);
-    });
-  }
-
-  /* ── Form submit ── */
-  const form = document.querySelector('form');
-  if(form){
-    form.addEventListener('submit',function(e){
-      e.preventDefault();
-      const btn=this.querySelector('.form-submit');
-      btn.textContent='שולח...'; btn.disabled=true;
-      setTimeout(()=>{
-        btn.textContent='ההזמנה נשלחה בהצלחה ✓';
-        btn.style.background='#16a34a';
-      },900);
-    });
-  }
-
-  /* ── Reduced motion fallback ── */
-  if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){
-    srEls.forEach(el=>el.classList.add('in'));
-  }
-
-})();
+// Reservation form
+document.getElementById('res-form').addEventListener('submit',function(e){
+  e.preventDefault();
+  this.style.display='none';
+  document.getElementById('res-ok').style.display='block';
+});
 </script>
 </body>
 </html>
