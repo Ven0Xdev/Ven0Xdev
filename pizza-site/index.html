@@ -1025,13 +1025,13 @@
     }
     .footer-bottom span { color: var(--primary); }
 
-    /* ── Scroll Reveal ── */
-    .reveal {
+    /* ── Scroll Reveal (only when JS is active) ── */
+    .js-ready .reveal {
       opacity: 0;
       transform: translateY(30px);
       transition: opacity 0.65s cubic-bezier(0.4,0,0.2,1), transform 0.65s cubic-bezier(0.4,0,0.2,1);
     }
-    .reveal.visible {
+    .js-ready .reveal.visible {
       opacity: 1;
       transform: translateY(0);
     }
@@ -1602,6 +1602,9 @@
   </footer>
 
   <script>
+    // Mark body so reveal CSS activates only with JS
+    document.body.classList.add('js-ready');
+
     // ── Scroll: nav shrink ──
     const nav = document.getElementById('main-nav');
     window.addEventListener('scroll', () => {
