@@ -1,6 +1,18 @@
 "use client";
 import Image from "next/image";
-import { Place, categoryColors, categoryEmoji } from "@/app/data/places";
+import { MapPin, CheckCircle, ArrowUpRight } from "lucide-react";
+import { Place, categoryColors, categoryIcon } from "@/app/data/places";
+import { Landmark, MoonStar, Leaf, Waves, Sun, Building2, Pickaxe } from "lucide-react";
+
+const iconMap: Record<string, React.ReactNode> = {
+  landmark:    <Landmark   size={11} strokeWidth={2} />,
+  "moon-star": <MoonStar   size={11} strokeWidth={2} />,
+  leaf:        <Leaf       size={11} strokeWidth={2} />,
+  waves:       <Waves      size={11} strokeWidth={2} />,
+  sun:         <Sun        size={11} strokeWidth={2} />,
+  "building-2":<Building2  size={11} strokeWidth={2} />,
+  pickaxe:     <Pickaxe    size={11} strokeWidth={2} />,
+};
 
 interface PlaceCardProps {
   place: Place;
@@ -15,83 +27,133 @@ export default function PlaceCard({
   onSelect,
   onToggleVisited,
 }: PlaceCardProps) {
+  const c = categoryColors[place.category];
+
   return (
-    <div
-      className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer ${
-        visited ? "border-green-300 ring-1 ring-green-200" : "border-gray-100"
-      }`}
+    <article
+      className="card-hover relative rounded-2xl overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%)",
+        border: visited
+          ? "1px solid rgba(125,224,154,0.3)"
+          : "1px solid rgba(255,255,255,0.08)",
+        backdropFilter: "blur(8px)",
+      }}
     >
       {/* Image */}
       <div
-        className="relative h-52 w-full overflow-hidden"
+        className="relative h-56 w-full overflow-hidden cursor-pointer"
         onClick={() => onSelect(place)}
       >
         <Image
           src={place.image}
           alt={place.name}
           fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          className="object-cover transition-transform duration-700 group-hover:scale-110"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           unoptimized
         />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        {/* Photo gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#060d1a]/80 via-[#060d1a]/20 to-transparent" />
 
-        {/* Visited badge */}
-        {visited && (
-          <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow">
-            ✓ Visited
+        {/* Top badges */}
+        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+          {/* Category */}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+            style={{
+              background: c.bg,
+              border: `1px solid ${c.border}`,
+              color: c.text,
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            {iconMap[categoryIcon[place.category]]}
+            {place.category}
           </div>
-        )}
 
-        {/* Category badge */}
-        <div
-          className={`absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full ${categoryColors[place.category]} shadow-sm`}
-        >
-          {categoryEmoji[place.category]} {place.category}
+          {/* Visited */}
+          {visited && (
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+              style={{
+                background: "rgba(125,224,154,0.2)",
+                border: "1px solid rgba(125,224,154,0.5)",
+                color: "#7de09a",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              <CheckCircle size={11} strokeWidth={2.5} />
+              Visited
+            </div>
+          )}
+        </div>
+
+        {/* Bottom region pill */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
+          <MapPin size={11} strokeWidth={2} style={{ color: "rgba(201,168,76,0.8)" }} />
+          <span className="text-xs font-medium" style={{ color: "rgba(240,236,228,0.75)" }}>
+            {place.region}
+          </span>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4" onClick={() => onSelect(place)}>
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="text-base font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">
+      <div className="p-4 cursor-pointer" onClick={() => onSelect(place)}>
+        <div className="flex items-start justify-between gap-2 mb-1.5">
+          <h3
+            className="font-display text-lg font-bold leading-tight"
+            style={{ color: "#f0ece4", fontFamily: "var(--font-heading)" }}
+          >
             {place.name}
           </h3>
-          <span className="text-xs text-gray-400 font-normal shrink-0 mt-0.5 font-hebrew">
+          <span
+            className="text-xs mt-1 shrink-0 font-hebrew"
+            style={{ color: "rgba(201,168,76,0.55)" }}
+          >
             {place.hebrewName}
           </span>
         </div>
-        <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-          <span>📍</span> {place.region}
-        </p>
-        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+
+        <p
+          className="text-sm line-clamp-2 leading-relaxed"
+          style={{ color: "rgba(240,236,228,0.55)" }}
+        >
           {place.description}
         </p>
       </div>
 
       {/* Footer */}
-      <div className="px-4 pb-4 flex items-center justify-between">
+      <div
+        className="px-4 pb-4 flex items-center justify-between"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}
+      >
         <button
           onClick={() => onSelect(place)}
-          className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+          className="flex items-center gap-1 text-sm font-semibold transition-colors duration-200 cursor-pointer"
+          style={{ color: "#c9a84c" }}
+          aria-label={`View details for ${place.name}`}
         >
-          View Details →
+          View Details
+          <ArrowUpRight size={14} strokeWidth={2.5} />
         </button>
+
         <button
           onClick={(e) => {
             e.stopPropagation();
             onToggleVisited(place.id);
           }}
-          className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-colors border ${
-            visited
-              ? "bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-              : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200"
-          }`}
+          className="text-xs px-3 py-1.5 rounded-full font-semibold transition-all duration-200 cursor-pointer"
+          style={{
+            background: visited ? "rgba(125,224,154,0.12)" : "rgba(255,255,255,0.06)",
+            border: visited ? "1px solid rgba(125,224,154,0.3)" : "1px solid rgba(255,255,255,0.1)",
+            color: visited ? "#7de09a" : "rgba(240,236,228,0.45)",
+          }}
+          aria-label={visited ? `Remove ${place.name} from visited` : `Mark ${place.name} as visited`}
         >
-          {visited ? "Mark Unvisited" : "Mark Visited"}
+          {visited ? "✓ Visited" : "Mark Visited"}
         </button>
       </div>
-    </div>
+    </article>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useRef, useState, useMemo } from "react";
 import { places, Place, Category } from "@/app/data/places";
 import Header from "@/app/components/Header";
+import Hero from "@/app/components/Hero";
 import FilterBar from "@/app/components/FilterBar";
 import PlaceCard from "@/app/components/PlaceCard";
 import PlaceModal from "@/app/components/PlaceModal";
 import { useVisited } from "@/app/hooks/useVisited";
+import { MapPin } from "lucide-react";
 
 export default function Home() {
   const { visited, toggleVisited } = useVisited();
@@ -13,6 +15,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
   const [showVisitedOnly, setShowVisitedOnly] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     return places.filter((p) => {
@@ -28,43 +31,82 @@ export default function Home() {
     });
   }, [search, activeCategory, showVisitedOnly, visited]);
 
+  const scrollToGrid = () => {
+    gridRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header total={places.length} visited={visited.size} />
+    <div className="min-h-screen" style={{ background: "var(--bg-deep)" }}>
+      {/* Sticky glass nav */}
+      <div className="sticky top-0 z-40">
+        <Header total={places.length} visited={visited.size} />
+      </div>
 
-      <FilterBar
-        search={search}
-        onSearch={setSearch}
-        activeCategory={activeCategory}
-        onCategory={setActiveCategory}
-        showVisited={showVisitedOnly}
-        onShowVisited={setShowVisitedOnly}
-        resultCount={filtered.length}
-      />
+      {/* Full-screen hero (overlaps with sticky header via negative margin) */}
+      <div style={{ marginTop: "-64px" }}>
+        <Hero total={places.length} visited={visited.size} onExplore={scrollToGrid} />
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-5xl mb-4">🗺️</p>
-            <p className="text-gray-500 text-lg font-medium">No places found</p>
-            <p className="text-gray-400 text-sm mt-1">
-              Try adjusting your search or filters
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((place) => (
-              <PlaceCard
-                key={place.id}
-                place={place}
-                visited={visited.has(place.id)}
-                onSelect={setSelectedPlace}
-                onToggleVisited={toggleVisited}
+      {/* Destinations section */}
+      <div ref={gridRef} style={{ background: "var(--bg-base)" }}>
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          activeCategory={activeCategory}
+          onCategory={setActiveCategory}
+          showVisited={showVisitedOnly}
+          onShowVisited={setShowVisitedOnly}
+          resultCount={filtered.length}
+        />
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          {filtered.length === 0 ? (
+            <div className="text-center py-24">
+              <MapPin
+                size={40}
+                strokeWidth={1.2}
+                className="mx-auto mb-4"
+                style={{ color: "rgba(201,168,76,0.4)" }}
               />
-            ))}
-          </div>
-        )}
-      </main>
+              <p
+                className="text-xl font-semibold mb-2"
+                style={{ color: "rgba(240,236,228,0.6)" }}
+              >
+                No destinations found
+              </p>
+              <p className="text-sm" style={{ color: "rgba(240,236,228,0.3)" }}>
+                Try adjusting your search or filters
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filtered.map((place) => (
+                <PlaceCard
+                  key={place.id}
+                  place={place}
+                  visited={visited.has(place.id)}
+                  onSelect={setSelectedPlace}
+                  onToggleVisited={toggleVisited}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+
+        {/* Footer */}
+        <footer
+          className="text-center py-10 text-xs"
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            color: "rgba(240,236,228,0.25)",
+          }}
+        >
+          <span className="font-display" style={{ color: "rgba(201,168,76,0.5)", fontFamily: "var(--font-heading)" }}>
+            Eretz·IL
+          </span>
+          {" "}— {places.length} destinations across the Holy Land
+        </footer>
+      </div>
 
       <PlaceModal
         place={selectedPlace}
@@ -72,10 +114,6 @@ export default function Home() {
         onClose={() => setSelectedPlace(null)}
         onToggleVisited={toggleVisited}
       />
-
-      <footer className="text-center py-8 text-xs text-gray-400 border-t border-gray-100 mt-8">
-        🇮🇱 Israel Travel Tracker — {places.length} destinations across the Holy Land
-      </footer>
     </div>
   );
 }
