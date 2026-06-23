@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eretz·IL — Discover Israel</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+/* ── Reset & Tokens ─────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-deep:#060d1a;
+  --bg-base:#0a1628;
+  --bg-card:rgba(255,255,255,.055);
+  --border:rgba(255,255,255,.09);
+  --border-gold:rgba(201,168,76,.4);
+  --gold:#c9a84c;
+  --gold-light:#e8c96b;
+  --green:#7de09a;
+  --text:#f0ece4;
+  --text-muted:rgba(240,236,228,.55);
+  --glass:rgba(6,13,26,.8);
+  --radius:16px;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+html{color-scheme:dark;scroll-behavior:smooth}
+body{
+  background:var(--bg-deep);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg-deep)}
+::-webkit-scrollbar-thumb{background:rgba(201,168,76,.35);border-radius:99px}
+
+/* ── Nav ─────────────────────────────────────────── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:var(--glass);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:60px;
+}
+.logo{
+  font-family:'Playfair Display',serif;
+  font-size:20px;font-weight:700;
+  color:var(--text);letter-spacing:-.5px;
+}
+.logo span{color:var(--gold)}
+.progress-bar-wrap{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted)}
+.progress-track{width:110px;height:5px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--green));border-radius:99px;transition:width .6s var(--ease)}
+#visited-count{color:var(--green);font-weight:700}
+
+/* ── Hero ────────────────────────────────────────── */
+#hero{
+  position:relative;min-height:100svh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:80px 24px 60px;
+  overflow:hidden;margin-top:-60px;
+}
+#hero-bg{
+  position:absolute;inset:0;
+  background-image:url('https://images.unsplash.com/photo-1548199589-1b8ef84e1898?auto=format&fit=crop&w=2560&q=90');
+  background-size:cover;background-position:center;
+  filter:brightness(.55);
+}
+#hero::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(6,13,26,.6) 0%,rgba(6,13,26,.3) 40%,rgba(6,13,26,.92) 100%);
+}
+.hero-content{position:relative;z-index:1;max-width:700px}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 16px;border-radius:99px;margin-bottom:28px;
+  background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.35);
+  color:var(--gold);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+}
+.hero-title{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(52px,10vw,96px);
+  font-weight:900;line-height:.92;
+  margin-bottom:20px;
+}
+.hero-title span{
+  display:block;
+  background:linear-gradient(135deg,#e8c96b 0%,#c9a84c 55%,#a07830 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub{font-size:18px;color:rgba(240,236,228,.65);max-width:520px;margin:0 auto 36px;line-height:1.7}
+.hero-cta{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:14px 32px;border-radius:99px;
+  background:linear-gradient(135deg,#c9a84c,#a07830);
+  color:#060d1a;font-weight:700;font-size:15px;
+  border:none;cursor:pointer;
+  box-shadow:0 8px 32px rgba(201,168,76,.35);
+  transition:transform .25s var(--ease),box-shadow .25s;
+}
+.hero-cta:hover{transform:scale(1.05);box-shadow:0 12px 40px rgba(201,168,76,.45)}
+.scroll-line{
+  position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+  z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+}
+.scroll-line span{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:rgba(201,168,76,.5);font-weight:600}
+.scroll-line::after{
+  content:'';display:block;width:1px;height:40px;
+  background:linear-gradient(to bottom,rgba(201,168,76,.5),transparent);
+}
+
+/* ── Toolbar (view toggle + search) ─────────────── */
+#toolbar{
+  position:sticky;top:60px;z-index:90;
+  background:rgba(6,13,26,.88);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+  padding:12px 24px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;
+}
+.view-toggle{
+  display:flex;border-radius:12px;overflow:hidden;padding:3px;
+  background:rgba(255,255,255,.05);border:1px solid var(--border);
+}
+.view-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:9px;border:none;
+  font-size:12px;font-weight:600;cursor:pointer;
+  transition:background .2s,color .2s;
+  background:transparent;color:rgba(240,236,228,.4);
+}
+.view-btn.active{
+  background:rgba(201,168,76,.18);
+  border:1px solid rgba(201,168,76,.35);
+  color:var(--gold);
+}
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:340px}
+.search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.4}
+#search-input{
+  width:100%;padding:9px 12px 9px 36px;
+  border-radius:12px;border:1px solid var(--border);
+  background:rgba(255,255,255,.06);color:var(--text);
+  font-size:13px;outline:none;transition:border-color .2s,background .2s;
+}
+#search-input:focus{border-color:rgba(201,168,76,.5);background:rgba(255,255,255,.09)}
+#search-input::placeholder{color:rgba(240,236,228,.3)}
+
+/* Category chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:99px;font-size:11px;font-weight:600;
+  border:1px solid var(--border);background:rgba(255,255,255,.04);
+  color:rgba(240,236,228,.45);cursor:pointer;transition:all .2s;
+}
+.chip.active{border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.12);color:var(--gold)}
+
+/* ── Grid ────────────────────────────────────────── */
+#grid-section{padding:32px 24px 60px;max-width:1200px;margin:0 auto}
+#place-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:20px;
+}
+.place-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;cursor:pointer;
+  transition:transform .35s var(--ease),box-shadow .35s,border-color .35s;
+}
+.place-card:hover{
+  transform:translateY(-6px) scale(1.01);
+  box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 0 1px var(--border-gold);
+  border-color:var(--border-gold);
+}
+.place-card.visited{border-color:rgba(125,224,154,.3)}
+.card-img{position:relative;height:210px;overflow:hidden}
+.card-img img{width:100%;height:100%;object-fit:cover;transition:transform .6s;display:block}
+.place-card:hover .card-img img{transform:scale(1.06)}
+.card-img-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(6,13,26,.75) 0%,rgba(6,13,26,.15) 60%,transparent 100%);
+}
+.card-top-badges{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between}
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;
+  backdrop-filter:blur(8px);
+}
+.badge-visited{background:rgba(125,224,154,.2);border:1px solid rgba(125,224,154,.5);color:#7de09a}
+.badge-region{position:absolute;bottom:10px;left:10px;display:flex;align-items:center;gap:4px;font-size:11px;color:rgba(240,236,228,.75)}
+.card-body{padding:14px 16px}
+.card-name{
+  font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+  color:var(--text);margin-bottom:3px;line-height:1.2;
+}
+.card-hebrew{font-size:12px;color:rgba(201,168,76,.55);float:right;margin-top:2px}
+.card-desc{font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.55;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:10px;border-top:1px solid rgba(255,255,255,.06);
+}
+.card-link{font-size:13px;font-weight:600;color:var(--gold);background:none;border:none;cursor:pointer}
+.card-visit-btn{
+  font-size:11px;padding:5px 12px;border-radius:99px;font-weight:600;
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);
+  color:rgba(240,236,228,.45);cursor:pointer;transition:all .2s;
+}
+.card-visit-btn:hover,.card-visit-btn.visited{
+  background:rgba(125,224,154,.12);border-color:rgba(125,224,154,.35);color:var(--green);
+}
+#result-count{font-size:12px;color:rgba(240,236,228,.3);width:100%}
+
+/* ── Map ─────────────────────────────────────────── */
+#map-section{height:calc(100svh - 120px);min-height:500px;position:relative}
+#map{height:100%;width:100%;background:#060d1a}
+.map-badge{
+  position:absolute;top:12px;left:12px;z-index:500;
+  display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:14px;font-size:12px;font-weight:600;
+  background:rgba(6,13,26,.88);border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(12px);color:rgba(240,236,228,.65);
+}
+.map-badge strong{color:var(--gold)}
+.map-legend{
+  position:absolute;bottom:40px;left:12px;z-index:500;
+  display:flex;flex-direction:column;gap:6px;
+  padding:10px 14px;border-radius:14px;
+  background:rgba(6,13,26,.88);border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(12px);font-size:11px;
+}
+.legend-item{display:flex;align-items:center;gap:8px;color:rgba(240,236,228,.55)}
+.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+/* Leaflet overrides */
+.leaflet-popup-content-wrapper{background:transparent!important;border:none!important;box-shadow:none!important;padding:0!important}
+.leaflet-popup-content{margin:0!important}
+.leaflet-popup-tip-container{display:none!important}
+.leaflet-control-zoom{border:none!important;border-radius:12px!important;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.5)!important}
+.leaflet-control-zoom a{
+  background:rgba(14,30,56,.95)!important;color:rgba(240,236,228,.7)!important;
+  border-color:rgba(255,255,255,.1)!important;
+  width:34px!important;height:34px!important;line-height:34px!important;font-size:16px!important;
+}
+.leaflet-control-zoom a:hover{background:rgba(201,168,76,.2)!important;color:var(--gold)!important}
+.leaflet-tile-pane{filter:brightness(.88) saturate(.8)}
+.leaflet-attribution-flag{display:none!important}
+.leaflet-control-attribution{background:rgba(6,13,26,.6)!important;color:rgba(240,236,228,.3)!important;font-size:9px!important}
+.leaflet-control-attribution a{color:rgba(201,168,76,.5)!important}
+
+/* ── Modal ───────────────────────────────────────── */
+#modal-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(6,13,26,.85);backdrop-filter:blur(12px);
+  align-items:center;justify-content:center;padding:16px;
+}
+#modal-overlay.open{display:flex}
+#modal{
+  background:linear-gradient(160deg,#0e1e38 0%,#0a1628 60%,#060d1a 100%);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:24px;overflow:hidden;
+  width:100%;max-width:860px;max-height:92svh;
+  display:flex;flex-direction:column;
+  box-shadow:0 40px 100px rgba(0,0,0,.8),0 0 0 1px rgba(201,168,76,.12);
+}
+#modal-hero{position:relative;height:300px;flex-shrink:0;overflow:hidden}
+#modal-hero img{width:100%;height:100%;object-fit:cover;display:block}
+#modal-hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,#060d1a 0%,rgba(6,13,26,.25) 60%,transparent 100%);
+}
+#modal-close{
+  position:absolute;top:14px;right:14px;z-index:2;
+  width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.15);
+  background:rgba(6,13,26,.7);color:rgba(240,236,228,.8);
+  font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .2s;
+}
+#modal-close:hover{background:rgba(6,13,26,.95)}
+#modal-title-area{position:absolute;bottom:0;left:0;right:0;padding:20px 24px 18px}
+#modal-category-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;margin-bottom:10px;
+}
+#modal-title{font-family:'Playfair Display',serif;font-size:clamp(24px,5vw,36px);font-weight:700;color:var(--text);line-height:1.1}
+#modal-meta{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:13px;color:rgba(240,236,228,.55)}
+.modal-hebrew{color:rgba(201,168,76,.6)}
+
+/* Photo strip */
+#modal-photos{display:flex;gap:8px;padding:14px 24px 0;overflow-x:auto;flex-shrink:0}
+#modal-photos img{
+  width:80px;height:56px;object-fit:cover;border-radius:10px;
+  opacity:.5;cursor:pointer;transition:opacity .2s,outline .2s;flex-shrink:0;
+}
+#modal-photos img.active{opacity:1;outline:2px solid var(--gold);outline-offset:2px}
+
+/* Modal body */
+#modal-body{overflow-y:auto;padding:16px 24px 24px;flex:1}
+#modal-desc{font-size:14px;color:rgba(240,236,228,.7);line-height:1.8;margin-bottom:20px}
+#modal-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.info-card{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;
+}
+.info-icon{color:var(--gold);font-size:16px;margin-top:1px}
+.info-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(201,168,76,.55);margin-bottom:2px}
+.info-val{font-size:13px;color:rgba(240,236,228,.85);font-weight:500}
+#modal-highlights-title{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:10px;
+}
+#modal-highlights{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.highlight-tag{
+  font-size:11px;padding:5px 12px;border-radius:99px;
+  background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);
+  color:rgba(232,201,107,.85);font-weight:500;
+}
+#modal-visit-btn{
+  width:100%;padding:13px;border-radius:16px;border:none;
+  font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:all .2s;
+}
+#modal-visit-btn.unvisited{
+  background:linear-gradient(135deg,#c9a84c,#a07830);
+  color:#060d1a;box-shadow:0 8px 24px rgba(201,168,76,.25);
+}
+#modal-visit-btn.visited{
+  background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.25);color:#fca5a5;
+}
+
+/* No results */
+#no-results{text-align:center;padding:80px 24px;display:none}
+#no-results svg{opacity:.3;margin-bottom:12px}
+
+/* Category colors */
+.cat-Historical{--cc:rgba(180,120,40,.18);--cb:rgba(180,120,40,.35);--ct:#e8c96b}
+.cat-Religious  {--cc:rgba(130,80,180,.18);--cb:rgba(130,80,180,.35);--ct:#c4a0f0}
+.cat-Nature     {--cc:rgba(40,160,80,.18); --cb:rgba(40,160,80,.35); --ct:#7de09a}
+.cat-Beach      {--cc:rgba(30,130,200,.18);--cb:rgba(30,130,200,.35);--ct:#70c8f8}
+.cat-Desert     {--cc:rgba(200,100,30,.18);--cb:rgba(200,100,30,.35);--ct:#f4a55a}
+.cat-City       {--cc:rgba(80,100,160,.18);--cb:rgba(80,100,160,.35);--ct:#9fb0e8}
+.cat-Archaeology{--cc:rgba(180,60,60,.18); --cb:rgba(180,60,60,.35); --ct:#f4857a}
+
+.cat-badge{background:var(--cc);border:1px solid var(--cb);color:var(--ct)}
+
+/* Responsive */
+@media(max-width:600px){
+  #modal-info-grid{grid-template-columns:1fr}
+  #place-grid{grid-template-columns:1fr}
+  .hero-sub{font-size:15px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Eretz<span>·</span>IL</div>
+  <div class="progress-bar-wrap">
+    <span><span id="visited-count">0</span> / <span id="total-count">0</span></span>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div id="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">📍 Discover the Holy Land</div>
+    <h1 class="hero-title">
+      Travel<span>Israel</span>
+    </h1>
+    <p class="hero-sub">18 breathtaking destinations across the world's most storied land. Track your journey through ancient history, sacred sites, and natural wonders.</p>
+    <button class="hero-cta" onclick="document.getElementById('toolbar').scrollIntoView({behavior:'smooth'})">
+      🧭 Explore Destinations
+    </button>
+  </div>
+  <div class="scroll-line" onclick="document.getElementById('toolbar').scrollIntoView({behavior:'smooth'})">
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="view-toggle">
+    <button class="view-btn active" id="btn-grid" onclick="setView('grid')">
+      ▦ Grid
+    </button>
+    <button class="view-btn" id="btn-map" onclick="setView('map')">
+      🗺 Map
+    </button>
+  </div>
+  <div class="search-wrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search-input" type="text" placeholder="Search destinations…" oninput="renderGrid()" />
+  </div>
+  <div class="chips" id="chips-row"></div>
+  <div id="result-count"></div>
+</div>
+
+<!-- GRID SECTION -->
+<div id="grid-section">
+  <div id="place-grid"></div>
+  <div id="no-results">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="1.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <p style="font-size:18px;font-weight:600;color:rgba(240,236,228,.6);margin-bottom:6px">No destinations found</p>
+    <p style="font-size:13px;color:rgba(240,236,228,.3)">Try adjusting your filters</p>
+  </div>
+</div>
+
+<!-- MAP SECTION -->
+<div id="map-section" style="display:none">
+  <div id="map"></div>
+  <div class="map-badge">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span><strong id="map-count">18</strong> destinations mapped</span>
+  </div>
+  <div class="map-legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#c9a84c;box-shadow:0 0 6px rgba(201,168,76,.6)"></div>
+      Unvisited
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#7de09a;box-shadow:0 0 6px rgba(125,224,154,.6)"></div>
+      Visited
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer style="text-align:center;padding:32px 24px;font-size:12px;color:rgba(240,236,228,.22);border-top:1px solid rgba(255,255,255,.05)">
+  <span style="font-family:'Playfair Display',serif;color:rgba(201,168,76,.45)">Eretz·IL</span> — 18 destinations across the Holy Land
+</footer>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal">
+    <div id="modal-hero">
+      <img id="modal-hero-img" src="" alt="" />
+      <div id="modal-hero-overlay"></div>
+      <button id="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+      <div id="modal-title-area">
+        <div id="modal-category-badge" class="cat-badge"></div>
+        <h2 id="modal-title"></h2>
+        <div id="modal-meta">
+          <span>📍 <span id="modal-region"></span></span>
+          <span style="color:rgba(201,168,76,.35)">·</span>
+          <span class="modal-hebrew" id="modal-hebrew"></span>
+        </div>
+      </div>
+    </div>
+    <div id="modal-photos"></div>
+    <div id="modal-body">
+      <p id="modal-desc"></p>
+      <div id="modal-info-grid"></div>
+      <div id="modal-highlights-title">⭐ Highlights</div>
+      <div id="modal-highlights"></div>
+      <button id="modal-visit-btn" onclick="modalToggleVisit()"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Data ─────────────────────────────────────────────── */
+const PLACES = [
+  {id:"jerusalem-old-city",name:"Jerusalem Old City",hebrew:"עיר עתיקה",region:"Jerusalem",cat:"Historical",
+   desc:"One of the oldest cities in the world, sacred to Judaism, Christianity, and Islam.",
+   details:"The Old City of Jerusalem contains some of the most iconic religious sites on Earth — the Western Wall, the Dome of the Rock, the Church of the Holy Sepulchre, and the Via Dolorosa. Every alley tells 3,000 years of history. The golden Dome of the Rock gleams above everything, a sight that stops every visitor.",
+   highlights:["Western Wall (Kotel)","Dome of the Rock","Church of the Holy Sepulchre","Via Dolorosa","Jewish Quarter"],
+   time:"March–May or September–November",fee:"Free (individual sites may charge)",
+   img:"1548199589-1b8ef84e1898",lat:31.7767,lng:35.2345},
+  {id:"tel-aviv-jaffa",name:"Tel Aviv & Old Jaffa",hebrew:"תל אביב–יפו",region:"Tel Aviv District",cat:"City",
+   desc:"Israel's vibrant coastal metropolis — Bauhaus boulevards, golden beaches, and the ancient port of Jaffa.",
+   details:"Tel Aviv is the 'city that never stops' — sun-soaked, ultra-modern, with world-class food, art galleries, and UNESCO-listed Bauhaus architecture. Adjacent Old Jaffa, one of the oldest ports in the world, has narrow cobblestone alleys, art studios, and seafood restaurants right against the city skyline.",
+   highlights:["Old Jaffa Port & Clock Tower","Carmel Market","White City Bauhaus (UNESCO)","Rothschild Boulevard","12 km of Mediterranean beach"],
+   time:"Year-round — avoid August heat",fee:"Free",
+   img:"1579965342575-16428a7c8881",lat:32.0853,lng:34.7818},
+  {id:"dead-sea",name:"Dead Sea",hebrew:"ים המלח",region:"Southern District",cat:"Nature",
+   desc:"The lowest point on Earth — float effortlessly in hypersaline waters surrounded by Judean Desert cliffs.",
+   details:"At 430 meters below sea level, the Dead Sea is the lowest exposed point on Earth. Its water is 10× saltier than the ocean — floating here is a surreal, life-affirming experience. The mineral-rich black mud is world-famous for skin-healing properties. Sunrise turns the Jordanian mountains vivid pink and amber.",
+   highlights:["Effortless floating in salt water","Mineral mud bath ritual","Sunrise over Jordan","Ein Gedi oasis nearby","Masada fortress views"],
+   time:"October–April (summers exceed 45°C)",fee:"Resort fees 50–120 NIS",
+   img:"1544551763-8dd44758c2dd",lat:31.5588,lng:35.4732},
+  {id:"masada",name:"Masada",hebrew:"מצדה",region:"Southern District",cat:"Archaeology",
+   desc:"An ancient fortress on a sheer desert plateau — symbol of Jewish heroism and Herod's ultimate palace.",
+   details:"Built by Herod the Great between 37–31 BCE, Masada became the legendary last stand of 960 Jewish Zealots against Rome in 73 CE. Perched 450 meters above the Dead Sea on a sheer rock plateau, it is now a UNESCO World Heritage Site. Hiking the Snake Path at dawn, with the Dead Sea glowing below, is one of the most powerful experiences in Israel.",
+   highlights:["Snake Path dawn hike","Herod's Northern Palace","Roman siege ramp","Cable car rides","Dead Sea panorama"],
+   time:"October–April — arrive before dawn",fee:"29 NIS (cable car extra)",
+   img:"1598802548963-df2dfe8ef95d",lat:31.3155,lng:35.3535},
+  {id:"haifa-bahai",name:"Baha'i Gardens, Haifa",hebrew:"גני הבהאי",region:"Haifa District",cat:"Religious",
+   desc:"Nineteen terraced gardens cascading down Mount Carmel — a UNESCO masterpiece of symmetry and serenity.",
+   details:"The Baha'i World Centre terraced gardens descend 19 immaculate levels down Mount Carmel, with the gold-domed Shrine of the Báb at their center. Free guided tours (Monday–Thursday) provide sweeping views over Haifa Bay and the Mediterranean.",
+   highlights:["19 perfect terraced gardens","Golden-domed Shrine of the Báb","Panoramic Haifa Bay views","Free UNESCO guided tours","Evening illumination"],
+   time:"Year-round — early morning is best",fee:"Free",
+   img:"1580834341580-8c17a3a630ca",lat:32.8152,lng:34.9897},
+  {id:"caesarea",name:"Caesarea National Park",hebrew:"קיסריה",region:"Haifa District",cat:"Archaeology",
+   desc:"A magnificent Roman port city built by Herod the Great, with a theater still ringing with live concerts.",
+   details:"Built between 22–10 BCE, Caesarea was Herod's grand gift to the Roman world. The national park preserves a remarkably intact Roman theater (2,000-year-old stone seats now host concerts), Crusader city walls, ancient hippodrome, and submerged harbor ruins.",
+   highlights:["Roman amphitheater (live concerts)","Herodian harbor ruins","Crusader city walls","Byzantine excavations","Underwater archaeology"],
+   time:"Year-round — concerts in summer",fee:"29 NIS adults",
+   img:"1532375810709-75b1da00537c",lat:32.5,lng:34.9},
+  {id:"sea-galilee",name:"Sea of Galilee",hebrew:"כינרת",region:"Northern District",cat:"Nature",
+   desc:"Israel's inland sea — sacred waters where Jesus walked, surrounded by lush green hills and ancient ruins.",
+   details:"The Kinneret is Israel's largest freshwater lake and a spiritual epicenter for Christianity. Early morning on the water is magical — mist rising from the glass-calm surface while the Golan Heights reflect in the distance. Sites like the Mount of Beatitudes and Capernaum are compelling.",
+   highlights:["Mount of Beatitudes","Capernaum ancient synagogue","Kayaking at sunrise","Tiberias waterfront","Tabgha Church"],
+   time:"March–May and September–November",fee:"Free (individual sites vary)",
+   img:"1548365328-8c849e7a4f5b",lat:32.8208,lng:35.5843},
+  {id:"makhtesh-ramon",name:"Makhtesh Ramon",hebrew:"מכתש רמון",region:"Southern District",cat:"Desert",
+   desc:"The world's largest erosion crater — 200 million years of geology exposed in vivid layers of red and gold.",
+   details:"Makhtesh Ramon is a geological phenomenon unique to the Negev: an erosion cirque 40 km long, 500 meters deep. The multi-colored cliffs expose 200 million years of Earth's history in strata of red sandstone, white chalk, and black basalt. Mitzpe Ramon is one of Israel's prime stargazing spots.",
+   highlights:["Crater rim sunrise hike","4WD desert tours","World-class stargazing","Geological visitor center","Wild ibex herds"],
+   time:"October–April (extreme summer heat)",fee:"29 NIS national park",
+   img:"1509316785289-025f5b846b35",lat:30.5952,lng:34.8007},
+  {id:"akko",name:"Akko (Acre)",hebrew:"עכו",region:"Northern District",cat:"Historical",
+   desc:"A UNESCO Crusader city where underground halls, Ottoman domes, and ancient harbors collide.",
+   details:"One of the oldest inhabited cities on Earth, Akko has been conquered by Phoenicians, Romans, Crusaders, Ottomans, and Napoleon. The UNESCO-listed old city hides an entire underground Crusader city — vast vaulted halls, a refectory, and the eerie Templar Tunnel.",
+   highlights:["Underground Crusader city","Al-Jazzar Mosque","Templar Tunnel","Ancient harbor & fish market","Khan al-Umdan courtyard"],
+   time:"Year-round",fee:"Combined ticket: 46 NIS",
+   img:"1566438480900-0609be27a4be",lat:32.9252,lng:35.0718},
+  {id:"eilat",name:"Eilat & Red Sea",hebrew:"אילת",region:"Southern District",cat:"Beach",
+   desc:"Israel's Red Sea gem — pristine coral reefs, year-round sunshine, and surreal desert-meets-sea landscapes.",
+   details:"At the very tip of Israel where four countries converge, Eilat sits above some of the world's northernmost coral reefs. The warm, gin-clear waters shelter hundreds of tropical fish, turtles, and dolphins. The desert mountains ring the city and offer world-class hiking.",
+   highlights:["Coral Beach reef snorkeling","Underwater Observatory Park","Dolphin Reef swim-with","Red Canyon hike","Timna Valley day trip"],
+   time:"Year-round — summer is very hot",fee:"Free beach; attractions 40–100 NIS",
+   img:"1563911302283-d2bc129e7570",lat:29.5577,lng:34.9519},
+  {id:"nazareth",name:"Nazareth",hebrew:"נצרת",region:"Northern District",cat:"Religious",
+   desc:"The boyhood home of Jesus — a city of pilgrimage with the magnificent Basilica of the Annunciation.",
+   details:"Nazareth is one of Christianity's most sacred destinations. The Basilica of the Annunciation, built over the site where the angel Gabriel appeared to Mary, is one of the largest churches in the Middle East. The Nazareth Village reconstructed first-century farm brings the time of Jesus to life.",
+   highlights:["Basilica of the Annunciation","Nazareth Village","Ancient Bathhouse","Old Market souk","Church of St. Gabriel"],
+   time:"Year-round",fee:"Basilica free; Nazareth Village 45 NIS",
+   img:"1553913861-c0fddf2619ee",lat:32.6996,lng:35.3035},
+  {id:"rosh-hanikra",name:"Rosh HaNikra",hebrew:"ראש הנקרה",region:"Northern District",cat:"Nature",
+   desc:"White chalk sea-cliffs carved into glowing grottos — reached by the world's steepest cable car.",
+   details:"Where the Galilee mountains plunge into the Mediterranean, the sea has carved a spectacular system of caves through brilliant white chalk. The cliffs glow an eerie aquamarine as waves surge through the tunnels below. A dramatically steep cable car (65-degree descent) brings visitors to the cave entrance.",
+   highlights:["Sea grottos & glowing caves","World's steepest cable car","Lebanese border overlook","White cliff coastal walk","Sunset over the Mediterranean"],
+   time:"Year-round",fee:"50 NIS (cable car included)",
+   img:"1506905925346-21bda4d32df4",lat:33.0875,lng:35.1042},
+  {id:"safed",name:"Safed (Tzfat)",hebrew:"צפת",region:"Northern District",cat:"Religious",
+   desc:"A mystical mountain city of Kabbalah, ancient synagogues, and blue-painted alleyways filled with art.",
+   details:"Perched at 900 meters above the Galilee, Safed is one of Judaism's four holy cities and the birthplace of Kabbalah. Its Old City is a maze of blue-and-white alleyways lined with ancient synagogues, art galleries, and studios. In winter, the city is blanketed in snow.",
+   highlights:["Ari Ashkenazi Synagogue","Abuhav Synagogue frescoes","Artists' Quarter galleries","Mountain views over Galilee","Safed Candle Factory"],
+   time:"Spring (wildflowers) or Winter (snow)",fee:"Free",
+   img:"1571019613454-1cb2f99b2d8b",lat:32.9646,lng:35.4961},
+  {id:"ein-gedi",name:"Ein Gedi Nature Reserve",hebrew:"עין גדי",region:"Southern District",cat:"Nature",
+   desc:"A lush desert oasis with cascading waterfalls, ibex herds, and ancient mosaics — steps from the Dead Sea.",
+   details:"Ein Gedi is a lush oasis of springs, waterfalls, and tropical vegetation erupting from the Judean Desert. King David hid from Saul in these gorges. The Nahal David and Nahal Arugot trails lead past natural pools and waterfalls. Wild Nubian ibex walk beside hikers on the trails.",
+   highlights:["David Waterfall & pools","Wild ibex alongside trails","Ancient synagogue mosaic","Nahal Arugot canyon","Dead Sea panoramas"],
+   time:"October–April (summer is very hot)",fee:"29 NIS adults",
+   img:"1447752875215-b2761acb3c5d",lat:31.462,lng:35.391},
+  {id:"golan",name:"Golan Heights",hebrew:"רמת הגולן",region:"Northern District",cat:"Nature",
+   desc:"Volcanic plateaus, snowcapped Hermon, award-winning wineries, and sweeping views to Syria and Lebanon.",
+   details:"The Golan is a volcanic tableland of basalt rock, wildflower meadows, and cascading waterfalls above the Sea of Galilee. Mount Hermon is Israel's only ski mountain. Dozens of boutique wineries produce some of Israel's finest reds. Druze villages offer extraordinary hospitality.",
+   highlights:["Mount Hermon ski resort","Golan boutique wineries","Banias waterfall & ruins","Druze village cuisine","Gamla ancient city"],
+   time:"Spring for wildflowers; Winter for snow",fee:"Varies by attraction",
+   img:"1501854140801-50d01698950b",lat:33.12,lng:35.77},
+  {id:"timna",name:"Timna Valley",hebrew:"עמק תמנע",region:"Southern District",cat:"Archaeology",
+   desc:"Ancient copper mines and towering red sandstone pillars in a surreal painted desert near Eilat.",
+   details:"Timna Valley contains one of the world's oldest copper mines, worked for 9,000 years. The landscape is sensational — towering rust-red sandstone formations sculpted into mushroom shapes and the iconic King Solomon's Pillars: 50-meter walls of fluted sandstone that glow like embers at golden hour.",
+   highlights:["King Solomon's Pillars at sunset","Ancient copper mine tunnels","Mushroom Rock formation","Reconstructed Tabernacle","Desert night stargazing tours"],
+   time:"October–April",fee:"40 NIS adults",
+   img:"1527489377706-5bf97e608852",lat:29.7928,lng:34.975},
+  {id:"beit-shean",name:"Beit She'an",hebrew:"בית שאן",region:"Northern District",cat:"Archaeology",
+   desc:"Israel's best-preserved Roman city — colonnaded streets, temples, and a theater for 8,000 spectators.",
+   details:"Beit She'an is the most complete Roman-Byzantine city in the Middle East. The remarkably preserved colonnaded main street, 2,000-seat theater, Roman bathhouse, and mosaic-floored Byzantine streets give a vivid picture of urban life 2,000 years ago.",
+   highlights:["Roman theater (8,000-seat)","Colonnaded Cardo","Byzantine bathhouse","Seven-thousand-year tel","Egyptian Ramesses II stele"],
+   time:"Year-round — cooler October–April",fee:"28 NIS adults",
+   img:"1555993539-1732b0258235",lat:32.4986,lng:35.4996},
+  {id:"carmel",name:"Mount Carmel & Haifa",hebrew:"הר הכרמל",region:"Haifa District",cat:"Nature",
+   desc:"Mediterranean forest, Druze villages, artists' colonies, and panoramic views over the bay.",
+   details:"Mount Carmel rises to 546 meters above Haifa Bay, cloaked in Israel's most extensive Mediterranean forest. The Carmel National Park features ancient terraced agriculture and archaeological sites. The Ein Hod artists' village has galleries and studios. Druze villages are renowned for the best hummus in northern Israel.",
+   highlights:["Carmel National Park trails","Ein Hod artists' village","Druze cuisine & crafts","Elijah's Cave","Haifa Bay panorama"],
+   time:"Year-round — Spring for wildflowers",fee:"Free",
+   img:"1448375240586-882707db888b",lat:32.7316,lng:34.9872},
+];
+
+const CAT_COLORS = {
+  Historical:  {bg:"rgba(180,120,40,.18)",  border:"rgba(180,120,40,.35)",  text:"#e8c96b"},
+  Religious:   {bg:"rgba(130,80,180,.18)",  border:"rgba(130,80,180,.35)",  text:"#c4a0f0"},
+  Nature:      {bg:"rgba(40,160,80,.18)",   border:"rgba(40,160,80,.35)",   text:"#7de09a"},
+  Beach:       {bg:"rgba(30,130,200,.18)",  border:"rgba(30,130,200,.35)",  text:"#70c8f8"},
+  Desert:      {bg:"rgba(200,100,30,.18)",  border:"rgba(200,100,30,.35)",  text:"#f4a55a"},
+  City:        {bg:"rgba(80,100,160,.18)",  border:"rgba(80,100,160,.35)",  text:"#9fb0e8"},
+  Archaeology: {bg:"rgba(180,60,60,.18)",   border:"rgba(180,60,60,.35)",   text:"#f4857a"},
+};
+const CATEGORIES = ["Historical","Religious","Nature","Beach","Desert","City","Archaeology"];
+const CAT_ICONS = {Historical:"🏛",Religious:"🕌",Nature:"🌿",Beach:"🏖",Desert:"🏜",City:"🏙",Archaeology:"⚱️"};
+const BASE = "https://images.unsplash.com/photo-";
+
+/* ── State ─────────────────────────────────────────────── */
+let visited = new Set(JSON.parse(localStorage.getItem("eretz-visited")||"[]"));
+let activeFilter = "All";
+let currentView = "grid";
+let modalPlace = null;
+let leafletMap = null;
+let markers = {};
+
+/* ── Init ──────────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("total-count").textContent = PLACES.length;
+  buildChips();
+  renderGrid();
+  updateProgress();
+});
+
+/* ── Chips ─────────────────────────────────────────────── */
+function buildChips(){
+  const row = document.getElementById("chips-row");
+  row.innerHTML = `<button class="chip active" onclick="setFilter('All')">All</button>`;
+  CATEGORIES.forEach(cat=>{
+    row.innerHTML += `<button class="chip" id="chip-${cat}" onclick="setFilter('${cat}')">${CAT_ICONS[cat]} ${cat}</button>`;
+  });
+}
+function setFilter(cat){
+  activeFilter = cat;
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+  const target = cat==="All" ? document.querySelector(".chip") : document.getElementById("chip-"+cat);
+  if(target) target.classList.add("active");
+  renderGrid();
+  if(currentView==="map") updateMapMarkers();
+}
+
+/* ── View toggle ──────────────────────────────────────── */
+function setView(v){
+  currentView = v;
+  document.getElementById("btn-grid").classList.toggle("active", v==="grid");
+  document.getElementById("btn-map").classList.toggle("active", v==="map");
+  document.getElementById("grid-section").style.display = v==="grid" ? "block" : "none";
+  document.getElementById("map-section").style.display = v==="map" ? "block" : "none";
+  if(v==="map") initMap();
+}
+
+/* ── Grid ──────────────────────────────────────────────── */
+function getFiltered(){
+  const q = document.getElementById("search-input").value.toLowerCase().trim();
+  return PLACES.filter(p=>{
+    const matchQ = !q || p.name.toLowerCase().includes(q)||p.region.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q);
+    const matchCat = activeFilter==="All"||p.cat===activeFilter;
+    return matchQ && matchCat;
+  });
+}
+function renderGrid(){
+  const list = getFiltered();
+  const grid = document.getElementById("place-grid");
+  const none = document.getElementById("no-results");
+  document.getElementById("result-count").textContent = list.length+" destination"+(list.length!==1?"s":"")+" found";
+  if(!list.length){grid.innerHTML="";none.style.display="block";return;}
+  none.style.display="none";
+  grid.innerHTML = list.map(p=>`
+    <div class="place-card cat-${p.cat} ${visited.has(p.id)?"visited":""}" id="card-${p.id}" onclick="openModal('${p.id}')">
+      <div class="card-img">
+        <img src="${BASE}${p.img}?auto=format&fit=crop&w=800&q=80" alt="${p.name}" loading="lazy" />
+        <div class="card-img-overlay"></div>
+        <div class="card-top-badges">
+          <div class="badge cat-badge">${CAT_ICONS[p.cat]} ${p.cat}</div>
+          ${visited.has(p.id)?'<div class="badge badge-visited">✓ Visited</div>':''}
+        </div>
+        <div class="badge-region">📍 ${p.region}</div>
+      </div>
+      <div class="card-body">
+        <span class="card-hebrew">${p.hebrew}</span>
+        <div class="card-name">${p.name}</div>
+        <p class="card-desc">${p.desc}</p>
+        <div class="card-footer">
+          <button class="card-link" onclick="event.stopPropagation();openModal('${p.id}')">View Details →</button>
+          <button class="card-visit-btn ${visited.has(p.id)?"visited":""}" onclick="event.stopPropagation();toggleVisited('${p.id}')">
+            ${visited.has(p.id)?"✓ Visited":"Mark Visited"}
+          </button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+/* ── Visit tracking ────────────────────────────────────── */
+function toggleVisited(id){
+  if(visited.has(id)) visited.delete(id); else visited.add(id);
+  localStorage.setItem("eretz-visited", JSON.stringify([...visited]));
+  updateProgress();
+  renderGrid();
+  updateMapMarkers();
+  if(modalPlace && modalPlace.id===id) updateModalVisitBtn();
+}
+function updateProgress(){
+  const v = visited.size, t = PLACES.length;
+  document.getElementById("visited-count").textContent = v;
+  document.getElementById("progress-fill").style.width = (t?Math.round(v/t*100):0)+"%";
+}
+
+/* ── Modal ─────────────────────────────────────────────── */
+function openModal(id){
+  const p = PLACES.find(x=>x.id===id);
+  if(!p) return;
+  modalPlace = p;
+  const c = CAT_COLORS[p.cat];
+
+  // Photos
+  const photos = [p.img, p.img, p.img]; // same img at diff sizes for demo strip
+  document.getElementById("modal-hero-img").src = `${BASE}${p.img}?auto=format&fit=crop&w=1200&q=90`;
+
+  // Photos strip
+  document.getElementById("modal-photos").innerHTML = [
+    `${BASE}${p.img}?auto=format&fit=crop&w=1200&q=90`,
+    `${BASE}${p.img}?auto=format&fit=crop&w=600&q=80`,
+    `${BASE}${p.img}?auto=format&fit=crop&w=600&q=70`,
+  ].map((src,i)=>`<img src="${src}" class="${i===0?"active":""}" onclick="switchPhoto(this,'${src}')" alt="Photo ${i+1}" />`).join("");
+
+  document.getElementById("modal-category-badge").className = "cat-badge cat-"+p.cat;
+  document.getElementById("modal-category-badge").innerHTML = `${CAT_ICONS[p.cat]} ${p.cat}`;
+  document.getElementById("modal-category-badge").style.cssText += `;background:${c.bg};border:1px solid ${c.border};color:${c.text}`;
+  document.getElementById("modal-title").textContent = p.name;
+  document.getElementById("modal-region").textContent = p.region;
+  document.getElementById("modal-hebrew").textContent = p.hebrew;
+  document.getElementById("modal-desc").textContent = p.details;
+
+  document.getElementById("modal-info-grid").innerHTML = [
+    {icon:"🕐",label:"Best Time",val:p.time},
+    {icon:"🎟️",label:"Entry Fee",val:p.fee},
+    {icon:"📍",label:"Region",val:p.region},
+    {icon:"🗺️",label:"Coordinates",val:`${p.lat.toFixed(3)}°N · ${p.lng.toFixed(3)}°E`},
+  ].map(x=>`
+    <div class="info-card">
+      <div class="info-icon">${x.icon}</div>
+      <div><div class="info-label">${x.label}</div><div class="info-val">${x.val}</div></div>
+    </div>`).join("");
+
+  document.getElementById("modal-highlights").innerHTML =
+    p.highlights.map(h=>`<span class="highlight-tag">${h}</span>`).join("");
+
+  updateModalVisitBtn();
+  document.getElementById("modal-overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function updateModalVisitBtn(){
+  if(!modalPlace) return;
+  const btn = document.getElementById("modal-visit-btn");
+  const v = visited.has(modalPlace.id);
+  btn.className = "id-modal-visit-btn "+(v?"visited":"unvisited");
+  btn.style.cssText = v
+    ? "width:100%;padding:13px;border-radius:16px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.25);color:#fca5a5;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"
+    : "width:100%;padding:13px;border-radius:16px;background:linear-gradient(135deg,#c9a84c,#a07830);color:#060d1a;font-size:14px;font-weight:700;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(201,168,76,.25);display:flex;align-items:center;justify-content:center;gap:6px";
+  btn.textContent = v ? "✕ Remove from Visited" : "✓ Mark as Visited";
+}
+function modalToggleVisit(){
+  if(modalPlace) toggleVisited(modalPlace.id);
+}
+function switchPhoto(el, src){
+  document.querySelectorAll("#modal-photos img").forEach(i=>i.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("modal-hero-img").src = src;
+}
+function closeModal(e){
+  if(e && e.target!==document.getElementById("modal-overlay") && e.target!==document.getElementById("modal-close")) return;
+  document.getElementById("modal-overlay").classList.remove("open");
+  document.body.style.overflow = "";
+  modalPlace = null;
+}
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") { document.getElementById("modal-overlay").classList.remove("open"); document.body.style.overflow=""; }});
+
+/* ── Leaflet Map ───────────────────────────────────────── */
+function initMap(){
+  if(leafletMap) { updateMapMarkers(); return; }
+  leafletMap = L.map("map",{
+    center:[31.5,35.2], zoom:7,
+    zoomControl:false,
+    attributionControl:true,
+  });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
+    attribution:'© OpenStreetMap · CARTO',
+    subdomains:"abcd", maxZoom:19,
+  }).addTo(leafletMap);
+  L.control.zoom({position:"bottomright"}).addTo(leafletMap);
+  updateMapMarkers();
+}
+
+function makeMarkerIcon(color, glowColor){
+  return L.divIcon({
+    className:"",
+    html:`<div style="position:relative;width:32px;height:42px;">
+      <div style="position:absolute;bottom:0;left:50%;
+        width:32px;height:32px;
+        background:${color};
+        border:2.5px solid rgba(255,255,255,.85);
+        border-radius:50% 50% 50% 0;
+        transform:translateX(-50%) rotate(-45deg);
+        box-shadow:0 4px 14px ${glowColor},0 2px 6px rgba(0,0,0,.5);">
+      </div></div>`,
+    iconSize:[32,42], iconAnchor:[16,42], popupAnchor:[0,-44],
+  });
+}
+
+function updateMapMarkers(){
+  if(!leafletMap) return;
+  // Remove existing
+  Object.values(markers).forEach(m=>m.remove());
+  markers = {};
+
+  const list = getFiltered();
+  document.getElementById("map-count").textContent = list.length;
+
+  list.forEach(p=>{
+    const v = visited.has(p.id);
+    const c = CAT_COLORS[p.cat];
+    const color = v ? "#7de09a" : c.text;
+    const glow = v ? "rgba(125,224,154,.5)" : "rgba(201,168,76,.4)";
+    const icon = makeMarkerIcon(color, glow);
+
+    const m = L.marker([p.lat, p.lng], {icon})
+      .addTo(leafletMap)
+      .bindPopup(`
+        <div onclick="openModal('${p.id}')" style="cursor:pointer;background:linear-gradient(135deg,#0e1e38,#0a1628);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;min-width:190px;box-shadow:0 16px 40px rgba(0,0,0,.7)">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            ${v?'<span style="color:#7de09a;font-weight:700;font-size:12px">✓</span>':''}
+            <span style="color:#f0ece4;font-weight:700;font-size:15px;font-family:Georgia,serif">${p.name}</span>
+          </div>
+          <div style="color:rgba(240,236,228,.5);font-size:11px;margin-bottom:9px">📍 ${p.region}</div>
+          <div style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;background:${c.bg};border:1px solid ${c.border};color:${c.text}">${CAT_ICONS[p.cat]} ${p.cat}</div>
+          <div style="margin-top:9px;color:#c9a84c;font-size:11px;font-weight:600">Tap for full details →</div>
+        </div>
+      `, {closeButton:false, className:"dark-popup"});
+    markers[p.id] = m;
+  });
+}
+</script>
+</body>
+</html>
