@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>אשר גנה | ASHER GANAH — מרכז שירות ופחחות לרכב, הוד השרון</title>
+<title>אשר גנה | ASHER GANAH — מרכז שירות · פחחות וצבע, הוד השרון</title>
 <meta name="description" content="ASHER GANAH — מוסך איי ג'י בהוד השרון. מרכז שירות, פחחות וצבע לרכב. דירוג 4.9 כוכבים, 147 ביקורות. רחוב המסגר 5, הוד השרון. 073-218-7990." />
 <meta name="theme-color" content="#0d0f12" />
-<meta property="og:title" content="ASHER GANAH — מרכז שירות ופחחות לרכב" />
+<meta property="og:title" content="ASHER GANAH — מרכז שירות · פחחות וצבע" />
 <meta property="og:description" content="מוסך איי ג'י הוד השרון · 4.9★ · פחחות, צבע, מיזוג, טיפולים ותיקוני מנוע." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="assets/logo.jpeg" />
@@ -138,18 +138,13 @@
   .hm span{font-size:.82rem;color:var(--muted);letter-spacing:.05em}
   .stars{color:#ffc24b;letter-spacing:2px}
 
-  /* Hero visual — logo emblem (isolated, blends into theme) */
+  /* Hero visual — logo lockup (graphic mark + crisp text) */
   .medallion{position:relative;display:flex;align-items:center;justify-content:center;padding:14px}
-  .medallion .glow{position:absolute;width:74%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(91,155,213,.30),transparent 62%);filter:blur(46px);z-index:0}
-  .medallion::before{content:"";position:absolute;width:min(470px,96%);aspect-ratio:1;border-radius:50%;
-    background:conic-gradient(from 90deg,rgba(255,255,255,.16),transparent 24%,rgba(91,155,213,.20) 50%,transparent 76%,rgba(255,255,255,.16));
-    -webkit-mask:radial-gradient(circle,transparent 78%,#000 79%);mask:radial-gradient(circle,transparent 78%,#000 79%);
-    animation:spin 22s linear infinite;z-index:1;opacity:.45}
-  .medallion img{
-    width:min(420px,86%);position:relative;z-index:2;
-    filter:drop-shadow(0 24px 46px rgba(0,0,0,.6)) drop-shadow(0 0 40px rgba(91,155,213,.22));
-    animation:float 6s ease-in-out infinite;
-  }
+  .medallion .glow{position:absolute;top:36%;left:50%;transform:translate(-50%,-50%);width:60%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(91,155,213,.30),transparent 62%);filter:blur(48px);z-index:0}
+  .logo-lockup{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;animation:float 6s ease-in-out infinite}
+  .logo-mark{width:min(340px,74%);filter:drop-shadow(0 22px 42px rgba(0,0,0,.6)) drop-shadow(0 0 36px rgba(91,155,213,.22))}
+  .logo-word{font-weight:900;font-size:clamp(1.9rem,5.4vw,3rem);letter-spacing:.16em;line-height:1;margin-top:-2px;white-space:nowrap}
+  .logo-tag{color:var(--silver-2);font-size:clamp(.84rem,2.1vw,1.04rem);letter-spacing:.12em;font-weight:600;margin-top:13px;text-align:center}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
   .scroll-cue{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);color:var(--silver-3);font-size:.78rem;letter-spacing:.25em;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.8}
@@ -413,7 +408,7 @@
       <img src="assets/logo.jpeg" alt="ASHER GANAH לוגו" />
       <div>
         <div class="bn chrome-text">ASHER GANAH</div>
-        <div class="bs">מרכז שירות ופחחות לרכב</div>
+        <div class="bs">מרכז שירות · פחחות וצבע</div>
       </div>
     </a>
     <nav class="nav-links">
@@ -464,7 +459,11 @@
 
     <div class="medallion" data-anim="scale">
       <div class="glow" data-parallax="1.4"></div>
-      <img src="assets/logo.png" alt="ASHER GANAH — מרכז שירות ופחחות לרכב" />
+      <div class="logo-lockup">
+        <img class="logo-mark" src="assets/logo_mark.png" alt="ASHER GANAH — מרכז שירות, פחחות וצבע" />
+        <div class="logo-word chrome-text">ASHER GANAH</div>
+        <div class="logo-tag">מרכז שירות · פחחות וצבע</div>
+      </div>
     </div>
   </div>
   <div class="scroll-cue"><span class="dot"></span>גלול</div>
@@ -546,7 +545,7 @@
     <div class="visual-panel" data-anim="left">
       <div class="badge-float bf-1" data-parallax="2.2"><b class="chrome-text">4.9★</b><small>דירוג גוגל</small></div>
       <div class="badge-float bf-2" data-parallax="-1.8"><b>147+</b><small>לקוחות מרוצים</small></div>
-      <img src="assets/logo.png" alt="ASHER GANAH" />
+      <img src="assets/logo_mark.png" alt="ASHER GANAH" />
     </div>
   </div>
 </section>
@@ -647,7 +646,7 @@
       <div class="foot-brand">
         <div class="brand">
           <img src="assets/logo.jpeg" alt="לוגו" style="width:50px;height:50px;aspect-ratio:1;object-fit:cover;object-position:center;border-radius:50%" />
-          <div><div class="bn chrome-text" style="font-weight:900">ASHER GANAH</div><div class="bs" style="font-size:.68rem;color:var(--muted);letter-spacing:.16em">מרכז שירות ופחחות לרכב</div></div>
+          <div><div class="bn chrome-text" style="font-weight:900">ASHER GANAH</div><div class="bs" style="font-size:.68rem;color:var(--muted);letter-spacing:.16em">מרכז שירות · פחחות וצבע</div></div>
         </div>
         <p>מוסך איי ג'י הוד השרון — מקצועיות, אמינות ושירות אישי לכל סוגי הרכבים.</p>
       </div>
@@ -676,7 +675,7 @@
     </div>
     <div class="foot-bottom">
       <span>© <span id="yr"></span> ASHER GANAH · אשר גנה. כל הזכויות שמורות.</span>
-      <span><a href="#" id="a11yStatementFoot" style="color:var(--silver-2)">הצהרת נגישות</a> · מרכז שירות ופחחות לרכב · הוד השרון</span>
+      <span><a href="#" id="a11yStatementFoot" style="color:var(--silver-2)">הצהרת נגישות</a> · מרכז שירות · פחחות וצבע · הוד השרון</span>
     </div>
   </div>
 </footer>
@@ -773,7 +772,7 @@
   <div class="a11y-modal-box">
     <button class="mclose" id="a11yStatementClose" aria-label="סגירה">×</button>
     <h2>הצהרת נגישות</h2>
-    <p>אתר ASHER GANAH — מרכז שירות ופחחות לרכב — רואה חשיבות רבה במתן שירות שוויוני לכלל הלקוחות ופועל להנגשת האתר בהתאם לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע״ג–2013, ולתקן הישראלי 5568 ברמת AA.</p>
+    <p>אתר ASHER GANAH — מרכז שירות · פחחות וצבע — רואה חשיבות רבה במתן שירות שוויוני לכלל הלקוחות ופועל להנגשת האתר בהתאם לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע״ג–2013, ולתקן הישראלי 5568 ברמת AA.</p>
     <h4>אמצעי הנגישות באתר</h4>
     <p>באתר מותקן תפריט נגישות (הלחצן הכחול בפינת המסך) המאפשר, בין היתר: הגדלה והקטנה של גודל הטקסט, ניגודיות גבוהה, היפוך צבעים וגווני אפור, הדגשת קישורים וכותרות, גופן קריא, הגדלת ריווח, סמן עכבר גדול, סרגל קריאה, עצירת אנימציות וניווט מלא באמצעות מקלדת.</p>
     <h4>החרגות נגישות</h4>
