@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Heebo", "Assistant", system-ui, sans-serif;
+}
+
+body {
+  @apply bg-ink-900 text-slate-100 antialiased;
+  background-image: radial-gradient(
+      900px 600px at 100% -10%,
+      rgba(6, 182, 212, 0.12),
+      transparent
+    ),
+    radial-gradient(700px 500px at -10% 110%, rgba(8, 145, 178, 0.1), transparent);
+  background-attachment: fixed;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/10 bg-ink-800/70 p-6 shadow-xl backdrop-blur;
+  }
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-slate-300;
+  }
+  .field-input {
+    @apply w-full rounded-xl border border-white/10 bg-ink-900/60 px-4 py-2.5 text-slate-100
+      outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3
+      font-semibold text-ink-900 transition hover:bg-brand-400
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .chip {
+    @apply cursor-pointer rounded-xl border border-white/10 bg-ink-900/60 px-4 py-2.5 text-center
+      text-sm font-medium transition hover:border-brand-500/60;
+  }
+  .chip-active {
+    @apply border-brand-500 bg-brand-500/15 text-brand-100;
+  }
+}
