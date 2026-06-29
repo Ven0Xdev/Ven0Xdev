@@ -1375,6 +1375,139 @@
 
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+  /* ============================================================
+     MIRA — the AI travel concierge (conversational front-end)
+     ============================================================ */
+  const CC_AV = `<span class="av">${svg('M12 3l1.6 4.8L18 9l-4.4 1.2L12 15l-1.6-4.8L6 9z', 2)}</span>`;
+  const STEPS = [
+    { key: 'dest', type: 'text', ph: 'e.g. Tokyo, Japan',
+      bot: ["Hi, I'm <b>Mira</b> ✨ — your personal AI travel concierge.", "Tell me where you'd love to go and I'll handle everything — itinerary, budget, flights, hotels and more. So… where to? (any city or country)"] },
+    { key: 'origin', type: 'text', ph: 'e.g. London, UK', skip: 'Skip — not sure yet',
+      bot: ["Great pick! ✈️ Where will you be flying <b>from</b>? (so I can price the flights)"] },
+    { key: 'days', type: 'choices', bot: ["How long is the trip?"],
+      choices: [['3', 'Weekend (3 days)'], ['5', '5 days'], ['7', '1 week'], ['10', '10 days'], ['14', '2 weeks']] },
+    { key: 'when', type: 'choices', bot: ["Roughly when are you thinking?"],
+      choices: [['21', 'In a few weeks'], ['45', 'Next month'], ['90', 'In ~3 months'], ['180', 'Later this year']] },
+    { key: 'budget', type: 'choices', bot: ["What's your budget vibe?"],
+      choices: [['budget', 'Shoestring'], ['moderate', 'Comfort'], ['luxury', 'Luxury'], ['ultra', 'No limits']] },
+    { key: 'style', type: 'choices', bot: ["What kind of trip do you want?"],
+      choices: [['balanced', 'A bit of everything'], ['relaxed', 'Slow & relaxed'], ['adventure', 'Adventure'], ['culture', 'Culture & history'], ['foodie', 'All about food'], ['nightlife', 'Nightlife'], ['luxury', 'Wellness & luxury'], ['family', 'Family-friendly']] },
+    { key: 'group', type: 'choices', bot: ["And who's travelling?"],
+      choices: [['solo', 'Just me'], ['couple', 'Couple'], ['friends', 'Friends'], ['family', 'Family with kids']] },
+    { key: 'interests', type: 'multi', bot: ["Last one — tap everything you love, then hit <b>Done</b> and I'll get to work."],
+      choices: INTERESTS.map(i => [i[0], i[1], i[2]]) }
+  ];
+  let ccStep = 0, ccAns = { interests: [] }, ccBusy = false;
+  const ccLog = () => $('#ccLog'), ccQuick = () => $('#ccQuick');
+
+  function ccScroll() { const l = ccLog(); l.scrollTop = l.scrollHeight; }
+  function ccAddUser(text) {
+    const m = el('div', 'msg user', `<div class="bubble">${esc(text)}</div>`);
+    ccLog().appendChild(m); ccScroll();
+  }
+  function ccAddBot(html) {
+    const m = el('div', 'msg bot', `${CC_AV}<div class="bubble">${html}</div>`);
+    ccLog().appendChild(m); ccScroll();
+  }
+  function ccTyping() {
+    const m = el('div', 'msg bot', `${CC_AV}<div class="bubble"><div class="typing"><i></i><i></i><i></i></div></div>`);
+    m.id = 'ccTyping'; ccLog().appendChild(m); ccScroll(); return m;
+  }
+  function ccClearQuick() { ccQuick().className = 'cc-quick'; ccQuick().innerHTML = ''; $('#ccForm').style.display = 'none'; }
+
+  async function ccSay(lines) {
+    for (const line of lines) {
+      const t = ccTyping();
+      await new Promise(r => setTimeout(r, 480 + Math.min(line.length * 7, 700)));
+      t.remove(); ccAddBot(line);
+    }
+  }
+
+  async function ccAsk(i) {
+    ccBusy = true; ccClearQuick();
+    const step = STEPS[i];
+    await ccSay(step.bot);
+    ccBusy = false;
+    if (step.type === 'text') {
+      $('#ccForm').style.display = 'flex';
+      const inp = $('#ccText'); inp.value = ''; inp.placeholder = step.ph || 'Type your answer…'; inp.focus();
+      const q = ccQuick();
+      if (step.skip) { q.className = 'cc-quick show'; q.innerHTML = `<button type="button" class="cc-chip" data-skip="1">${esc(step.skip)}</button>`; }
+    } else if (step.type === 'choices') {
+      const q = ccQuick(); q.className = 'cc-quick show';
+      q.innerHTML = step.choices.map(c => `<button type="button" class="cc-chip" data-val="${esc(c[0])}">${esc(c[1])}</button>`).join('');
+    } else if (step.type === 'multi') {
+      const q = ccQuick(); q.className = 'cc-quick show';
+      q.innerHTML = step.choices.map(c => `<button type="button" class="cc-chip" data-multi="${esc(c[0])}">${svg(c[2], 2.2)}${esc(c[1])}</button>`).join('')
+        + `<button type="button" class="cc-chip go" data-done="1">${svg(I.check, 2.4)}Done — plan it!</button>`;
+    }
+  }
+
+  function ccAnswer(value, label) {
+    if (ccBusy) return;
+    ccAddUser(label);
+    ccAns[STEPS[ccStep].key] = value;
+    ccStep++;
+    if (ccStep < STEPS.length) ccAsk(ccStep); else ccFinish();
+  }
+
+  async function ccFinish() {
+    ccClearQuick();
+    await ccSay([
+      `Perfect. Putting together your full ${ccAns.days}-day plan to <b>${esc(ccAns.dest)}</b> now… 🧳`,
+      "Mapping your days, pricing flights & hotels, and lining up every option…"
+    ]);
+    // translate concierge answers into the form, then run the existing engine
+    $('#dest').value = ccAns.dest;
+    $('#origin').value = ccAns.origin || '';
+    const start = new Date(); start.setDate(start.getDate() + (parseInt(ccAns.when, 10) || 30));
+    const end = new Date(start); end.setDate(end.getDate() + (parseInt(ccAns.days, 10) || 5) - 1);
+    $('#start').value = start.toISOString().slice(0, 10);
+    $('#end').value = end.toISOString().slice(0, 10);
+    $('#style').value = ccAns.style || 'balanced';
+    $('#group').value = ccAns.group || 'couple';
+    budgetVal = ccAns.budget || 'moderate';
+    $$('#budgetSeg .opt').forEach(x => x.classList.toggle('on', x.dataset.val === budgetVal));
+    $$('#interestChips .chip').forEach(c => c.classList.toggle('on', ccAns.interests.includes(c.dataset.val)));
+    const P = gather();
+    if (!P) { ccAddBot("Hmm, I couldn't read that destination — mind trying the form below?"); return; }
+    render(P);
+    await ccSay(["✨ All done! Your complete plan is ready right below — <b>itinerary, budget, flights, hotels, best areas, food, safety and a packing list</b>. Scroll down to explore every option, and tap any card to dig in."]);
+  }
+
+  function ccRestart() {
+    ccStep = 0; ccAns = { interests: [] }; ccBusy = false;
+    ccLog().innerHTML = ''; ccClearQuick();
+    ccAsk(0);
+  }
+
+  function initConcierge() {
+    if (!$('#concierge')) return;
+    // quick-reply / multi / skip clicks
+    ccQuick().addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.val != null) { const lbl = b.textContent.trim(); ccAnswer(b.dataset.val, lbl); }
+      else if (b.dataset.skip) { ccAnswer('', "I'm not sure yet"); }
+      else if (b.dataset.multi != null) {
+        b.classList.toggle('sel');
+        const v = b.dataset.multi, arr = ccAns.interests;
+        const idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx, 1); else arr.push(v);
+      } else if (b.dataset.done) {
+        const chosen = ccAns.interests.length ? ccAns.interests.map(v => (INTERESTS.find(i => i[0] === v) || [, v])[1]).join(', ') : 'Surprise me';
+        ccAddUser(chosen); ccStep++; ccFinish();
+      }
+    });
+    // free-text answers
+    $('#ccForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const v = $('#ccText').value.trim();
+      if (!v) { if (STEPS[ccStep] && STEPS[ccStep].skip) ccAnswer('', "I'm not sure yet"); return; }
+      ccAnswer(v, v);
+    });
+    $('#ccRestart').addEventListener('click', ccRestart);
+    ccAsk(0);
+  }
+
   /* ---------- init ---------- */
   function init() {
     // default dates: 30 days out, 5-day trip
@@ -1393,6 +1526,7 @@
     revealObserver();
     $('#planner').addEventListener('submit', onSubmit);
     $('#demoBtn').addEventListener('click', loadDemo);
+    initConcierge();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

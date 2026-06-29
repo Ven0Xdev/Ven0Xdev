@@ -124,6 +124,53 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 .spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+/* ---------- AI CONCIERGE ---------- */
+.concierge{margin-bottom:18px;overflow:hidden}
+.cc-head{display:flex;align-items:center;gap:13px;padding:16px 22px;border-bottom:1px solid var(--border);background:linear-gradient(120deg,color-mix(in srgb,var(--secondary) 12%,transparent),color-mix(in srgb,var(--primary) 12%,transparent))}
+.cc-avatar{position:relative;width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,var(--secondary),var(--primary));box-shadow:0 8px 20px rgba(8,145,178,.34)}
+.cc-avatar svg{width:24px;height:24px;stroke:#fff;position:relative;z-index:2}
+.cc-orb{position:absolute;inset:-5px;border-radius:50%;background:conic-gradient(from 0deg,var(--secondary),var(--primary),var(--accent),var(--secondary));opacity:.5;filter:blur(6px);animation:ccspin 6s linear infinite}
+@keyframes ccspin{to{transform:rotate(360deg)}}
+.cc-id{flex:1;min-width:0}
+.cc-id b{font-size:1.06rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.cc-tag{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--secondary-d);background:color-mix(in srgb,var(--secondary) 16%,transparent);padding:3px 8px;border-radius:30px}
+[data-theme="dark"] .cc-tag{color:var(--secondary)}
+.cc-status{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--fg2)}
+.cc-status i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 22%,transparent);animation:pulse 2s infinite}
+.cc-restart{width:38px;height:38px;border-radius:11px;border:1px solid var(--border2);display:grid;place-items:center;flex:none;background:var(--bg2);transition:transform .2s,border-color .2s}
+.cc-restart:hover{border-color:var(--primary);transform:rotate(-45deg)}
+.cc-restart svg{width:17px;height:17px;stroke:var(--fg2)}
+.cc-log{padding:20px 22px;display:flex;flex-direction:column;gap:12px;max-height:380px;overflow-y:auto;scroll-behavior:smooth}
+.msg{display:flex;gap:9px;max-width:88%;animation:msgin .35s var(--eout)}
+@keyframes msgin{from{opacity:0;transform:translateY(8px)}}
+.msg.bot{align-self:flex-start}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg .av{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,var(--secondary),var(--primary));margin-top:auto}
+.msg .av svg{width:15px;height:15px;stroke:#fff}
+.bubble{padding:11px 15px;border-radius:16px;font-size:.92rem;line-height:1.55}
+.msg.bot .bubble{background:var(--muted);border:1px solid var(--border);border-bottom-left-radius:5px;color:var(--fg)}
+.msg.user .bubble{background:var(--primary);color:var(--on-primary);border-bottom-right-radius:5px;font-weight:500}
+.bubble b{font-weight:700}
+.typing{display:flex;gap:4px;padding:4px 2px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--fg3);animation:td 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+.cc-quick{display:flex;flex-wrap:wrap;gap:8px;padding:0 22px;max-height:0;overflow:hidden;transition:max-height .3s,padding .3s}
+.cc-quick.show{max-height:400px;padding:0 22px 18px}
+.cc-chip{padding:9px 16px;border-radius:40px;border:1.5px solid var(--border2);background:var(--bg);font-size:.88rem;font-weight:600;color:var(--fg);display:inline-flex;align-items:center;gap:7px;transition:all .18s var(--ease)}
+.cc-chip:hover{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent);transform:translateY(-2px)}
+.cc-chip.sel{background:color-mix(in srgb,var(--primary) 16%,transparent);border-color:var(--primary);color:var(--primary-d)}
+[data-theme="dark"] .cc-chip.sel{color:var(--primary)}
+.cc-chip svg{width:15px;height:15px;stroke:currentColor}
+.cc-chip.go{background:linear-gradient(120deg,var(--primary),var(--accent));color:var(--on-primary);border-color:transparent;box-shadow:0 8px 20px rgba(234,88,12,.3)}
+.cc-input{display:flex;gap:9px;padding:14px 22px;border-top:1px solid var(--border)}
+.cc-input .inp{flex:1}
+.cc-send{width:48px;flex:none;border-radius:var(--r);background:var(--primary);display:grid;place-items:center;transition:transform .2s,background .2s}
+.cc-send:hover{background:var(--primary-d);transform:translateY(-2px)}
+.cc-send svg{width:19px;height:19px;stroke:var(--on-primary)}
+.cc-divider{display:flex;align-items:center;gap:14px;margin:4px 4px 18px;color:var(--fg3);font-size:.78rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.cc-divider::before,.cc-divider::after{content:'';flex:1;height:1px;background:var(--border2)}
+
 /* ---------- RESULTS ---------- */
 #out{max-width:var(--maxw);margin:0 auto;padding:0 clamp(18px,5vw,48px) 80px}
 .result-hero{position:relative;border-radius:var(--rx);overflow:hidden;padding:46px clamp(24px,4vw,48px);color:#fff;box-shadow:var(--shadow-l);margin-bottom:8px}
@@ -352,6 +399,33 @@ footer .brand{justify-content:center;margin-bottom:12px;color:var(--fg)}
 
 <!-- PLANNER -->
 <section id="plan">
+  <!-- AI CONCIERGE -->
+  <div class="card concierge" id="concierge">
+    <div class="cc-head">
+      <span class="cc-avatar" aria-hidden="true">
+        <span class="cc-orb"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.8L18 9l-4.4 1.2L12 15l-1.6-4.8L6 9l4.4-1.2zM18 14l.8 2.4L21 17l-2.2.6L18 20l-.8-2.4L15 17l2.2-.6z"/></svg>
+      </span>
+      <div class="cc-id">
+        <b>Mira <span class="cc-tag">AI concierge</span></b>
+        <span class="cc-status"><i></i> Online — I'll do the planning for you</span>
+      </div>
+      <button class="cc-restart" id="ccRestart" title="Start over" aria-label="Start over">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6M20 20v-6h-6M20 9a8 8 0 00-15-2M4 15a8 8 0 0015 2"/></svg>
+      </button>
+    </div>
+    <div class="cc-log" id="ccLog" role="log" aria-live="polite"></div>
+    <div class="cc-quick" id="ccQuick"></div>
+    <form class="cc-input" id="ccForm" autocomplete="off" style="display:none">
+      <input class="inp" id="ccText" placeholder="Type your answer…" autocomplete="off">
+      <button class="cc-send" type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+      </button>
+    </form>
+  </div>
+
+  <div class="cc-divider"><span>or fill it in yourself</span></div>
+
   <div class="card">
     <div class="planner-head">
       <span class="ph-ic" aria-hidden="true">
