@@ -144,7 +144,7 @@
   .medallion{position:relative;display:flex;align-items:center;justify-content:center;padding:14px;perspective:1500px}
   .medallion .glow{position:absolute;top:36%;left:50%;transform:translate(-50%,-50%);width:60%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(225,29,46,.30),transparent 62%);filter:blur(48px);z-index:0}
   .logo-lockup{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;animation:float 6s ease-in-out infinite}
-  .coin{width:min(330px,74%);aspect-ratio:1;position:relative;transform-style:preserve-3d;will-change:transform;transition:transform .08s linear}
+  .coin{width:min(430px,86%);aspect-ratio:1;position:relative;transform-style:preserve-3d;will-change:transform;transition:transform .06s linear}
   .coin-face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center;overflow:hidden;
     box-shadow:0 34px 60px -22px rgba(20,22,30,.5),inset 0 2px 8px rgba(255,255,255,.07),0 0 0 7px #fff,0 0 0 10px var(--accent),0 0 0 11px rgba(20,22,30,.12)}
   .coin-front{background:radial-gradient(circle at 50% 36%,#2b2e34,#0c0d10 72%)}
@@ -879,7 +879,7 @@
       // Coin flip driven by scroll (reveals the spray-booth photo on the back)
       if(coin){
         if(anim){
-          const prog=Math.min(y/120,1);
+          const prog=Math.min(y/70,1);
           coin.style.transform='rotateY('+(prog*180).toFixed(1)+'deg)';
         }else{
           coin.style.transform='none';
