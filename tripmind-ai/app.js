@@ -42,7 +42,12 @@
     palette: 'M12 3a9 9 0 100 18c1.5 0 2-1 2-2s-1-2 0-3 2 0 3 0a4 4 0 004-4c0-5-4-9-9-9z',
     shirt: 'M6 4l3-1 3 2 3-2 3 1 2 4-3 2v9H7v-9L4 8z',
     cube: 'M12 3l8 4v10l-8 4-8-4V7zM4 7l8 4 8-4M12 11v10',
-    health: 'M12 3v18M3 12h18M8 7h8M8 17h8'
+    health: 'M12 3v18M3 12h18M8 7h8M8 17h8',
+    ext: 'M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h4',
+    ticket: 'M3 8a2 2 0 012-2h14a2 2 0 012 2 2 2 0 000 4 2 2 0 00-2 2v0a2 2 0 01-2 2H5a2 2 0 01-2-2 2 2 0 000-4 2 2 0 002-2zM15 6v12',
+    fire: 'M12 3c1 3 4 4 4 8a4 4 0 01-8 0c0-1 .5-2 1-2.5C9 11 9 9 12 3zM12 21a6 6 0 006-6c0-4-3-6-4-9',
+    headphones: 'M4 14v-2a8 8 0 0116 0v2M4 14a2 2 0 012-2h1v6H6a2 2 0 01-2-2v-2zM20 14a2 2 0 00-2-2h-1v6h1a2 2 0 002-2v-2z',
+    disc: 'M12 3a9 9 0 100 18 9 9 0 000-18z|circle:12,12,2.6'
   };
   function svg(path, w) {
     let extra = '';
@@ -945,6 +950,66 @@
       'Dubai, UAE', 'Reykjavik, Iceland', 'Mexico City, Mexico'];
     dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
   }
+  /* ---------- party / event resources ---------- */
+  const PARTY_GROUPS = [
+    {
+      label: 'Find events anywhere', sub: 'Live listings by city & date',
+      icon: I.ticket,
+      items: [
+        [I.disc, 'Resident Advisor (RA)', 'ra.co', 'https://ra.co', 'Arguably the world\'s best guide to techno, house & underground club nights — searchable by city and date.'],
+        [I.ticket, 'Shotgun', 'shotgun.live', 'https://shotgun.live', 'Parties, raves and festivals across Europe, the US and beyond, with easy mobile ticketing.'],
+        [I.music, 'DICE', 'dice.fm', 'https://dice.fm', 'Gigs, club nights and music events in hundreds of cities, with fair waitlists and resale.'],
+        [I.star, 'Eventbrite', 'eventbrite.com', 'https://www.eventbrite.com', 'Events of every kind — including parties, beach parties and festivals worldwide.'],
+        [I.headphones, 'Bandsintown', 'bandsintown.com', 'https://www.bandsintown.com', 'Track your favorite artists and find their live shows and festival sets around the globe.'],
+        [I.calendar, 'Songkick', 'songkick.com', 'https://www.songkick.com', 'International concert and festival listings with artist tracking and tour alerts.'],
+        [I.info, 'Festicket (archive)', 'web.archive.org', 'https://web.archive.org/web/2022id_/https://www.festicket.com/', 'The service closed in 2022 — but you can still dig up past festival info via the Wayback Machine archive.', 'Service closed · archive only']
+      ]
+    },
+    {
+      label: 'Big EDM festivals', sub: 'The bucket-list dance events',
+      icon: I.fire,
+      items: [
+        [I.star, 'Tomorrowland', 'tomorrowland.com', 'https://www.tomorrowland.com', 'The legendary electronic festival in Boom, Belgium — plus winter and global editions.'],
+        [I.disc, 'Ultra Music Festival', 'ultramusicfestival.com', 'https://ultramusicfestival.com', 'Miami\'s flagship EDM festival and its international spin-offs.'],
+        [I.fire, 'EDC (Electric Daisy Carnival)', 'electricdaisycarnival.com', 'https://www.electricdaisycarnival.com', 'Insomniac\'s massive carnival of stages, rides and art — Las Vegas, Orlando and worldwide.'],
+        [I.music, 'UNTOLD Festival', 'untold.com', 'https://untold.com', 'One of Europe\'s biggest festivals, held in Cluj-Napoca, Romania.'],
+        [I.headphones, 'Awakenings', 'awakenings.com', 'https://www.awakenings.com', 'The benchmark for serious techno — festivals and events out of the Netherlands.'],
+        [I.fire, 'Burning Man', 'burningman.org', 'https://burningman.org', 'The radical art-and-community gathering in Nevada\'s Black Rock Desert.']
+      ]
+    },
+    {
+      label: 'Nature parties & secret raves', sub: 'Psy-trance & open-air gatherings',
+      icon: I.leaf,
+      items: [
+        [I.leaf, 'Goabase', 'goabase.net', 'https://www.goabase.net', 'A worldwide database of psy-trance events and open-air nature parties — the scene\'s noticeboard.'],
+        [I.disc, 'Psytrance Guide', 'psytranceguide.com', 'https://psytranceguide.com', 'A reference to psytrance subgenres, artists and labels — great for getting into the music before you go.']
+      ]
+    }
+  ];
+  function buildParties() {
+    const wrap = $('#partyGroups');
+    if (!wrap) return;
+    wrap.innerHTML = PARTY_GROUPS.map(g => `
+      <div class="party-group">
+        <div class="pg-label">
+          <span class="pg-ic">${svg(g.icon)}</span>
+          <div><h4>${g.label}</h4><span>${g.sub}</span></div>
+        </div>
+        <div class="party-grid">
+          ${g.items.map(it => `
+            <a class="party-card" href="${it[3]}" target="_blank" rel="noopener noreferrer">
+              <span class="pc-ic">${svg(it[0])}</span>
+              <span class="pc-body">
+                <span class="pc-top"><h5>${esc(it[1])}</h5><span class="pc-ext">${svg(I.ext, 2)}</span></span>
+                <p>${esc(it[4])}</p>
+                ${it[5] ? `<span class="pc-note">${svg(I.info, 2.2)}${esc(it[5])}</span>` : `<span class="pc-host">${esc(it[2])}</span>`}
+              </span>
+            </a>`).join('')}
+        </div>
+      </div>`).join('') +
+      `<div class="party-disclaimer">${svg(I.info, 2)}<span>Event details, dates and ticketing change constantly — always confirm on the official site, and only buy tickets through official or authorized sellers.</span></div>`;
+  }
+
   function buildFeatures() {
     const feats = [
       [I.calendar, 'Sequenced days', 'Not just a list — a logical flow from morning highlights to evening eats, paced to your style.'],
@@ -1068,6 +1133,7 @@
 
     buildInterestChips();
     buildDatalist();
+    buildParties();
     buildFeatures();
     wireBudgetSeg();
     initTheme();

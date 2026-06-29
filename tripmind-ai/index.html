@@ -237,6 +237,33 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 
 .empty-note{text-align:center;color:var(--fg3);padding:60px 20px;font-size:.95rem}
 
+/* ---------- PARTIES ---------- */
+#parties{max-width:var(--maxw);margin:0 auto;padding:40px clamp(18px,5vw,48px) 10px}
+.party-group{margin-top:30px}
+.pg-label{display:flex;align-items:center;gap:11px;margin-bottom:16px}
+.pg-label .pg-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex:none;background:linear-gradient(135deg,var(--secondary),var(--primary))}
+.pg-label .pg-ic svg{width:19px;height:19px;stroke:#fff}
+.pg-label h4{font-size:1.18rem;font-weight:600;letter-spacing:-.01em}
+.pg-label span{font-size:.84rem;color:var(--fg2)}
+.party-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.party-card{position:relative;display:flex;gap:13px;align-items:flex-start;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:17px 18px;box-shadow:var(--shadow);transition:transform .2s var(--ease),box-shadow .2s,border-color .2s}
+.party-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-l);border-color:var(--primary)}
+.party-card:focus-visible{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 18%,transparent)}
+.party-card .pc-ic{width:40px;height:40px;border-radius:11px;flex:none;display:grid;place-items:center;background:var(--muted);border:1px solid var(--border)}
+.party-card .pc-ic svg{width:20px;height:20px;stroke:var(--primary)}
+.party-card .pc-body{flex:1;min-width:0}
+.party-card .pc-top{display:flex;align-items:center;gap:7px}
+.party-card h5{font-size:1.02rem;font-weight:600;letter-spacing:-.01em}
+.party-card .pc-ext{width:15px;height:15px;flex:none;opacity:.4;transition:opacity .2s,transform .2s}
+.party-card .pc-ext svg{width:15px;height:15px;stroke:var(--fg3)}
+.party-card:hover .pc-ext{opacity:1;transform:translate(2px,-2px)}.party-card:hover .pc-ext svg{stroke:var(--primary)}
+.party-card p{font-size:.84rem;color:var(--fg2);line-height:1.5;margin-top:3px}
+.party-card .pc-host{display:inline-block;margin-top:7px;font-size:.74rem;font-weight:600;color:var(--secondary-d);letter-spacing:.01em}
+[data-theme="dark"] .party-card .pc-host{color:var(--secondary)}
+.party-card .pc-note{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:.72rem;font-weight:600;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);padding:3px 9px;border-radius:30px}
+.party-disclaimer{margin-top:22px;font-size:.78rem;color:var(--fg3);display:flex;gap:8px;align-items:flex-start;max-width:760px}
+.party-disclaimer svg{width:15px;height:15px;stroke:var(--fg3);flex:none;margin-top:2px}
+
 /* ---------- FEATURES (landing) ---------- */
 #feats{max-width:var(--maxw);margin:0 auto;padding:30px clamp(18px,5vw,48px) 20px}
 .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
@@ -280,6 +307,7 @@ footer .brand{justify-content:center;margin-bottom:12px;color:var(--fg)}
   <div class="nav-right">
     <ul class="nav-links">
       <li><a href="#plan">Plan</a></li>
+      <li><a href="#parties">Parties</a></li>
       <li><a href="#feats">How it works</a></li>
     </ul>
     <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode" title="Toggle theme">
@@ -404,6 +432,15 @@ footer .brand{justify-content:center;margin-bottom:12px;color:var(--fg)}
 
 <!-- RESULTS -->
 <section id="out" aria-live="polite"></section>
+
+<!-- PARTIES -->
+<section id="parties">
+  <div class="sec-head" style="justify-content:center;text-align:center;flex-direction:column;gap:6px;margin-bottom:10px">
+    <h3 class="serif" style="font-size:clamp(1.7rem,4vw,2.4rem)">Find the party</h3>
+    <p style="color:var(--fg2);max-width:600px">Hand-picked platforms to track down club nights, raves, festivals and secret open-air parties wherever you land. All links open the official sites.</p>
+  </div>
+  <div id="partyGroups"></div>
+</section>
 
 <!-- FEATURES -->
 <section id="feats">
