@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TripMind AI — Your Personal Travel Planner</title>
+<meta name="description" content="TripMind AI builds realistic, day-by-day travel itineraries with budgets, where to stay, food picks, safety tips, and a packing list — tailored to your destination, dates, style, and group.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#EA580C; --primary-d:#C2410C; --on-primary:#FFFFFF;
+  --secondary:#0891B2; --secondary-d:#0E7490; --accent:#D97706;
+  --bg:#FFF7ED; --bg2:#FFFFFF; --muted:#FDF4F0; --fg:#0F172A; --fg2:#475569; --fg3:#94A3B8;
+  --border:#FCEAE1; --border2:#F1D9CD; --destructive:#DC2626; --ok:#16A34A;
+  --r:14px; --rl:22px; --rx:30px;
+  --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(234,88,12,.07);
+  --shadow-l:0 24px 60px rgba(15,23,42,.12);
+  --ease:cubic-bezier(.4,0,.2,1); --eout:cubic-bezier(0,0,.2,1);
+  --maxw:1180px;
+}
+[data-theme="dark"]{
+  --primary:#FB923C; --primary-d:#F97316; --on-primary:#1A1207;
+  --secondary:#22D3EE; --secondary-d:#06B6D4; --accent:#FBBF24;
+  --bg:#0B1120; --bg2:#111A2E; --muted:#16223A; --fg:#F1F5F9; --fg2:#94A3B8; --fg3:#64748B;
+  --border:#1E2A44; --border2:#27375A; --destructive:#F87171; --ok:#4ADE80;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --shadow-l:0 30px 70px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--fg);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;transition:background .4s var(--ease),color .4s var(--ease)}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+::selection{background:var(--primary);color:var(--on-primary)}
+svg{display:block}
+.serif{font-family:'Fraunces',Georgia,serif}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ---------- NAV ---------- */
+#nav{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;padding:16px clamp(18px,5vw,48px);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:1.16rem;letter-spacing:-.02em}
+.brand-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));display:grid;place-items:center;box-shadow:0 6px 18px rgba(234,88,12,.34);flex:none}
+.brand-mark svg{width:21px;height:21px;stroke:#fff}
+.brand b{color:var(--primary)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-links{display:flex;gap:26px;list-style:none;font-size:.9rem;font-weight:500;color:var(--fg2)}
+.nav-links a{transition:color .2s}.nav-links a:hover{color:var(--primary)}
+.icon-btn{width:42px;height:42px;border-radius:12px;border:1px solid var(--border2);display:grid;place-items:center;background:var(--bg2);transition:transform .2s,border-color .2s,background .2s}
+.icon-btn:hover{border-color:var(--primary);transform:translateY(-2px)}
+.icon-btn svg{width:19px;height:19px;stroke:var(--fg2)}
+.icon-btn:hover svg{stroke:var(--primary)}
+.nav-cta{padding:11px 22px;border-radius:40px;background:var(--primary);color:var(--on-primary);font-weight:600;font-size:.9rem;box-shadow:0 8px 22px rgba(234,88,12,.28);transition:transform .2s,box-shadow .2s}
+.nav-cta:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(234,88,12,.4)}
+@media(max-width:760px){.nav-links{display:none}}
+
+/* ---------- HERO ---------- */
+#hero{position:relative;padding:clamp(60px,9vw,120px) clamp(18px,5vw,48px) clamp(40px,6vw,72px);max-width:var(--maxw);margin:0 auto;text-align:center}
+.hero-blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;z-index:0;pointer-events:none}
+.b1{width:380px;height:380px;background:radial-gradient(circle,var(--primary),transparent 65%);top:-60px;left:-40px}
+.b2{width:420px;height:420px;background:radial-gradient(circle,var(--secondary),transparent 65%);top:40px;right:-80px;opacity:.32}
+.hero-inner{position:relative;z-index:2}
+.pill{display:inline-flex;align-items:center;gap:9px;padding:8px 17px;border-radius:40px;background:var(--bg2);border:1px solid var(--border2);font-size:.8rem;font-weight:600;color:var(--fg2);box-shadow:var(--shadow);margin-bottom:26px}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 22%,transparent);animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.5}}
+.hero-h1{font-size:clamp(2.6rem,7vw,5rem);line-height:1.02;letter-spacing:-.03em;font-weight:600}
+.hero-h1 em{font-style:italic;color:var(--primary)}
+.hero-grad{background:linear-gradient(110deg,var(--primary),var(--secondary));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-sub{font-size:clamp(1rem,1.5vw,1.22rem);color:var(--fg2);max-width:620px;margin:24px auto 0;line-height:1.7}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:38px}
+.btn-p{display:inline-flex;align-items:center;gap:10px;padding:16px 32px;border-radius:46px;background:var(--primary);color:var(--on-primary);font-weight:600;font-size:1rem;box-shadow:0 12px 32px rgba(234,88,12,.32);transition:transform .2s,box-shadow .2s}
+.btn-p:hover{transform:translateY(-3px);box-shadow:0 20px 46px rgba(234,88,12,.45)}
+.btn-p svg{width:19px;height:19px;stroke:currentColor}
+.btn-g{display:inline-flex;align-items:center;gap:10px;padding:16px 30px;border-radius:46px;background:var(--bg2);border:1px solid var(--border2);font-weight:600;font-size:1rem;color:var(--fg);transition:transform .2s,border-color .2s}
+.btn-g:hover{transform:translateY(-3px);border-color:var(--primary)}
+.hero-stats{display:flex;gap:clamp(20px,5vw,56px);justify-content:center;flex-wrap:wrap;margin-top:54px}
+.stat b{display:block;font-size:1.9rem;font-weight:700;letter-spacing:-.02em;color:var(--primary);font-family:'Fraunces',serif}
+.stat span{font-size:.82rem;color:var(--fg2);font-weight:500}
+
+/* ---------- PLANNER ---------- */
+#plan{max-width:var(--maxw);margin:0 auto;padding:24px clamp(18px,5vw,48px) 40px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rx);box-shadow:var(--shadow-l);overflow:hidden}
+.planner-head{padding:30px clamp(22px,4vw,40px) 8px;display:flex;align-items:flex-start;gap:16px}
+.planner-head .ph-ic{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--secondary),var(--primary));display:grid;place-items:center;flex:none;box-shadow:0 8px 20px rgba(8,145,178,.3)}
+.planner-head .ph-ic svg{width:24px;height:24px;stroke:#fff}
+.planner-head h2{font-size:1.5rem;letter-spacing:-.02em;font-weight:600}
+.planner-head p{color:var(--fg2);font-size:.94rem;margin-top:2px}
+form#planner{padding:18px clamp(22px,4vw,40px) 34px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:680px){.grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:8px}
+.field.full{grid-column:1/-1}
+.field label{font-size:.84rem;font-weight:600;color:var(--fg);display:flex;align-items:center;gap:7px}
+.field label .req{color:var(--primary)}
+.field .hint{font-size:.76rem;color:var(--fg3);font-weight:400}
+.inp{width:100%;padding:13px 15px;border-radius:var(--r);border:1.5px solid var(--border2);background:var(--bg);color:var(--fg);font-size:.96rem;transition:border-color .2s,box-shadow .2s}
+.inp::placeholder{color:var(--fg3)}
+.inp:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 16%,transparent)}
+select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px}
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{padding:9px 15px;border-radius:40px;border:1.5px solid var(--border2);background:var(--bg);font-size:.86rem;font-weight:500;color:var(--fg2);transition:all .2s var(--ease);display:inline-flex;align-items:center;gap:7px;user-select:none}
+.chip:hover{border-color:var(--primary);color:var(--fg)}
+.chip svg{width:15px;height:15px;stroke:currentColor}
+.chip.on{background:color-mix(in srgb,var(--primary) 14%,transparent);border-color:var(--primary);color:var(--primary-d)}
+[data-theme="dark"] .chip.on{color:var(--primary)}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg .opt{flex:1;min-width:90px;padding:12px 10px;border-radius:var(--r);border:1.5px solid var(--border2);background:var(--bg);text-align:center;cursor:pointer;transition:all .2s;font-weight:500;font-size:.88rem}
+.seg .opt small{display:block;font-size:.72rem;color:var(--fg3);font-weight:400;margin-top:2px}
+.seg .opt:hover{border-color:var(--primary)}
+.seg .opt.on{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary-d)}
+[data-theme="dark"] .seg .opt.on{color:var(--primary)}
+.err{color:var(--destructive);font-size:.78rem;font-weight:500;display:none}
+.field.invalid .err{display:block}
+.field.invalid .inp{border-color:var(--destructive)}
+.form-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:30px}
+.form-foot .note{font-size:.8rem;color:var(--fg3);max-width:420px}
+.btn-build{display:inline-flex;align-items:center;gap:11px;padding:16px 34px;border-radius:46px;background:linear-gradient(120deg,var(--primary),var(--accent));color:var(--on-primary);font-weight:700;font-size:1.02rem;box-shadow:0 14px 34px rgba(234,88,12,.36);transition:transform .2s,box-shadow .2s}
+.btn-build:hover{transform:translateY(-2px);box-shadow:0 20px 46px rgba(234,88,12,.5)}
+.btn-build:disabled{opacity:.6;cursor:wait;transform:none}
+.btn-build svg{width:20px;height:20px;stroke:currentColor}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ---------- RESULTS ---------- */
+#out{max-width:var(--maxw);margin:0 auto;padding:0 clamp(18px,5vw,48px) 80px}
+.result-hero{position:relative;border-radius:var(--rx);overflow:hidden;padding:46px clamp(24px,4vw,48px);color:#fff;box-shadow:var(--shadow-l);margin-bottom:8px}
+.result-hero::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,var(--secondary-d),var(--primary-d));z-index:0}
+.result-hero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(255,255,255,.18),transparent 55%);z-index:1}
+.rh-in{position:relative;z-index:2}
+.rh-eyebrow{font-size:.78rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;opacity:.85}
+.rh-title{font-size:clamp(2rem,4.5vw,3.1rem);font-weight:600;letter-spacing:-.02em;margin-top:8px;line-height:1.05}
+.rh-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.rh-tag{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:40px;background:rgba(255,255,255,.16);backdrop-filter:blur(6px);font-size:.84rem;font-weight:500}
+.rh-tag svg{width:15px;height:15px;stroke:#fff}
+.rh-summary{margin-top:22px;font-size:1.02rem;line-height:1.7;max-width:780px;opacity:.96}
+.rh-actions{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
+.rh-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:40px;background:rgba(255,255,255,.95);color:var(--primary-d);font-weight:600;font-size:.9rem;transition:transform .2s}
+.rh-btn.ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.rh-btn:hover{transform:translateY(-2px)}
+.rh-btn svg{width:16px;height:16px;stroke:currentColor}
+
+.section{margin-top:30px}
+.sec-head{display:flex;align-items:center;gap:13px;margin-bottom:18px}
+.sec-ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--muted);border:1px solid var(--border)}
+.sec-ic svg{width:21px;height:21px;stroke:var(--primary)}
+.sec-head h3{font-size:1.4rem;font-weight:600;letter-spacing:-.02em}
+.sec-head p{font-size:.86rem;color:var(--fg2)}
+
+/* day cards */
+.days{display:flex;flex-direction:column;gap:16px}
+.day{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .25s}
+.day:hover{box-shadow:var(--shadow-l)}
+.day-top{display:flex;align-items:center;gap:14px;padding:18px 22px;cursor:pointer;user-select:none}
+.day-num{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;display:grid;place-items:center;font-weight:700;flex:none;text-align:center;line-height:1}
+.day-num small{display:block;font-size:.58rem;font-weight:600;opacity:.85;letter-spacing:.05em}
+.day-num b{font-size:1.2rem}
+.day-meta{flex:1;min-width:0}
+.day-meta h4{font-size:1.08rem;font-weight:600;letter-spacing:-.01em}
+.day-meta .date{font-size:.8rem;color:var(--fg3);font-weight:500}
+.day-theme{font-size:.82rem;color:var(--secondary-d);font-weight:600}
+[data-theme="dark"] .day-theme{color:var(--secondary)}
+.day-cost{font-size:.82rem;font-weight:600;color:var(--fg2);background:var(--muted);padding:6px 12px;border-radius:30px;white-space:nowrap}
+.day-caret{transition:transform .3s;flex:none}.day-caret svg{width:20px;height:20px;stroke:var(--fg3)}
+.day.open .day-caret{transform:rotate(180deg)}
+.day-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s var(--ease)}
+.day.open .day-body{grid-template-rows:1fr}
+.day-body>div{overflow:hidden}
+.timeline{padding:4px 22px 22px;position:relative}
+.tl-item{display:flex;gap:15px;padding:13px 0;border-top:1px dashed var(--border2)}
+.tl-time{flex:none;width:78px;font-size:.8rem;font-weight:600;color:var(--primary);padding-top:1px}
+.tl-time small{display:block;font-weight:500;color:var(--fg3);font-size:.7rem}
+.tl-dot{flex:none;width:11px;height:11px;border-radius:50%;background:var(--bg2);border:2.5px solid var(--secondary);margin-top:5px}
+.tl-c{flex:1}
+.tl-c b{font-weight:600;font-size:.96rem}
+.tl-c p{font-size:.86rem;color:var(--fg2);margin-top:2px}
+.tl-c .tip{font-size:.78rem;color:var(--fg3);margin-top:3px;display:flex;align-items:center;gap:5px}
+.tl-c .tip svg{width:12px;height:12px;stroke:var(--accent);flex:none}
+
+/* generic info grid */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.info-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:20px;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s}
+.info-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-l)}
+.info-card .ic-h{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.info-card .ic-h .badge{font-size:.68rem;font-weight:700;letter-spacing:.04em;padding:4px 9px;border-radius:30px;background:color-mix(in srgb,var(--secondary) 16%,transparent);color:var(--secondary-d);text-transform:uppercase}
+[data-theme="dark"] .info-card .ic-h .badge{color:var(--secondary)}
+.info-card h4{font-size:1.06rem;font-weight:600}
+.info-card p{font-size:.87rem;color:var(--fg2);line-height:1.6}
+.info-card ul{list-style:none;margin-top:6px}
+.info-card ul li{font-size:.87rem;color:var(--fg2);padding:5px 0 5px 22px;position:relative;line-height:1.5}
+.info-card ul li::before{content:'';position:absolute;left:3px;top:11px;width:7px;height:7px;border-radius:50%;background:var(--primary)}
+.info-card .price{font-weight:700;color:var(--primary);font-family:'Fraunces',serif}
+
+/* budget */
+.budget-wrap{display:grid;grid-template-columns:1.1fr 1fr;gap:22px}
+@media(max-width:760px){.budget-wrap{grid-template-columns:1fr}}
+.budget-total{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border-radius:var(--rl);padding:26px;box-shadow:var(--shadow-l);display:flex;flex-direction:column;justify-content:center}
+.budget-total .bt-lbl{font-size:.82rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;opacity:.9}
+.budget-total .bt-num{font-size:clamp(2.4rem,6vw,3.4rem);font-weight:600;font-family:'Fraunces',serif;line-height:1;margin:8px 0 4px}
+.budget-total .bt-sub{font-size:.9rem;opacity:.92}
+.budget-total .bt-per{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.25);display:flex;justify-content:space-between;font-size:.88rem}
+.budget-total .bt-per b{font-weight:700}
+.budget-bars{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:22px;box-shadow:var(--shadow)}
+.bar-row{margin-bottom:15px}
+.bar-row:last-child{margin-bottom:0}
+.bar-top{display:flex;justify-content:space-between;font-size:.86rem;margin-bottom:6px}
+.bar-top b{font-weight:600}.bar-top span{color:var(--fg2);font-weight:600}
+.bar-track{height:9px;border-radius:6px;background:var(--muted);overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;width:0;transition:width 1s var(--eout)}
+.disclaimer{margin-top:14px;font-size:.78rem;color:var(--fg3);display:flex;gap:8px;align-items:flex-start}
+.disclaimer svg{width:15px;height:15px;stroke:var(--fg3);flex:none;margin-top:2px}
+
+/* packing */
+.pack-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.pack-cat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:18px;box-shadow:var(--shadow)}
+.pack-cat h4{font-size:.96rem;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.pack-cat h4 svg{width:17px;height:17px;stroke:var(--primary)}
+.pack-item{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:.86rem;color:var(--fg2);cursor:pointer}
+.pack-item .box{width:18px;height:18px;border-radius:6px;border:2px solid var(--border2);flex:none;display:grid;place-items:center;transition:all .2s}
+.pack-item .box svg{width:11px;height:11px;stroke:#fff;opacity:0;transition:opacity .15s}
+.pack-item.checked .box{background:var(--ok);border-color:var(--ok)}
+.pack-item.checked .box svg{opacity:1}
+.pack-item.checked span{text-decoration:line-through;color:var(--fg3)}
+
+/* safety severity */
+.safe-list{display:flex;flex-direction:column;gap:11px}
+.safe-item{display:flex;gap:13px;background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--secondary);border-radius:var(--r);padding:15px 18px;box-shadow:var(--shadow)}
+.safe-item.high{border-left-color:var(--destructive)}
+.safe-item.med{border-left-color:var(--accent)}
+.safe-item .si-ic{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--muted)}
+.safe-item .si-ic svg{width:18px;height:18px;stroke:var(--secondary)}
+.safe-item.high .si-ic svg{stroke:var(--destructive)}.safe-item.med .si-ic svg{stroke:var(--accent)}
+.safe-item h4{font-size:.95rem;font-weight:600}
+.safe-item p{font-size:.85rem;color:var(--fg2);margin-top:2px}
+
+.empty-note{text-align:center;color:var(--fg3);padding:60px 20px;font-size:.95rem}
+
+/* ---------- FEATURES (landing) ---------- */
+#feats{max-width:var(--maxw);margin:0 auto;padding:30px clamp(18px,5vw,48px) 20px}
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+.feat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:24px;box-shadow:var(--shadow);transition:transform .25s,box-shadow .25s}
+.feat:hover{transform:translateY(-4px);box-shadow:var(--shadow-l)}
+.feat .f-ic{width:46px;height:46px;border-radius:13px;background:var(--muted);display:grid;place-items:center;margin-bottom:14px}
+.feat .f-ic svg{width:23px;height:23px;stroke:var(--primary)}
+.feat h4{font-size:1.08rem;font-weight:600;margin-bottom:6px}
+.feat p{font-size:.88rem;color:var(--fg2);line-height:1.6}
+
+/* ---------- FOOTER ---------- */
+footer{border-top:1px solid var(--border);margin-top:40px;padding:34px clamp(18px,5vw,48px);text-align:center;color:var(--fg3);font-size:.86rem}
+footer .brand{justify-content:center;margin-bottom:12px;color:var(--fg)}
+
+/* toast */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(120px);z-index:200;background:var(--fg);color:var(--bg);padding:13px 22px;border-radius:40px;font-size:.9rem;font-weight:500;box-shadow:var(--shadow-l);transition:transform .35s var(--eout);display:flex;align-items:center;gap:9px}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast svg{width:17px;height:17px;stroke:var(--ok)}
+
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .6s var(--eout),transform .6s var(--eout)}
+.reveal.in{opacity:1;transform:none}
+
+@media print{
+  #nav,#hero,#feats,footer,.rh-actions,.form-foot,#plan{display:none!important}
+  body{background:#fff}
+  .day-body{grid-template-rows:1fr!important}
+  .day-caret{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#top" class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.4"/></svg>
+    </span>
+    Trip<b>Mind</b> AI
+  </a>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li><a href="#plan">Plan</a></li>
+      <li><a href="#feats">How it works</a></li>
+    </ul>
+    <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode" title="Toggle theme">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+    </button>
+    <a href="#plan" class="nav-cta">Plan a trip</a>
+  </div>
+</nav>
+
+<span id="top"></span>
+
+<!-- HERO -->
+<header id="hero">
+  <div class="hero-blob b1"></div>
+  <div class="hero-blob b2"></div>
+  <div class="hero-inner">
+    <span class="pill"><span class="dot"></span>Smart itineraries in seconds — no signup</span>
+    <h1 class="hero-h1 serif">Plan the <em>perfect trip</em>,<br>built around <span class="hero-grad">you</span>.</h1>
+    <p class="hero-sub">Tell TripMind AI where you're going, your dates, budget and what you love. Get a realistic day-by-day itinerary, a costed budget, where to stay, food picks, safety tips, and a packing list — all in one place.</p>
+    <div class="hero-btns">
+      <a href="#plan" class="btn-p">Build my itinerary
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <button class="btn-g" id="demoBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>
+        Try a sample trip
+      </button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><b>6-in-1</b><span>Complete travel plan</span></div>
+      <div class="stat"><b>Any</b><span>Destination worldwide</span></div>
+      <div class="stat"><b>0</b><span>Accounts or fees</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- PLANNER -->
+<section id="plan">
+  <div class="card">
+    <div class="planner-head">
+      <span class="ph-ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z"/><path d="M9 4v14M15 6v14"/></svg>
+      </span>
+      <div>
+        <h2 class="serif">Plan your trip</h2>
+        <p>Fill in the details below. Everything marked with <span style="color:var(--primary)">*</span> is required.</p>
+      </div>
+    </div>
+    <form id="planner" novalidate>
+      <div class="grid">
+        <div class="field full">
+          <label for="dest">Destination <span class="req">*</span> <span class="hint">— city, region or country</span></label>
+          <input class="inp" id="dest" name="dest" placeholder="e.g. Tokyo, Japan" autocomplete="off" list="destSuggest">
+          <datalist id="destSuggest"></datalist>
+          <span class="err">Please enter a destination.</span>
+        </div>
+        <div class="field">
+          <label for="start">Start date <span class="req">*</span></label>
+          <input class="inp" type="date" id="start" name="start">
+          <span class="err">Please choose a start date.</span>
+        </div>
+        <div class="field">
+          <label for="end">End date <span class="req">*</span></label>
+          <input class="inp" type="date" id="end" name="end">
+          <span class="err">End date must be on or after the start date.</span>
+        </div>
+
+        <div class="field full">
+          <label>Daily budget per person <span class="req">*</span> <span class="hint">— excluding flights</span></label>
+          <div class="seg" id="budgetSeg" role="group" aria-label="Budget level">
+            <div class="opt" data-val="budget" tabindex="0">Shoestring<small>~$40/day</small></div>
+            <div class="opt on" data-val="moderate" tabindex="0">Comfort<small>~$120/day</small></div>
+            <div class="opt" data-val="luxury" tabindex="0">Luxury<small>~$350/day</small></div>
+            <div class="opt" data-val="ultra" tabindex="0">No limits<small>~$700/day</small></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="style">Travel style <span class="req">*</span></label>
+          <select class="inp" id="style" name="style">
+            <option value="balanced">Balanced explorer</option>
+            <option value="relaxed">Slow & relaxed</option>
+            <option value="adventure">Adventure & outdoors</option>
+            <option value="culture">Culture & history</option>
+            <option value="foodie">Food-focused</option>
+            <option value="nightlife">Nightlife & social</option>
+            <option value="luxury">Luxury & wellness</option>
+            <option value="family">Family-friendly</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="group">Group <span class="req">*</span></label>
+          <select class="inp" id="group" name="group">
+            <option value="solo">Solo traveler</option>
+            <option value="couple" selected>Couple</option>
+            <option value="friends">Friends group</option>
+            <option value="family">Family with kids</option>
+          </select>
+        </div>
+
+        <div class="field full">
+          <label>Interests <span class="hint">— pick a few, we'll weave them in</span></label>
+          <div class="chips" id="interestChips"></div>
+        </div>
+
+        <div class="field full">
+          <label for="pace">Anything else? <span class="hint">— optional notes (dietary needs, must-sees, mobility…)</span></label>
+          <input class="inp" id="notes" name="notes" placeholder="e.g. vegetarian, love jazz, prefer not to walk too much">
+        </div>
+      </div>
+
+      <div class="form-foot">
+        <p class="note">TripMind builds a smart, opinionated plan from typical local rhythms and costs. Always double-check opening hours, prices and entry rules before you go.</p>
+        <button type="submit" class="btn-build" id="buildBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z"/></svg>
+          Build my itinerary
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="out" aria-live="polite"></section>
+
+<!-- FEATURES -->
+<section id="feats">
+  <div class="sec-head" style="justify-content:center;text-align:center;flex-direction:column;gap:6px;margin-bottom:26px">
+    <h3 class="serif" style="font-size:clamp(1.7rem,4vw,2.4rem)">Everything in one plan</h3>
+    <p style="color:var(--fg2);max-width:560px">TripMind doesn't just list places — it sequences your days, costs them out, and preps you for the trip.</p>
+  </div>
+  <div class="feat-grid" id="featGrid"></div>
+</section>
+
+<footer>
+  <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.4"/></svg></span> Trip<b style="color:var(--primary)">Mind</b> AI</div>
+  <p>Your personal AI travel planner. Itineraries are generated guidance — verify hours, prices &amp; safety advisories before you travel.</p>
+  <p style="margin-top:8px;opacity:.7">Built as a demo · No data leaves your browser</p>
+</footer>
+
+<div id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span id="toastMsg">Done</span></div>
+
+<script src="app.js"></script>
+</body>
+</html>
