@@ -270,9 +270,90 @@
   .mobile-menu.open{transform:none}
   .mobile-menu a{display:block;padding:14px 4px;font-size:1.1rem;font-weight:600;border-bottom:1px solid var(--line)}
   .mobile-menu .btn{width:100%;justify-content:center;margin-top:16px}
+
+  /* ============ ACCESSIBILITY (נגישות) ============ */
+  .skip-link{position:fixed;top:-200px;right:18px;z-index:300;background:#fff;color:#000;padding:12px 22px;border-radius:10px;font-weight:800;transition:top .2s ease}
+  .skip-link:focus{top:14px;outline:3px solid var(--accent);outline-offset:2px}
+  *:focus-visible{outline:3px solid #6aa9e0;outline-offset:3px;border-radius:6px}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+  /* Accessibility launcher button */
+  .a11y-btn{position:fixed;bottom:96px;left:24px;z-index:95;width:56px;height:56px;border-radius:50%;background:#1d4ed8;border:2px solid #fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 12px 30px -10px rgba(29,78,216,.7)}
+  .a11y-btn:hover{background:#2563eb;transform:translateY(-2px)}
+  .a11y-btn svg{width:30px;height:30px;stroke:#fff;fill:none;stroke-width:1.8}
+  /* Panel */
+  .a11y-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:118;opacity:0;visibility:hidden;transition:.3s}
+  .a11y-overlay.open{opacity:1;visibility:visible}
+  .a11y-panel{position:fixed;top:0;bottom:0;left:0;width:340px;max-width:88vw;background:#0f1217;border-left:1px solid var(--line);z-index:120;transform:translateX(-110%);transition:transform .35s cubic-bezier(.2,.7,.2,1);overflow-y:auto;padding:22px 20px 40px;box-shadow:24px 0 60px -20px rgba(0,0,0,.8)}
+  .a11y-panel.open{transform:none}
+  .a11y-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .a11y-head h3{font-size:1.2rem;font-weight:900;display:flex;align-items:center;gap:10px}
+  .a11y-head h3 svg{width:24px;height:24px;stroke:#6aa9e0;fill:none;stroke-width:1.8}
+  .a11y-close{background:none;border:1px solid var(--line);color:#fff;width:38px;height:38px;border-radius:10px;font-size:1.3rem;cursor:pointer;line-height:1}
+  .a11y-close:hover{border-color:#6aa9e0}
+  .a11y-section{margin-bottom:20px}
+  .a11y-section>h4{font-size:.78rem;letter-spacing:.12em;color:var(--silver-3);text-transform:uppercase;margin-bottom:10px}
+  .a11y-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .a11y-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px 8px;border:1px solid var(--line);border-radius:12px;background:#161b22;color:#e9ecf1;cursor:pointer;font-size:.82rem;font-weight:600;text-align:center;transition:.18s;min-height:84px}
+  .a11y-item:hover{border-color:#6aa9e0;background:#1a212b}
+  .a11y-item svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7}
+  .a11y-item[aria-pressed="true"]{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+  .a11y-fs{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#161b22;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .a11y-fs button{width:48px;height:48px;border-radius:10px;border:1px solid var(--line);background:#0f1217;color:#fff;font-size:1.3rem;font-weight:800;cursor:pointer}
+  .a11y-fs button:hover{border-color:#6aa9e0;background:#1d4ed8}
+  .a11y-fs .lbl{font-weight:700;font-size:.95rem}
+  .a11y-fs .lbl b{display:block;font-size:1.2rem;color:#6aa9e0}
+  .a11y-foot{display:grid;gap:10px;margin-top:8px}
+  .a11y-foot button,.a11y-foot a{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:11px;font-weight:700;cursor:pointer;font-size:.95rem;border:1px solid var(--line);background:#161b22;color:#fff}
+  .a11y-reset{background:#7f1d1d!important;border-color:#7f1d1d!important}
+  .a11y-foot button:hover,.a11y-foot a:hover{filter:brightness(1.15)}
+
+  /* Reading guide bar */
+  .a11y-guide{position:fixed;left:0;right:0;height:34px;background:rgba(91,155,213,.18);border-top:2px solid #6aa9e0;border-bottom:2px solid #6aa9e0;pointer-events:none;z-index:110;display:none;transform:translateY(-50%)}
+  html.acc-guide .a11y-guide{display:block}
+
+  /* ===== Applied accessibility modes (on <html>) ===== */
+  html.acc-fs--1{font-size:90%}
+  html.acc-fs-1{font-size:112.5%}
+  html.acc-fs-2{font-size:125%}
+  html.acc-fs-3{font-size:140%}
+
+  html.acc-contrast body{background:#000!important;color:#fff!important}
+  html.acc-contrast .card,html.acc-contrast .rev,html.acc-contrast .info-card,html.acc-contrast .stat,html.acc-contrast .visual-panel,html.acc-contrast header.scrolled,html.acc-contrast .strip,html.acc-contrast footer,html.acc-contrast .map-card,html.acc-contrast section{background:#000!important;border-color:#fff!important}
+  html.acc-contrast p,html.acc-contrast small,html.acc-contrast span,html.acc-contrast h1,html.acc-contrast h2,html.acc-contrast h3,html.acc-contrast h4,html.acc-contrast h5,html.acc-contrast a,html.acc-contrast b,html.acc-contrast div{color:#fff!important}
+  html.acc-contrast .chrome-text{-webkit-text-fill-color:#ffe600!important;color:#ffe600!important;background:none!important}
+  html.acc-contrast .stars{color:#ffe600!important}
+  html.acc-contrast .btn{background:#ffe600!important;color:#000!important;border:2px solid #fff!important}
+  html.acc-contrast .btn b,html.acc-contrast .btn{color:#000!important}
+
+  html.acc-grayscale{filter:grayscale(1)}
+  html.acc-invert{filter:invert(1) hue-rotate(180deg)}
+  html.acc-invert.acc-grayscale{filter:invert(1) hue-rotate(180deg) grayscale(1)}
+  html.acc-invert img,html.acc-invert iframe{filter:invert(1) hue-rotate(180deg)}
+
+  html.acc-links a{text-decoration:underline!important;text-underline-offset:3px;outline:1px dashed currentColor;outline-offset:2px;background:rgba(91,155,213,.16)}
+  html.acc-headings h1,html.acc-headings h2,html.acc-headings h3,html.acc-headings h4{outline:2px dashed #6aa9e0;outline-offset:5px}
+  html.acc-readable,html.acc-readable *{font-family:Arial,'Heebo',sans-serif!important}
+  html.acc-spacing,html.acc-spacing *{line-height:2!important;letter-spacing:.05em!important;word-spacing:.14em!important}
+  html.acc-cursor,html.acc-cursor *{cursor:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24"><path d="M5 2l13 7-5.5 1.8L9.5 18z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/></svg>') 6 4, auto !important}
+  html.acc-noanim *,html.acc-noanim *::before,html.acc-noanim *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  html.acc-noanim .reveal{opacity:1!important;transform:none!important}
+
+  /* Accessibility statement modal */
+  .a11y-modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.7)}
+  .a11y-modal.open{display:flex}
+  .a11y-modal-box{background:#101318;border:1px solid var(--line);border-radius:18px;max-width:640px;width:100%;max-height:86vh;overflow-y:auto;padding:32px}
+  .a11y-modal-box h2{font-size:1.5rem;font-weight:900;margin-bottom:6px}
+  .a11y-modal-box h4{margin-top:18px;font-size:1.05rem;color:#6aa9e0}
+  .a11y-modal-box p{color:var(--muted);margin-top:6px;font-size:.97rem}
+  .a11y-modal-box .mclose{float:left;background:none;border:1px solid var(--line);color:#fff;width:38px;height:38px;border-radius:10px;font-size:1.3rem;cursor:pointer}
+
+  @media(max-width:640px){.a11y-btn{bottom:90px;width:52px;height:52px}}
 </style>
 </head>
 <body>
+
+<a href="#top" class="skip-link">דלג לתוכן הראשי</a>
 
 <!-- HEADER -->
 <header id="header">
@@ -306,7 +387,7 @@
 </div>
 
 <!-- HERO -->
-<section class="hero" id="top">
+<section class="hero" id="top" tabindex="-1">
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <span class="eyebrow">מוסך איי ג'י · הוד השרון</span>
@@ -546,10 +627,113 @@
     </div>
     <div class="foot-bottom">
       <span>© <span id="yr"></span> ASHER GANAH · אשר גנה. כל הזכויות שמורות.</span>
-      <span>מרכז שירות ופחחות לרכב · הוד השרון</span>
+      <span><a href="#" id="a11yStatementFoot" style="color:var(--silver-2)">הצהרת נגישות</a> · מרכז שירות ופחחות לרכב · הוד השרון</span>
     </div>
   </div>
 </footer>
+
+<!-- ACCESSIBILITY WIDGET (נגישות) -->
+<button class="a11y-btn" id="a11yBtn" aria-label="פתיחת תפריט נגישות" aria-haspopup="dialog" aria-expanded="false">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M5 8h14M12 6v6m0 0l-3.2 6M12 12l3.2 6"/></svg>
+</button>
+<div class="a11y-overlay" id="a11yOverlay"></div>
+<aside class="a11y-panel" id="a11yPanel" role="dialog" aria-modal="true" aria-label="תפריט נגישות" dir="rtl">
+  <div class="a11y-head">
+    <h3><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M5 8h14M12 6v6m0 0l-3.2 6M12 12l3.2 6"/></svg> תפריט נגישות</h3>
+    <button class="a11y-close" id="a11yClose" aria-label="סגירת תפריט נגישות">×</button>
+  </div>
+
+  <div class="a11y-section">
+    <h4>גודל טקסט</h4>
+    <div class="a11y-fs">
+      <button data-acc="fs-dec" aria-label="הקטנת טקסט">−</button>
+      <span class="lbl">גודל טקסט<b id="a11yFsVal">100%</b></span>
+      <button data-acc="fs-inc" aria-label="הגדלת טקסט">+</button>
+    </div>
+  </div>
+
+  <div class="a11y-section">
+    <h4>צבע וניגודיות</h4>
+    <div class="a11y-grid">
+      <button class="a11y-item" data-acc="contrast" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" fill="currentColor"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>
+        ניגודיות גבוהה
+      </button>
+      <button class="a11y-item" data-acc="invert" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/></svg>
+        היפוך צבעים
+      </button>
+      <button class="a11y-item" data-acc="grayscale" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 8v8M15 8v8"/></svg>
+        גווני אפור
+      </button>
+      <button class="a11y-item" data-acc="links" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
+        הדגשת קישורים
+      </button>
+    </div>
+  </div>
+
+  <div class="a11y-section">
+    <h4>קריאוּת תוכן</h4>
+    <div class="a11y-grid">
+      <button class="a11y-item" data-acc="readable" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
+        גופן קריא
+      </button>
+      <button class="a11y-item" data-acc="spacing" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        ריווח טקסט
+      </button>
+      <button class="a11y-item" data-acc="headings" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M6 4v16M18 4v16M6 12h12"/></svg>
+        הדגשת כותרות
+      </button>
+      <button class="a11y-item" data-acc="guide" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>
+        סרגל קריאה
+      </button>
+    </div>
+  </div>
+
+  <div class="a11y-section">
+    <h4>עזרי ניווט</h4>
+    <div class="a11y-grid">
+      <button class="a11y-item" data-acc="cursor" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/></svg>
+        סמן גדול
+      </button>
+      <button class="a11y-item" data-acc="noanim" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9z" fill="currentColor"/></svg>
+        עצירת אנימציות
+      </button>
+    </div>
+  </div>
+
+  <div class="a11y-foot">
+    <button class="a11y-reset" data-acc="reset">איפוס הגדרות נגישות</button>
+    <button id="a11yStatementOpen">הצהרת נגישות</button>
+  </div>
+</aside>
+
+<!-- Reading guide bar -->
+<div class="a11y-guide" id="a11yGuide" aria-hidden="true"></div>
+
+<!-- Accessibility statement modal -->
+<div class="a11y-modal" id="a11yModal" role="dialog" aria-modal="true" aria-label="הצהרת נגישות" dir="rtl">
+  <div class="a11y-modal-box">
+    <button class="mclose" id="a11yStatementClose" aria-label="סגירה">×</button>
+    <h2>הצהרת נגישות</h2>
+    <p>אתר ASHER GANAH — מרכז שירות ופחחות לרכב — רואה חשיבות רבה במתן שירות שוויוני לכלל הלקוחות ופועל להנגשת האתר בהתאם לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע״ג–2013, ולתקן הישראלי 5568 ברמת AA.</p>
+    <h4>אמצעי הנגישות באתר</h4>
+    <p>באתר מותקן תפריט נגישות (הלחצן הכחול בפינת המסך) המאפשר, בין היתר: הגדלה והקטנה של גודל הטקסט, ניגודיות גבוהה, היפוך צבעים וגווני אפור, הדגשת קישורים וכותרות, גופן קריא, הגדלת ריווח, סמן עכבר גדול, סרגל קריאה, עצירת אנימציות וניווט מלא באמצעות מקלדת.</p>
+    <h4>החרגות נגישות</h4>
+    <p>ייתכן שחלקים מסוימים באתר (כגון מפת Google המוטמעת) טרם הונגשו במלואם בשל תלות בצד שלישי. אנו ממשיכים לפעול לשיפור הנגישות.</p>
+    <h4>יצירת קשר בנושא נגישות</h4>
+    <p>נתקלתם בבעיה או שיש לכם הצעה לשיפור? נשמח לסייע:<br>טלפון: <a href="tel:0522417741" style="color:#6aa9e0">052-241-7741</a> · וואטסאפ: <a href="https://wa.me/972522417741" target="_blank" rel="noopener" style="color:#6aa9e0">שלחו הודעה</a><br>כתובת: רחוב המסגר 5, הוד השרון.</p>
+    <p style="margin-top:14px;font-size:.85rem">הצהרה זו עודכנה בתאריך 29/06/2026.</p>
+  </div>
+</div>
 
 <!-- FLOATING WHATSAPP -->
 <a class="fab" href="https://wa.me/972522417741" target="_blank" rel="noopener" aria-label="וואטסאפ">
@@ -580,6 +764,69 @@
   document.querySelectorAll('[data-count]').forEach(el=>cio.observe(el));
 
   document.getElementById('yr').textContent=new Date().getFullYear();
+
+  /* ============ ACCESSIBILITY WIDGET ============ */
+  (function(){
+    const root=document.documentElement, KEY='ag_a11y';
+    const FEATURES=['contrast','invert','grayscale','links','readable','spacing','headings','guide','cursor','noanim'];
+    let state={feat:[],fs:0};
+    try{const s=JSON.parse(localStorage.getItem(KEY));if(s){state.feat=Array.isArray(s.feat)?s.feat:[];state.fs=+s.fs||0;}}catch(e){}
+
+    const fsVal=document.getElementById('a11yFsVal');
+    const fsMap={'-1':'90%','0':'100%','1':'112%','2':'125%','3':'140%'};
+
+    function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+    function apply(){
+      FEATURES.forEach(f=>root.classList.toggle('acc-'+f,state.feat.includes(f)));
+      ['acc-fs--1','acc-fs-1','acc-fs-2','acc-fs-3'].forEach(c=>root.classList.remove(c));
+      if(state.fs<0)root.classList.add('acc-fs--1');
+      else if(state.fs>0)root.classList.add('acc-fs-'+Math.min(state.fs,3));
+      document.querySelectorAll('.a11y-item[data-acc]').forEach(b=>{
+        if(FEATURES.includes(b.dataset.acc))b.setAttribute('aria-pressed',state.feat.includes(b.dataset.acc));
+      });
+      fsVal.textContent=fsMap[String(state.fs)]||'100%';
+      save();
+    }
+    function toggle(f){const i=state.feat.indexOf(f);i>=0?state.feat.splice(i,1):state.feat.push(f);apply();}
+    function fs(d){state.fs=Math.max(-1,Math.min(3,state.fs+d));apply();}
+    function reset(){state={feat:[],fs:0};localStorage.removeItem(KEY);apply();}
+
+    document.querySelectorAll('[data-acc]').forEach(b=>b.addEventListener('click',()=>{
+      const a=b.dataset.acc;
+      if(a==='fs-inc')fs(1);else if(a==='fs-dec')fs(-1);else if(a==='reset')reset();else toggle(a);
+    }));
+
+    // Panel open/close
+    const btn=document.getElementById('a11yBtn'),panel=document.getElementById('a11yPanel'),
+          ov=document.getElementById('a11yOverlay'),cl=document.getElementById('a11yClose');
+    function openPanel(){panel.classList.add('open');ov.classList.add('open');btn.setAttribute('aria-expanded','true');cl.focus();}
+    function closePanel(){panel.classList.remove('open');ov.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.focus();}
+    btn.addEventListener('click',()=>panel.classList.contains('open')?closePanel():openPanel());
+    ov.addEventListener('click',closePanel);
+    cl.addEventListener('click',closePanel);
+
+    // Reading guide follows pointer
+    const guide=document.getElementById('a11yGuide');
+    document.addEventListener('mousemove',e=>{if(root.classList.contains('acc-guide'))guide.style.top=e.clientY+'px';});
+
+    // Statement modal
+    const modal=document.getElementById('a11yModal'),
+          mOpen=document.getElementById('a11yStatementOpen'),
+          mOpenFoot=document.getElementById('a11yStatementFoot'),
+          mClose=document.getElementById('a11yStatementClose');
+    function openModal(){modal.classList.add('open');mClose.focus();}
+    function closeModal(){modal.classList.remove('open');}
+    mOpen.addEventListener('click',openModal);
+    if(mOpenFoot)mOpenFoot.addEventListener('click',e=>{e.preventDefault();openModal();});
+    mClose.addEventListener('click',closeModal);
+    modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){if(modal.classList.contains('open'))closeModal();else if(panel.classList.contains('open'))closePanel();}
+    });
+
+    apply();
+  })();
 </script>
 </body>
 </html>
