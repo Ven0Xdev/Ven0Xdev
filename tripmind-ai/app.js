@@ -545,6 +545,164 @@
     packExtra: ['A reusable water bottle', 'A small daypack with a secure zip', 'Copies of key documents (digital + paper)']
   };
 
+  /* ---------- every country in the world (name, capital lat, capital lon) ---------- */
+  const COUNTRIES = [
+    ['Afghanistan',34.53,69.17],['Albania',41.33,19.82],['Algeria',36.75,3.06],['Andorra',42.51,1.52],['Angola',-8.84,13.23],
+    ['Antigua and Barbuda',17.12,-61.85],['Argentina',-34.61,-58.38],['Armenia',40.18,44.51],['Australia',-35.28,149.13],['Austria',48.21,16.37],
+    ['Azerbaijan',40.41,49.87],['Bahamas',25.06,-77.34],['Bahrain',26.23,50.59],['Bangladesh',23.81,90.41],['Barbados',13.10,-59.62],
+    ['Belarus',53.90,27.57],['Belgium',50.85,4.35],['Belize',17.25,-88.77],['Benin',6.50,2.60],['Bhutan',27.47,89.64],
+    ['Bolivia',-16.50,-68.15],['Bosnia and Herzegovina',43.86,18.41],['Botswana',-24.65,25.91],['Brazil',-15.79,-47.88],['Brunei',4.89,114.94],
+    ['Bulgaria',42.70,23.32],['Burkina Faso',12.37,-1.52],['Burundi',-3.38,29.36],['Cambodia',11.56,104.92],['Cameroon',3.85,11.50],
+    ['Canada',45.42,-75.70],['Cape Verde',14.93,-23.51],['Central African Republic',4.39,18.55],['Chad',12.11,15.04],['Chile',-33.45,-70.67],
+    ['China',39.90,116.40],['Colombia',4.71,-74.07],['Comoros',-11.70,43.24],['Congo',-4.27,15.27],['Costa Rica',9.93,-84.08],
+    ['Croatia',45.81,15.98],['Cuba',23.11,-82.37],['Cyprus',35.19,33.38],['Czechia',50.08,14.44],['Democratic Republic of the Congo',-4.32,15.31],
+    ['Denmark',55.68,12.57],['Djibouti',11.59,43.15],['Dominica',15.30,-61.39],['Dominican Republic',18.49,-69.93],['Ecuador',-0.18,-78.47],
+    ['Egypt',30.04,31.24],['El Salvador',13.69,-89.22],['Equatorial Guinea',3.75,8.78],['Eritrea',15.32,38.93],['Estonia',59.44,24.75],
+    ['Eswatini',-26.32,31.14],['Ethiopia',9.02,38.75],['Fiji',-18.14,178.44],['Finland',60.17,24.94],['France',48.85,2.35],
+    ['Gabon',0.42,9.47],['Gambia',13.45,-16.58],['Georgia',41.72,44.83],['Germany',52.52,13.40],['Ghana',5.60,-0.19],
+    ['Greece',37.98,23.73],['Grenada',12.06,-61.75],['Guatemala',14.63,-90.51],['Guinea',9.64,-13.58],['Guinea-Bissau',11.86,-15.60],
+    ['Guyana',6.80,-58.16],['Haiti',18.59,-72.31],['Honduras',14.07,-87.19],['Hungary',47.50,19.04],['Iceland',64.15,-21.94],
+    ['India',28.61,77.21],['Indonesia',-6.21,106.85],['Iran',35.69,51.39],['Iraq',33.32,44.36],['Ireland',53.35,-6.26],
+    ['Israel',31.77,35.21],['Italy',41.90,12.50],['Ivory Coast',6.83,-5.29],['Jamaica',18.01,-76.79],['Japan',35.69,139.69],
+    ['Jordan',31.95,35.93],['Kazakhstan',51.16,71.47],['Kenya',-1.29,36.82],['Kiribati',1.33,172.98],['Kosovo',42.66,21.17],
+    ['Kuwait',29.38,47.99],['Kyrgyzstan',42.87,74.59],['Laos',17.97,102.60],['Latvia',56.95,24.11],['Lebanon',33.89,35.50],
+    ['Lesotho',-29.31,27.48],['Liberia',6.30,-10.80],['Libya',32.89,13.19],['Liechtenstein',47.14,9.52],['Lithuania',54.69,25.28],
+    ['Luxembourg',49.61,6.13],['Madagascar',-18.88,47.51],['Malawi',-13.96,33.77],['Malaysia',3.14,101.69],['Maldives',4.18,73.51],
+    ['Mali',12.64,-8.00],['Malta',35.90,14.51],['Marshall Islands',7.09,171.38],['Mauritania',18.08,-15.98],['Mauritius',-20.16,57.50],
+    ['Mexico',19.43,-99.13],['Micronesia',6.92,158.16],['Moldova',47.01,28.86],['Monaco',43.74,7.42],['Mongolia',47.89,106.91],
+    ['Montenegro',42.44,19.26],['Morocco',34.02,-6.83],['Mozambique',-25.97,32.58],['Myanmar',16.87,96.20],['Namibia',-22.56,17.08],
+    ['Nauru',-0.55,166.92],['Nepal',27.72,85.32],['Netherlands',52.37,4.90],['New Zealand',-41.29,174.78],['Nicaragua',12.11,-86.24],
+    ['Niger',13.51,2.11],['Nigeria',9.06,7.49],['North Korea',39.04,125.76],['North Macedonia',42.00,21.43],['Norway',59.91,10.75],
+    ['Oman',23.59,58.41],['Pakistan',33.69,73.06],['Palau',7.50,134.62],['Palestine',31.90,35.20],['Panama',8.98,-79.52],
+    ['Papua New Guinea',-9.44,147.18],['Paraguay',-25.28,-57.64],['Peru',-12.05,-77.04],['Philippines',14.60,120.98],['Poland',52.23,21.01],
+    ['Portugal',38.72,-9.13],['Qatar',25.29,51.53],['Romania',44.43,26.10],['Russia',55.75,37.62],['Rwanda',-1.95,30.06],
+    ['Saint Kitts and Nevis',17.30,-62.72],['Saint Lucia',14.01,-60.99],['Saint Vincent and the Grenadines',13.16,-61.22],['Samoa',-13.83,-171.77],['San Marino',43.94,12.45],
+    ['Sao Tome and Principe',0.34,6.73],['Saudi Arabia',24.71,46.68],['Senegal',14.69,-17.44],['Serbia',44.79,20.45],['Seychelles',-4.62,55.45],
+    ['Sierra Leone',8.48,-13.23],['Singapore',1.35,103.82],['Slovakia',48.15,17.11],['Slovenia',46.05,14.51],['Solomon Islands',-9.43,159.95],
+    ['Somalia',2.04,45.34],['South Africa',-25.75,28.19],['South Korea',37.57,126.98],['South Sudan',4.85,31.58],['Spain',40.42,-3.70],
+    ['Sri Lanka',6.93,79.86],['Sudan',15.50,32.56],['Suriname',5.85,-55.20],['Sweden',59.33,18.07],['Switzerland',46.95,7.45],
+    ['Syria',33.51,36.29],['Taiwan',25.03,121.57],['Tajikistan',38.56,68.79],['Tanzania',-6.16,35.75],['Thailand',13.75,100.50],
+    ['Timor-Leste',-8.56,125.56],['Togo',6.13,1.22],['Tonga',-21.13,-175.20],['Trinidad and Tobago',10.65,-61.50],['Tunisia',36.81,10.18],
+    ['Turkey',39.93,32.86],['Turkmenistan',37.96,58.33],['Tuvalu',-8.52,179.20],['Uganda',0.35,32.58],['Ukraine',50.45,30.52],
+    ['United Arab Emirates',24.45,54.38],['United Kingdom',51.51,-0.13],['United States',38.90,-77.04],['Uruguay',-34.90,-56.19],['Uzbekistan',41.30,69.24],
+    ['Vanuatu',-17.73,168.32],['Vatican City',41.90,12.45],['Venezuela',10.48,-66.90],['Vietnam',21.03,105.85],['Yemen',15.37,44.19],
+    ['Zambia',-15.42,28.28],['Zimbabwe',-17.83,31.05]
+  ];
+  /* ---------- major cities (for resolving typed origins/destinations) ---------- */
+  const CITY_COORDS = [
+    ['tokyo',35.69,139.69],['kyoto',35.01,135.77],['osaka',34.69,135.50],['paris',48.85,2.35],['rome',41.90,12.50],
+    ['barcelona',41.39,2.17],['madrid',40.42,-3.70],['milan',45.46,9.19],['new york',40.71,-74.01],['nyc',40.71,-74.01],
+    ['los angeles',34.05,-118.24],['chicago',41.88,-87.63],['san francisco',37.77,-122.42],['miami',25.76,-80.19],['boston',42.36,-71.06],
+    ['seattle',47.61,-122.33],['toronto',43.65,-79.38],['vancouver',49.28,-123.12],['montreal',45.50,-73.57],['london',51.51,-0.13],
+    ['manchester',53.48,-2.24],['amsterdam',52.37,4.90],['berlin',52.52,13.40],['munich',48.14,11.58],['frankfurt',50.11,8.68],
+    ['bangkok',13.75,100.50],['phuket',7.88,98.39],['bali',-8.65,115.22],['denpasar',-8.65,115.22],['lisbon',38.72,-9.13],
+    ['porto',41.15,-8.61],['dubai',25.20,55.27],['abu dhabi',24.45,54.38],['doha',25.29,51.53],['reykjavik',64.15,-21.94],
+    ['mexico city',19.43,-99.13],['cancun',21.16,-86.85],['istanbul',41.01,28.98],['athens',37.98,23.73],['vienna',48.21,16.37],
+    ['zurich',47.37,8.54],['geneva',46.20,6.14],['prague',50.08,14.44],['budapest',47.50,19.04],['copenhagen',55.68,12.57],
+    ['stockholm',59.33,18.07],['oslo',59.91,10.75],['helsinki',60.17,24.94],['moscow',55.75,37.62],['beijing',39.90,116.40],
+    ['shanghai',31.23,121.47],['hong kong',22.32,114.17],['singapore',1.35,103.82],['seoul',37.57,126.98],['mumbai',19.08,72.88],
+    ['delhi',28.61,77.21],['bangalore',12.97,77.59],['sydney',-33.87,151.21],['melbourne',-37.81,144.96],['auckland',-36.85,174.76],
+    ['sao paulo',-23.55,-46.63],['rio de janeiro',-22.91,-43.17],['buenos aires',-34.61,-58.38],['lima',-12.05,-77.04],['bogota',4.71,-74.07],
+    ['cairo',30.04,31.24],['marrakech',31.63,-7.99],['cape town',-33.92,18.42],['johannesburg',-26.20,28.05],['nairobi',-1.29,36.82],
+    ['tel aviv',32.08,34.78],['honolulu',21.31,-157.86],['las vegas',36.17,-115.14],['orlando',28.54,-81.38],['atlanta',33.75,-84.39],
+    ['dallas',32.78,-96.80],['houston',29.76,-95.37],['denver',39.74,-104.99]
+  ];
+
+  function coordsFor(str) {
+    if (!str) return null;
+    const q = str.toLowerCase().trim();
+    let best = null, bestLen = 0;
+    for (const c of CITY_COORDS) if (q.includes(c[0]) && c[0].length > bestLen) { best = [c[1], c[2]]; bestLen = c[0].length; }
+    for (const c of COUNTRIES) { const k = c[0].toLowerCase(); if (q.includes(k) && k.length > bestLen) { best = [c[1], c[2]]; bestLen = k.length; } }
+    return best;
+  }
+  function haversine(a, b) {
+    const R = 6371, rad = x => x * Math.PI / 180;
+    const dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+
+  /* ---------- cost-of-living multiplier (rough, for hotel estimates) ---------- */
+  const COL_VHIGH = ['switzerland', 'norway', 'iceland', 'singapore', 'monaco', 'denmark', 'new york', 'san francisco', 'london', 'zurich', 'geneva', 'tokyo', 'dubai', 'doha', 'qatar', 'reykjavik'];
+  const COL_HIGH = ['japan', 'united states', 'usa', 'canada', 'australia', 'new zealand', 'united kingdom', 'ireland', 'france', 'germany', 'netherlands', 'belgium', 'austria', 'sweden', 'finland', 'luxembourg', 'hong kong', 'south korea', 'israel', 'united arab emirates', 'paris', 'amsterdam', 'sydney'];
+  const COL_LOW = ['india', 'nepal', 'sri lanka', 'vietnam', 'thailand', 'cambodia', 'laos', 'indonesia', 'bali', 'philippines', 'egypt', 'morocco', 'kenya', 'tanzania', 'ethiopia', 'bolivia', 'nicaragua', 'guatemala', 'honduras', 'pakistan', 'bangladesh', 'myanmar', 'bangkok'];
+  function colFor(dest) {
+    const q = (dest || '').toLowerCase();
+    if (COL_VHIGH.some(k => q.includes(k))) return 1.6;
+    if (COL_HIGH.some(k => q.includes(k))) return 1.25;
+    if (COL_LOW.some(k => q.includes(k))) return 0.6;
+    return 1.0;
+  }
+
+  /* ---------- flights ---------- */
+  const r10 = n => Math.round(n / 10) * 10;
+  function estimateFlight(P) {
+    const dc = coordsFor(P.destLabel);
+    const oc = P.origin ? coordsFor(P.origin) : null;
+    if (!dc) return { ok: false, reason: 'unknown-dest' };
+    if (!oc) return { ok: false, reason: 'no-origin' };
+    const d = haversine(oc, dc);
+    if (d < 80) return { ok: false, reason: 'same-place' };
+    const tierMult = { budget: 0.82, moderate: 1, luxury: 2.6, ultra: 4.4 }[P.budget] || 1;
+    let low = (80 + 0.085 * d) * tierMult;
+    let high = (130 + 0.16 * d) * tierMult;
+    const cabin = P.budget === 'luxury' ? 'business class' : P.budget === 'ultra' ? 'business / first' : P.budget === 'budget' ? 'basic economy' : 'economy';
+    return { ok: true, km: Math.round(d), low: r10(low), high: r10(high), cabin, people: P.people };
+  }
+  function flightLinks(P) {
+    const din = iso(P.startDate), dout = iso(P.endDate);
+    const dst = P.destLabel, o = P.origin || '';
+    const gq = o
+      ? `flights from ${o} to ${dst} on ${din} through ${dout} for ${P.people} ${P.people > 1 ? 'passengers' : 'passenger'}`
+      : `flights to ${dst}`;
+    return 'https://www.google.com/travel/flights?q=' + encodeURIComponent(gq);
+  }
+  const FLIGHT_COMPARE = [
+    [I.plane, 'Google Flights', 'google.com/travel/flights', 'https://www.google.com/travel/flights', 'Fast, clean comparison across nearly every airline, with a price calendar and tracking.'],
+    [I.plane, 'Skyscanner', 'skyscanner.net', 'https://www.skyscanner.net', 'Compares hundreds of airlines and agents; great "everywhere" and whole-month search.'],
+    [I.plane, 'KAYAK', 'kayak.com', 'https://www.kayak.com/flights', 'Meta-search with price forecasts and flexible-date grids.'],
+    [I.plane, 'Momondo', 'momondo.com', 'https://www.momondo.com', 'Often surfaces cheaper fares from smaller agents others miss.'],
+    [I.plane, 'Kiwi.com', 'kiwi.com', 'https://www.kiwi.com', 'Builds creative multi-airline routes (self-transfer) that can cut costs.']
+  ];
+  const AIRLINES = [
+    ['Emirates', 'emirates.com', 'https://www.emirates.com'], ['Qatar Airways', 'qatarairways.com', 'https://www.qatarairways.com'],
+    ['Singapore Airlines', 'singaporeair.com', 'https://www.singaporeair.com'], ['Etihad', 'etihad.com', 'https://www.etihad.com'],
+    ['Turkish Airlines', 'turkishairlines.com', 'https://www.turkishairlines.com'], ['Lufthansa', 'lufthansa.com', 'https://www.lufthansa.com'],
+    ['British Airways', 'britishairways.com', 'https://www.britishairways.com'], ['Air France', 'airfrance.com', 'https://www.airfrance.com'],
+    ['KLM', 'klm.com', 'https://www.klm.com'], ['Delta', 'delta.com', 'https://www.delta.com'],
+    ['United', 'united.com', 'https://www.united.com'], ['American Airlines', 'aa.com', 'https://www.aa.com'],
+    ['Air Canada', 'aircanada.com', 'https://www.aircanada.com'], ['Qantas', 'qantas.com', 'https://www.qantas.com'],
+    ['Cathay Pacific', 'cathaypacific.com', 'https://www.cathaypacific.com'], ['ANA', 'ana.co.jp', 'https://www.ana.co.jp/en/us/'],
+    ['Japan Airlines', 'jal.com', 'https://www.jal.com'], ['Ryanair', 'ryanair.com', 'https://www.ryanair.com'],
+    ['easyJet', 'easyjet.com', 'https://www.easyjet.com'], ['Wizz Air', 'wizzair.com', 'https://wizzair.com'],
+    ['Southwest', 'southwest.com', 'https://www.southwest.com'], ['AirAsia', 'airasia.com', 'https://www.airasia.com'],
+    ['JetBlue', 'jetblue.com', 'https://www.jetblue.com'], ['Vueling', 'vueling.com', 'https://www.vueling.com']
+  ];
+
+  /* ---------- hotels ---------- */
+  const HOTEL_NIGHTLY = { budget: [15, 45], moderate: [90, 200], luxury: [280, 650], ultra: [700, 1800] };
+  function estimateHotel(P) {
+    const col = colFor(P.destLabel);
+    const base = HOTEL_NIGHTLY[P.budget] || HOTEL_NIGHTLY.moderate;
+    const low = r10(base[0] * col), high = r10(base[1] * col);
+    const rooms = Math.max(1, Math.ceil(P.people / 2));
+    const nights = Math.max(1, P.nDays - 1);
+    return { low, high, rooms, nights, col, midTotal: r10((low + high) / 2 * rooms * nights) };
+  }
+  function hotelLinks(P) {
+    const ss = encodeURIComponent(P.destLabel), din = iso(P.startDate), dout = iso(P.endDate), ppl = P.people;
+    return [
+      [I.bed, 'Booking.com', 'booking.com', `https://www.booking.com/searchresults.html?ss=${ss}&checkin=${din}&checkout=${dout}&group_adults=${ppl}`, 'Huge range of hotels, apartments & B&Bs with free-cancellation filters.'],
+      [I.bed, 'Airbnb', 'airbnb.com', `https://www.airbnb.com/s/${ss}/homes?checkin=${din}&checkout=${dout}&adults=${ppl}`, 'Apartments and homes — best for groups, longer stays and kitchens.'],
+      [I.bed, 'Hostelworld', 'hostelworld.com', `https://www.hostelworld.com/search?search_keywords=${ss}`, 'The go-to for hostels and budget/social stays worldwide.'],
+      [I.bed, 'Hotels.com', 'hotels.com', `https://www.hotels.com/Hotel-Search?destination=${ss}`, 'Reward nights and frequent member deals on hotels.'],
+      [I.bed, 'Agoda', 'agoda.com', `https://www.agoda.com/search?city=${ss}`, 'Often the strongest prices across Asia-Pacific.'],
+      [I.bed, 'Expedia', 'expedia.com', `https://www.expedia.com/Hotel-Search?destination=${ss}&startDate=${din}&endDate=${dout}`, 'Bundle hotel + flight to save, with one-stop trip management.']
+    ];
+  }
+  function iso(d) { return d instanceof Date ? d.toISOString().slice(0, 10) : ''; }
+
   /* ---------- destination resolver ---------- */
   function resolveDest(raw) {
     const q = raw.trim().toLowerCase();
@@ -754,11 +912,19 @@
     out.appendChild(sectionHead('Estimated budget', I.wallet, `Approximate ${budget.tier.label} costs — excludes international flights`));
     out.appendChild(budgetBlock(budget, P));
 
+    // 2b. flights
+    out.appendChild(sectionHead('Getting there — flights', I.plane, 'Estimated fares + compare live prices across every airline'));
+    out.appendChild(flightsBlock(P, budget));
+
     // 3. stay
     out.appendChild(sectionHead('Best areas to stay', I.bed, 'Neighborhoods matched to how you travel'));
     out.appendChild(infoGrid(data.areas.map(a => ({
       badge: a[2], title: a[0], body: a[1]
     }))));
+
+    // 3b. hotels
+    out.appendChild(sectionHead('Book your stay — hotels', I.bed, 'Nightly price estimates + check live availability'));
+    out.appendChild(hotelsBlock(P));
 
     // 4. food
     out.appendChild(sectionHead('Food recommendations', I.food, 'What to eat and where to find it'));
@@ -863,6 +1029,89 @@
     return w;
   }
 
+  // reusable external-link card grid (reuses .party-card styling)
+  function linkGrid(items) {
+    return `<div class="party-grid">${items.map(it => `
+      <a class="party-card" href="${it[3]}" target="_blank" rel="noopener noreferrer">
+        <span class="pc-ic">${svg(it[0])}</span>
+        <span class="pc-body">
+          <span class="pc-top"><h5>${esc(it[1])}</h5><span class="pc-ext">${svg(I.ext, 2)}</span></span>
+          ${it[4] ? `<p>${esc(it[4])}</p>` : ''}
+          <span class="pc-host">${esc(it[2])}</span>
+        </span>
+      </a>`).join('')}</div>`;
+  }
+
+  function flightsBlock(P, budget) {
+    const w = el('div', 'reveal');
+    const f = estimateFlight(P);
+    const gf = flightLinks(P);
+    let headline;
+    if (f.ok) {
+      const grandLow = budget.groupTrip + f.low * f.people;
+      const grandHigh = budget.groupTrip + f.high * f.people;
+      headline = `
+        <div class="budget-total" style="background:linear-gradient(135deg,var(--secondary),var(--primary))">
+          <span class="bt-lbl">Est. round-trip flight · per person</span>
+          <span class="bt-num">${money(f.low)}–${money(f.high)}</span>
+          <span class="bt-sub">${esc(P.origin)} → ${esc(P.destLabel)} · ~${f.km.toLocaleString()} km each way · ${f.cabin}</span>
+          <div class="bt-per"><span>Flights for ${f.people} traveler${f.people > 1 ? 's' : ''}</span><b>${money(f.low * f.people)}–${money(f.high * f.people)}</b></div>
+          <div class="bt-per"><span>Trip + flights (grand total)</span><b>${money(grandLow)}–${money(grandHigh)}</b></div>
+          <a href="${gf}" target="_blank" rel="noopener noreferrer" class="rh-btn" style="margin-top:16px;align-self:flex-start">${svg(I.plane, 2)} Search live prices</a>
+        </div>`;
+    } else {
+      const msg = f.reason === 'no-origin'
+        ? 'Add a <b>Flying from</b> city above and rebuild to get a price estimate. You can still compare live fares now:'
+        : f.reason === 'same-place'
+        ? 'Looks like you\'re already there — no flight needed! Browse fares anyway:'
+        : 'We couldn\'t place that destination for an estimate, but you can compare live fares directly:';
+      headline = `
+        <div class="info-card" style="display:flex;flex-direction:column;justify-content:center">
+          <div class="ic-h"><span class="badge">Live prices</span><h4>Compare flights now</h4></div>
+          <p>${msg}</p>
+          <a href="${gf}" target="_blank" rel="noopener noreferrer" class="rh-btn" style="margin-top:14px;align-self:flex-start;background:var(--primary);color:var(--on-primary)">${svg(I.plane, 2)} Open Google Flights</a>
+        </div>`;
+    }
+    w.innerHTML = `
+      <div class="budget-wrap" style="align-items:stretch">${headline}
+        <div class="budget-bars">
+          <h4 style="font-size:1rem;font-weight:600;margin-bottom:10px">Compare across every airline</h4>
+          ${linkGrid(FLIGHT_COMPARE)}
+        </div>
+      </div>
+      <div class="party-group" style="margin-top:22px">
+        <div class="pg-label"><span class="pg-ic">${svg(I.plane)}</span><div><h4>Check the airlines directly</h4><span>Major full-service &amp; low-cost carriers worldwide</span></div></div>
+        <div class="airline-grid">
+          ${AIRLINES.map(a => `<a class="airline-chip" href="${a[2]}" target="_blank" rel="noopener noreferrer">${esc(a[0])}<span>${esc(a[1])}</span></a>`).join('')}
+        </div>
+      </div>
+      <div class="party-disclaimer">${svg(I.info, 2)}<span>Flight figures are rough distance-based estimates in USD for planning only — real fares swing widely with season, demand and how early you book. Always confirm the live price before purchasing.</span></div>`;
+    return w;
+  }
+
+  function hotelsBlock(P) {
+    const w = el('div', 'reveal');
+    const h = estimateHotel(P);
+    const links = hotelLinks(P);
+    const colLabel = h.col >= 1.6 ? 'pricey city' : h.col >= 1.25 ? 'higher-cost city' : h.col <= 0.6 ? 'great-value city' : 'mid-range city';
+    w.innerHTML = `
+      <div class="budget-wrap" style="align-items:stretch">
+        <div class="budget-total">
+          <span class="bt-lbl">Est. nightly rate · per room</span>
+          <span class="bt-num">${money(h.low)}–${money(h.high)}</span>
+          <span class="bt-sub">${TIERS[P.budget].label} · ${TIERS[P.budget].hotel} · ${colLabel}</span>
+          <div class="bt-per"><span>${h.rooms} room${h.rooms > 1 ? 's' : ''} × ${h.nights} night${h.nights > 1 ? 's' : ''}</span><b>≈ ${money(h.midTotal)}</b></div>
+          <div class="bt-per"><span>Guests</span><b>${P.people}</b></div>
+        </div>
+        <div class="budget-bars">
+          <h4 style="font-size:1rem;font-weight:600;margin-bottom:10px">Check live availability &amp; prices</h4>
+          ${linkGrid(links)}
+          <div class="disclaimer">${svg(I.info, 2)}<span>Links open each site pre-filled with <b>${esc(P.destLabel)}</b>, your dates and ${P.people} guest${P.people > 1 ? 's' : ''}. Nightly estimates assume ${h.rooms} room${h.rooms > 1 ? 's' : ''} (≈2 guests each).</span></div>
+        </div>
+      </div>`;
+    return w;
+  }
+
   function infoGrid(items) {
     const g = el('div', 'info-grid reveal');
     g.innerHTML = items.map(it => `
@@ -944,11 +1193,14 @@
     $$('.chip', wrap).forEach(c => c.addEventListener('click', () => c.classList.toggle('on')));
   }
   function buildDatalist() {
-    const dl = $('#destSuggest');
-    const names = ['Tokyo, Japan', 'Kyoto, Japan', 'Paris, France', 'Rome, Italy', 'Barcelona, Spain',
+    const cities = ['Tokyo, Japan', 'Kyoto, Japan', 'Paris, France', 'Rome, Italy', 'Barcelona, Spain',
       'New York, USA', 'London, UK', 'Bangkok, Thailand', 'Bali, Indonesia', 'Lisbon, Portugal',
-      'Dubai, UAE', 'Reykjavik, Iceland', 'Mexico City, Mexico'];
-    dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
+      'Dubai, UAE', 'Reykjavik, Iceland', 'Mexico City, Mexico', 'Istanbul, Turkey', 'Sydney, Australia'];
+    // popular cities first, then every country in the world
+    const all = cities.concat(COUNTRIES.map(c => c[0]));
+    const opts = all.map(n => `<option value="${n}">`).join('');
+    const dl = $('#destSuggest'); if (dl) dl.innerHTML = opts;
+    const ol = $('#originSuggest'); if (ol) ol.innerHTML = opts;
   }
   /* ---------- party / event resources ---------- */
   const PARTY_GROUPS = [
@@ -1054,7 +1306,7 @@
     const resolved = resolveDest(dest);
 
     return {
-      destLabel: dest, resolved,
+      destLabel: dest, resolved, origin: $('#origin').value.trim(),
       startDate: sd, endDate: ed, nDays,
       budget: budgetVal, style: $('#style').value,
       groupKey, group: groupKey === 'family' ? 'family' : groupKey, people,
@@ -1079,6 +1331,7 @@
   /* ---------- demo ---------- */
   function loadDemo() {
     $('#dest').value = 'Tokyo, Japan';
+    $('#origin').value = 'London, UK';
     const t = new Date(); t.setDate(t.getDate() + 30);
     const e = new Date(t); e.setDate(e.getDate() + 4);
     $('#start').value = t.toISOString().slice(0, 10);

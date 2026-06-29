@@ -261,6 +261,12 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns
 .party-card .pc-host{display:inline-block;margin-top:7px;font-size:.74rem;font-weight:600;color:var(--secondary-d);letter-spacing:.01em}
 [data-theme="dark"] .party-card .pc-host{color:var(--secondary)}
 .party-card .pc-note{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:.72rem;font-weight:600;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);padding:3px 9px;border-radius:30px}
+.airline-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.airline-chip{display:flex;flex-direction:column;gap:1px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;box-shadow:var(--shadow);font-weight:600;font-size:.9rem;transition:transform .18s var(--ease),border-color .18s,box-shadow .18s}
+.airline-chip span{font-size:.72rem;font-weight:500;color:var(--fg3)}
+.airline-chip:hover{transform:translateY(-2px);border-color:var(--primary);box-shadow:var(--shadow-l)}
+.airline-chip:hover span{color:var(--secondary-d)}
+[data-theme="dark"] .airline-chip:hover span{color:var(--secondary)}
 .party-disclaimer{margin-top:22px;font-size:.78rem;color:var(--fg3);display:flex;gap:8px;align-items:flex-start;max-width:760px}
 .party-disclaimer svg{width:15px;height:15px;stroke:var(--fg3);flex:none;margin-top:2px}
 
@@ -359,10 +365,15 @@ footer .brand{justify-content:center;margin-bottom:12px;color:var(--fg)}
     <form id="planner" novalidate>
       <div class="grid">
         <div class="field full">
-          <label for="dest">Destination <span class="req">*</span> <span class="hint">— city, region or country</span></label>
+          <label for="dest">Destination <span class="req">*</span> <span class="hint">— any city or country in the world</span></label>
           <input class="inp" id="dest" name="dest" placeholder="e.g. Tokyo, Japan" autocomplete="off" list="destSuggest">
           <datalist id="destSuggest"></datalist>
           <span class="err">Please enter a destination.</span>
+        </div>
+        <div class="field full">
+          <label for="origin">Flying from <span class="hint">— optional, for flight prices</span></label>
+          <input class="inp" id="origin" name="origin" placeholder="e.g. London, UK" autocomplete="off" list="originSuggest">
+          <datalist id="originSuggest"></datalist>
         </div>
         <div class="field">
           <label for="start">Start date <span class="req">*</span></label>
