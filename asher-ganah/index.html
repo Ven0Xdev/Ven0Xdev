@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>אשר גנה | ASHER GANAH — מרכז שירות ופחחות לרכב, הוד השרון</title>
+<meta name="description" content="ASHER GANAH — מוסך איי ג'י בהוד השרון. מרכז שירות, פחחות וצבע לרכב. דירוג 4.9 כוכבים, 147 ביקורות. רחוב המסגר 5, הוד השרון. 073-218-7990." />
+<meta name="theme-color" content="#0d0f12" />
+<meta property="og:title" content="ASHER GANAH — מרכז שירות ופחחות לרכב" />
+<meta property="og:description" content="מוסך איי ג'י הוד השרון · 4.9★ · פחחות, צבע, מיזוג, טיפולים ותיקוני מנוע." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="assets/logo.jpeg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0b0d10;
+    --bg-2:#101318;
+    --panel:#14181e;
+    --panel-2:#191e25;
+    --line:rgba(255,255,255,.08);
+    --txt:#e9ecf1;
+    --muted:#9aa3af;
+    --silver-1:#f4f6f8;
+    --silver-2:#c7ccd3;
+    --silver-3:#878d97;
+    --chrome:linear-gradient(180deg,#ffffff 0%,#d6dae0 28%,#8a9099 55%,#eef1f4 78%,#9fa6b0 100%);
+    --accent:#5b9bd5;
+    --accent-glow:rgba(91,155,213,.35);
+    --radius:18px;
+    --shadow:0 24px 60px -22px rgba(0,0,0,.75);
+    --maxw:1180px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Heebo','Rubik',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--txt);
+    line-height:1.7;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  section{position:relative}
+  .chrome-text{
+    background:var(--chrome);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+  }
+  .eyebrow{
+    font-size:.82rem;letter-spacing:.32em;font-weight:700;
+    color:var(--silver-3);text-transform:uppercase;margin-bottom:14px;
+    display:inline-flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:34px;height:1px;background:linear-gradient(90deg,transparent,var(--silver-3))}
+  h2.title{font-size:clamp(1.9rem,4.4vw,3rem);font-weight:900;line-height:1.15;letter-spacing:-.5px}
+  .lead{color:var(--muted);font-size:1.06rem;max-width:620px;margin-top:16px}
+
+  /* Buttons */
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:14px 26px;border-radius:999px;font-weight:700;font-size:1rem;
+    cursor:pointer;border:1px solid transparent;transition:.25s ease;white-space:nowrap;
+  }
+  .btn-primary{
+    background:var(--chrome);color:#10131a;box-shadow:0 10px 30px -10px rgba(214,218,224,.45);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 38px -12px rgba(214,218,224,.6)}
+  .btn-wa{background:#1fa75a;color:#fff;box-shadow:0 10px 30px -12px rgba(31,167,90,.6)}
+  .btn-wa:hover{transform:translateY(-2px);background:#23b863}
+  .btn-ghost{border-color:var(--line);color:var(--txt);background:rgba(255,255,255,.02)}
+  .btn-ghost:hover{border-color:var(--silver-3);background:rgba(255,255,255,.05)}
+
+  /* Header */
+  header{
+    position:fixed;inset:0 0 auto 0;z-index:60;
+    transition:.35s ease;border-bottom:1px solid transparent;
+  }
+  header.scrolled{
+    background:rgba(11,13,16,.82);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;height:78px}
+  .brand{display:flex;align-items:center;gap:13px}
+  .brand img{width:46px;height:46px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px var(--line),0 8px 22px -8px rgba(0,0,0,.8)}
+  .brand .bn{font-weight:900;font-size:1.12rem;letter-spacing:.06em;line-height:1}
+  .brand .bs{font-size:.68rem;color:var(--muted);letter-spacing:.18em}
+  .nav-links{display:flex;align-items:center;gap:30px}
+  .nav-links a{font-size:.96rem;color:var(--silver-2);font-weight:500;position:relative;transition:.2s}
+  .nav-links a::after{content:"";position:absolute;right:0;bottom:-6px;height:2px;width:0;background:var(--chrome);transition:.25s}
+  .nav-links a:hover{color:#fff}
+  .nav-links a:hover::after{width:100%}
+  .nav-cta{display:flex;align-items:center;gap:12px}
+  .nav-cta .btn{padding:11px 20px;font-size:.92rem}
+  .burger{display:none;flex-direction:column;gap:5px;background:none;border:0;cursor:pointer;padding:8px}
+  .burger span{width:26px;height:2px;background:var(--silver-1);border-radius:2px;transition:.3s}
+
+  /* Hero */
+  .hero{
+    min-height:100vh;display:flex;align-items:center;position:relative;overflow:hidden;
+    padding:120px 0 80px;
+    background:
+      radial-gradient(1200px 700px at 78% -10%,rgba(91,155,213,.16),transparent 60%),
+      radial-gradient(900px 600px at 10% 110%,rgba(91,155,213,.10),transparent 55%),
+      linear-gradient(180deg,#0b0d10 0%,#0f1217 50%,#0b0d10 100%);
+  }
+  .hero::before{ /* brushed-metal texture lines */
+    content:"";position:absolute;inset:0;opacity:.5;pointer-events:none;
+    background:repeating-linear-gradient(115deg,rgba(255,255,255,.018) 0 2px,transparent 2px 7px);
+    mask-image:radial-gradient(60% 60% at 70% 40%,#000 30%,transparent 75%);
+  }
+  .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:50px;align-items:center;width:100%}
+  .hero h1{
+    font-size:clamp(2.4rem,6vw,4.5rem);font-weight:900;line-height:1.05;letter-spacing:-1px;
+  }
+  .hero h1 .chrome-text{display:inline-block}
+  .hero p.sub{color:var(--silver-2);font-size:1.18rem;margin-top:22px;max-width:540px}
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}
+  .hero-meta{display:flex;gap:26px;margin-top:40px;flex-wrap:wrap}
+  .hm{display:flex;flex-direction:column}
+  .hm b{font-size:1.7rem;font-weight:900}
+  .hm span{font-size:.82rem;color:var(--muted);letter-spacing:.05em}
+  .stars{color:#ffc24b;letter-spacing:2px}
+
+  /* Hero visual — logo medallion */
+  .medallion{position:relative;display:flex;align-items:center;justify-content:center}
+  .medallion .ring{
+    position:absolute;width:min(420px,82%);aspect-ratio:1;border-radius:50%;
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:inset 0 0 60px rgba(91,155,213,.12);
+    animation:spin 26s linear infinite;
+  }
+  .medallion .ring.r2{width:min(340px,68%);border-style:dashed;border-color:rgba(255,255,255,.09);animation-duration:38s;animation-direction:reverse}
+  .medallion .glow{position:absolute;width:70%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,var(--accent-glow),transparent 65%);filter:blur(20px)}
+  .medallion img{
+    width:min(360px,72%);border-radius:50%;position:relative;z-index:2;
+    box-shadow:0 0 0 1px rgba(255,255,255,.10),0 40px 80px -30px rgba(0,0,0,.9),0 0 90px -30px var(--accent-glow);
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .scroll-cue{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);color:var(--silver-3);font-size:.78rem;letter-spacing:.25em;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.8}
+  .scroll-cue .dot{width:22px;height:36px;border:1px solid var(--silver-3);border-radius:14px;position:relative}
+  .scroll-cue .dot::after{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);width:4px;height:8px;background:var(--silver-2);border-radius:3px;animation:cue 1.6s ease-in-out infinite}
+  @keyframes cue{0%,100%{opacity:0;transform:translate(-50%,0)}50%{opacity:1;transform:translate(-50%,8px)}}
+
+  /* Marquee trust strip */
+  .strip{border-block:1px solid var(--line);background:var(--bg-2);overflow:hidden;padding:16px 0}
+  .marquee{display:flex;gap:60px;white-space:nowrap;animation:slide 28s linear infinite;width:max-content}
+  .marquee span{color:var(--silver-3);font-weight:700;letter-spacing:.12em;font-size:.95rem;display:inline-flex;align-items:center;gap:14px}
+  .marquee span::after{content:"◆";color:var(--accent);font-size:.6rem}
+  @keyframes slide{to{transform:translateX(50%)}}
+
+  /* Generic section padding */
+  .sec{padding:100px 0}
+  .sec-head{text-align:center;max-width:680px;margin:0 auto 60px}
+  .sec-head .lead{margin-inline:auto}
+
+  /* Services */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--bg-2));
+    border:1px solid var(--line);border-radius:var(--radius);padding:30px;
+    transition:.3s ease;position:relative;overflow:hidden;
+  }
+  .card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,rgba(255,255,255,.18),transparent 40%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:.3s}
+  .card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.16);box-shadow:var(--shadow)}
+  .card:hover::before{opacity:1}
+  .card .ico{
+    width:56px;height:56px;border-radius:14px;display:grid;place-items:center;margin-bottom:18px;
+    background:linear-gradient(160deg,#222831,#161b21);border:1px solid var(--line);
+  }
+  .card .ico svg{width:28px;height:28px;stroke:var(--silver-1);fill:none;stroke-width:1.7}
+  .card h3{font-size:1.22rem;font-weight:800;margin-bottom:8px}
+  .card p{color:var(--muted);font-size:.97rem}
+
+  /* Why us / split */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+  .feat{display:flex;gap:16px;margin-top:26px}
+  .feat .fi{flex:0 0 auto;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+  .feat .fi svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:1.8}
+  .feat h4{font-size:1.08rem;font-weight:800}
+  .feat p{color:var(--muted);font-size:.95rem;margin-top:3px}
+  .visual-panel{
+    border-radius:var(--radius);border:1px solid var(--line);min-height:430px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(600px 300px at 70% 10%,rgba(91,155,213,.18),transparent 60%),
+      linear-gradient(160deg,#1a1f26,#0d1014);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .visual-panel::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(125deg,rgba(255,255,255,.02) 0 2px,transparent 2px 9px)}
+  .visual-panel img{width:62%;border-radius:50%;position:relative;z-index:2;box-shadow:0 30px 70px -28px #000,0 0 0 1px rgba(255,255,255,.08)}
+  .badge-float{position:absolute;z-index:3;background:rgba(13,16,20,.86);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow)}
+  .bf-1{top:26px;right:26px}
+  .bf-2{bottom:26px;left:26px}
+  .badge-float b{font-size:1.3rem;display:block}
+  .badge-float small{color:var(--muted);font-size:.74rem;letter-spacing:.05em}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+  .stat{text-align:center;padding:30px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-2)}
+  .stat b{font-size:clamp(2rem,5vw,3rem);font-weight:900;display:block;line-height:1}
+  .stat span{color:var(--muted);font-size:.92rem;letter-spacing:.04em}
+
+  /* Reviews */
+  .reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .rev{background:linear-gradient(180deg,var(--panel),var(--bg-2));border:1px solid var(--line);border-radius:var(--radius);padding:28px;position:relative}
+  .rev .stars{font-size:1rem;margin-bottom:12px}
+  .rev p{font-size:1rem;color:var(--silver-2);min-height:96px}
+  .rev .who{display:flex;align-items:center;gap:12px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  .rev .av{width:42px;height:42px;border-radius:50%;background:var(--chrome);color:#10131a;display:grid;place-items:center;font-weight:900}
+  .rev .who b{font-size:.96rem}
+  .rev .who small{color:var(--muted);font-size:.78rem}
+
+  /* Contact */
+  .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:stretch}
+  .info-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:34px}
+  .info-row{display:flex;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+  .info-row:last-child{border-bottom:0}
+  .info-row .ic{flex:0 0 auto;width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:var(--bg-2);border:1px solid var(--line)}
+  .info-row .ic svg{width:24px;height:24px;stroke:var(--silver-1);fill:none;stroke-width:1.7}
+  .info-row small{color:var(--muted);font-size:.78rem;letter-spacing:.1em;display:block}
+  .info-row b{font-size:1.08rem;font-weight:700}
+  .info-row a:hover{color:var(--accent)}
+  .map-card{border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);min-height:420px}
+  .map-card iframe{width:100%;height:100%;min-height:420px;border:0;filter:grayscale(.3) contrast(1.05)}
+  .contact-cta{display:flex;gap:14px;margin-top:26px;flex-wrap:wrap}
+
+  /* Footer */
+  footer{border-top:1px solid var(--line);background:var(--bg-2);padding:54px 0 30px}
+  .foot-top{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
+  .foot-brand{max-width:330px}
+  .foot-brand .brand{margin-bottom:14px}
+  .foot-brand p{color:var(--muted);font-size:.95rem}
+  .foot-col h5{font-size:.82rem;letter-spacing:.18em;color:var(--silver-3);text-transform:uppercase;margin-bottom:16px}
+  .foot-col a{display:block;color:var(--muted);padding:5px 0;font-size:.96rem;transition:.2s}
+  .foot-col a:hover{color:#fff}
+  .foot-bottom{margin-top:40px;padding-top:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:var(--silver-3);font-size:.86rem}
+
+  /* Floating WhatsApp */
+  .fab{position:fixed;bottom:24px;left:24px;z-index:70;width:60px;height:60px;border-radius:50%;background:#1fa75a;display:grid;place-items:center;box-shadow:0 14px 34px -10px rgba(31,167,90,.6);animation:pulse 2.4s infinite}
+  .fab svg{width:32px;height:32px;fill:#fff}
+  @keyframes pulse{0%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 0 rgba(31,167,90,.5)}70%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 16px rgba(31,167,90,0)}100%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 0 rgba(31,167,90,0)}}
+
+  /* Reveal animation */
+  .reveal{opacity:0;transform:translateY(28px);transition:.7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* Responsive */
+  @media(max-width:980px){
+    .hero-grid,.split,.contact-grid{grid-template-columns:1fr}
+    .medallion{order:-1;margin-bottom:10px}
+    .cards,.reviews{grid-template-columns:1fr 1fr}
+    .stats{grid-template-columns:1fr 1fr}
+    .nav-links{display:none}
+  }
+  @media(max-width:640px){
+    .cards,.reviews{grid-template-columns:1fr}
+    .nav-cta .btn-ghost{display:none}
+    .burger{display:flex}
+    .hero{padding-top:104px}
+    .sec{padding:72px 0}
+    .hero-meta{gap:18px}
+  }
+  /* Mobile menu */
+  .mobile-menu{position:fixed;inset:78px 0 auto 0;z-index:55;background:rgba(11,13,16,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);transform:translateY(-120%);transition:.35s ease;padding:18px 22px 28px}
+  .mobile-menu.open{transform:none}
+  .mobile-menu a{display:block;padding:14px 4px;font-size:1.1rem;font-weight:600;border-bottom:1px solid var(--line)}
+  .mobile-menu .btn{width:100%;justify-content:center;margin-top:16px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="header">
+  <div class="wrap nav">
+    <a href="#top" class="brand">
+      <img src="assets/logo.jpeg" alt="ASHER GANAH לוגו" />
+      <div>
+        <div class="bn chrome-text">ASHER GANAH</div>
+        <div class="bs">מרכז שירות ופחחות לרכב</div>
+      </div>
+    </a>
+    <nav class="nav-links">
+      <a href="#services">שירותים</a>
+      <a href="#why">למה אנחנו</a>
+      <a href="#reviews">ביקורות</a>
+      <a href="#contact">צור קשר</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="tel:0732187990" class="btn btn-ghost">073-218-7990</a>
+      <a href="https://wa.me/972732187990" target="_blank" rel="noopener" class="btn btn-primary">קביעת תור</a>
+      <button class="burger" id="burger" aria-label="תפריט"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#services">שירותים</a>
+  <a href="#why">למה אנחנו</a>
+  <a href="#reviews">ביקורות</a>
+  <a href="#contact">צור קשר</a>
+  <a href="https://wa.me/972732187990" target="_blank" rel="noopener" class="btn btn-wa">שלחו וואטסאפ</a>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow">מוסך איי ג'י · הוד השרון</span>
+      <h1>הרכב שלך <br><span class="chrome-text">בידיים מקצועיות.</span></h1>
+      <p class="sub">מרכז שירות, פחחות וצבע ברמה הגבוהה ביותר. אבחון מדויק, חלקים מקוריים ושקיפות מלאה — כדי שתחזרו לכביש בראש שקט.</p>
+      <div class="hero-actions">
+        <a href="https://wa.me/972732187990" target="_blank" rel="noopener" class="btn btn-wa">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3 .79.8-2.93-.19-.3A8 8 0 1 1 12 20Zm4.4-5.6c-.24-.12-1.42-.7-1.64-.78s-.38-.12-.54.12-.62.78-.76.94-.28.18-.52.06a6.5 6.5 0 0 1-1.92-1.18 7.2 7.2 0 0 1-1.33-1.65c-.14-.24 0-.37.1-.49s.24-.28.36-.42a1.6 1.6 0 0 0 .24-.4.44.44 0 0 0 0-.42c-.06-.12-.54-1.3-.74-1.78s-.39-.4-.54-.41h-.46a.88.88 0 0 0-.64.3 2.68 2.68 0 0 0-.84 2 4.65 4.65 0 0 0 .98 2.48 10.6 10.6 0 0 0 4.06 3.58c.57.25 1.01.4 1.36.5a3.3 3.3 0 0 0 1.5.1 2.45 2.45 0 0 0 1.6-1.14 2 2 0 0 0 .14-1.13c-.06-.1-.22-.16-.46-.28Z"/></svg>
+          תיאום תור בוואטסאפ
+        </a>
+        <a href="tel:0732187990" class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+          התקשרו עכשיו
+        </a>
+      </div>
+      <div class="hero-meta">
+        <div class="hm"><b class="chrome-text">4.9</b><span class="stars">★★★★★</span></div>
+        <div class="hm"><b>147+</b><span>ביקורות גוגל</span></div>
+        <div class="hm"><b>שנים</b><span>של ניסיון</span></div>
+        <div class="hm"><b>אחריות</b><span>על כל עבודה</span></div>
+      </div>
+    </div>
+
+    <div class="medallion">
+      <div class="glow"></div>
+      <div class="ring"></div>
+      <div class="ring r2"></div>
+      <img src="assets/logo.jpeg" alt="ASHER GANAH — מרכז שירות ופחחות לרכב" />
+    </div>
+  </div>
+  <div class="scroll-cue"><span class="dot"></span>גלול</div>
+</section>
+
+<!-- TRUST STRIP -->
+<div class="strip">
+  <div class="marquee">
+    <span>פחחות וצבע</span><span>מיזוג אוויר</span><span>החלפת מסננים</span><span>טיפולי מנוע</span><span>אבחון ממוחשב</span><span>בלמים ומתלים</span><span>חלקים מקוריים</span>
+    <span>פחחות וצבע</span><span>מיזוג אוויר</span><span>החלפת מסננים</span><span>טיפולי מנוע</span><span>אבחון ממוחשב</span><span>בלמים ומתלים</span><span>חלקים מקוריים</span>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section class="sec" id="services">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">השירותים שלנו</span>
+      <h2 class="title">כל מה שהרכב שלך צריך, <span class="chrome-text">תחת קורת גג אחת</span></h2>
+      <p class="lead">ממוסך מורשה ומקצועי — שירות מלא מפחחות וצבע ועד טיפולי מנוע ומערכות, בעבודה נקייה ואחריות מלאה.</p>
+    </div>
+    <div class="cards">
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 13l2-5a3 3 0 0 1 2.8-2h8.4A3 3 0 0 1 19 8l2 5"/><path d="M5 17h14v-4H5z"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg></div>
+        <h3>פחחות וצבע</h3>
+        <p>תיקוני תאונה, יישור פחים וצביעת תנור בגוון מקורי — להחזרת הרכב למצב מושלם.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M2 8c4 0 6 3 10 3s6-3 10-3"/><path d="M2 16c4 0 6-3 10-3s6 3 10 3"/></svg></div>
+        <h3>מיזוג אוויר</h3>
+        <p>טעינת גז, חיטוי מערכת ותיקון מזגן — נוחות ואוויר נקי בכל עונה.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+        <h3>החלפת מסננים</h3>
+        <p>מסנן אוויר, מזגן ודלק — החלפה תקופתית לשמירה על ביצועי המנוע ואיכות האוויר.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M14 4l-3 3 2 2 3-3a4 4 0 0 1-2 5l-6 6a2.8 2.8 0 0 1-4-4l6-6a4 4 0 0 1 4-3z"/></svg></div>
+        <h3>טיפולי מנוע</h3>
+        <p>טיפולים תקופתיים, החלפת שמן ורצועות ובדיקה יסודית של כל מערכות הרכב.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 17l5-5-5-5"/><path d="M12 19h8"/></svg></div>
+        <h3>אבחון ממוחשב</h3>
+        <p>סריקת תקלות מדויקת בעזרת מחשב אבחון מתקדם — אבחון נכון, תיקון יעיל.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
+        <h3>בלמים ומתלים</h3>
+        <p>בדיקה והחלפת רפידות, דיסקיות ומערכת המתלים — בטיחות ונסיעה חלקה.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY US -->
+<section class="sec" id="why" style="background:var(--bg-2)">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">למה ASHER GANAH</span>
+      <h2 class="title">מקצועיות, אמינות <span class="chrome-text">ושקיפות מלאה</span></h2>
+      <p class="lead">לקוחות בוחרים בנו שוב ושוב כי אנחנו מתייחסים לרכב שלכם כמו לשלנו. דירוג 4.9 כוכבים ו-147 ביקורות מדברים בעד עצמם.</p>
+
+      <div class="feat">
+        <div class="fi"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <div><h4>חלקים מקוריים בלבד</h4><p>אנו משתמשים בחלקים מקוריים ואיכותיים עם אחריות מלאה.</p></div>
+      </div>
+      <div class="feat">
+        <div class="fi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <div><h4>שירות מהיר ובזמן</h4><p>עמידה בלוחות זמנים ועדכון שוטף לאורך כל הטיפול ברכב.</p></div>
+      </div>
+      <div class="feat">
+        <div class="fi"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg></div>
+        <div><h4>אחריות על כל עבודה</h4><p>כל טיפול ותיקון מגיעים עם אחריות — לראש שקט אמיתי.</p></div>
+      </div>
+    </div>
+
+    <div class="visual-panel reveal">
+      <div class="badge-float bf-1"><b class="chrome-text">4.9★</b><small>דירוג גוגל</small></div>
+      <div class="badge-float bf-2"><b>147+</b><small>לקוחות מרוצים</small></div>
+      <img src="assets/logo.jpeg" alt="ASHER GANAH" />
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="sec" style="padding-block:70px">
+  <div class="wrap stats">
+    <div class="stat reveal"><b class="chrome-text" data-count="4.9" data-dec="1">0</b><span>דירוג ממוצע</span></div>
+    <div class="stat reveal"><b class="chrome-text" data-count="147" data-suf="+">0</b><span>ביקורות גוגל</span></div>
+    <div class="stat reveal"><b class="chrome-text" data-count="100" data-suf="%">0</b><span>אחריות מלאה</span></div>
+    <div class="stat reveal"><b class="chrome-text" data-count="5000" data-suf="+">0</b><span>רכבים שטופלו</span></div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="sec" id="reviews" style="background:var(--bg-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">לקוחות ממליצים</span>
+      <h2 class="title">מה אומרים עלינו <span class="chrome-text">בגוגל</span></h2>
+      <p class="lead">דירוג 4.9 מתוך 5 על בסיס 147 ביקורות אמיתיות של לקוחות.</p>
+    </div>
+    <div class="reviews">
+      <div class="rev reveal">
+        <div class="stars">★★★★★</div>
+        <p>"שירות מעולה ומקצועי! הביאו את האוטו אחרי תאונה והחזירו אותו כמו חדש. יחס אישי, מחיר הוגן וזמני עבודה מדויקים. ממליץ בחום."</p>
+        <div class="who"><div class="av">ד</div><div><b>דניאל מ.</b><small>לקוח בגוגל</small></div></div>
+      </div>
+      <div class="rev reveal">
+        <div class="stars">★★★★★</div>
+        <p>"מוסך אמין שאפשר לסמוך עליו. הסבירו לי בדיוק מה צריך לתקן בלי למכור לי דברים מיותרים. שקיפות מלאה לאורך כל הדרך."</p>
+        <div class="who"><div class="av">ש</div><div><b>שירה כ.</b><small>לקוחה בגוגל</small></div></div>
+      </div>
+      <div class="rev reveal">
+        <div class="stars">★★★★★</div>
+        <p>"פחחות וצבע ברמה גבוהה מאוד. עבודה נקייה, צבע מושלם ויחס חם. סוף סוף מצאתי מוסך שאני נשאר אצלו. תודה על הכל!"</p>
+        <div class="who"><div class="av">א</div><div><b>אבי ל.</b><small>לקוח בגוגל</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="sec" id="contact">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">צור קשר</span>
+      <h2 class="title">מוזמנים להגיע <span class="chrome-text">או לתאם תור</span></h2>
+      <p class="lead">אנחנו כאן בשבילכם. התקשרו, שלחו וואטסאפ או קפצו לביקור.</p>
+    </div>
+    <div class="contact-grid">
+      <div class="info-card reveal">
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div><small>כתובת</small><b>רחוב המסגר 5, הוד השרון</b><a href="https://maps.google.com/?q=HaMasger+St+5+Hod+Hasharon" target="_blank" rel="noopener" style="color:var(--accent);font-size:.9rem">פתח בניווט →</a></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg></div>
+          <div><small>טלפון</small><b><a href="tel:0732187990">073-218-7990</a></b></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Z"/></svg></div>
+          <div><small>וואטסאפ</small><b><a href="https://wa.me/972732187990" target="_blank" rel="noopener">שלחו לנו הודעה</a></b></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div><small>שעות פעילות</small><b>א׳–ה׳ · פתוח עד 16:00</b></div>
+        </div>
+        <div class="contact-cta">
+          <a href="https://wa.me/972732187990" target="_blank" rel="noopener" class="btn btn-wa">וואטסאפ</a>
+          <a href="tel:0732187990" class="btn btn-primary">חייגו אלינו</a>
+        </div>
+      </div>
+      <div class="map-card reveal">
+        <iframe
+          title="מפה — אשר גנה הוד השרון"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://www.google.com/maps?q=HaMasger%20St%205%20Hod%20Hasharon&output=embed">
+        </iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <div class="brand">
+          <img src="assets/logo.jpeg" alt="לוגו" style="width:50px;height:50px;border-radius:50%" />
+          <div><div class="bn chrome-text" style="font-weight:900">ASHER GANAH</div><div class="bs" style="font-size:.68rem;color:var(--muted);letter-spacing:.16em">מרכז שירות ופחחות לרכב</div></div>
+        </div>
+        <p>מוסך איי ג'י הוד השרון — מקצועיות, אמינות ושירות אישי לכל סוגי הרכבים.</p>
+      </div>
+      <div class="foot-col">
+        <h5>ניווט</h5>
+        <a href="#services">שירותים</a>
+        <a href="#why">למה אנחנו</a>
+        <a href="#reviews">ביקורות</a>
+        <a href="#contact">צור קשר</a>
+      </div>
+      <div class="foot-col">
+        <h5>שירותים</h5>
+        <a href="#services">פחחות וצבע</a>
+        <a href="#services">מיזוג אוויר</a>
+        <a href="#services">טיפולי מנוע</a>
+        <a href="#services">אבחון ממוחשב</a>
+      </div>
+      <div class="foot-col">
+        <h5>יצירת קשר</h5>
+        <a href="tel:0732187990">073-218-7990</a>
+        <a href="https://wa.me/972732187990" target="_blank" rel="noopener">וואטסאפ</a>
+        <a href="https://maps.google.com/?q=HaMasger+St+5+Hod+Hasharon" target="_blank" rel="noopener">רחוב המסגר 5, הוד השרון</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="yr"></span> ASHER GANAH · אשר גנה. כל הזכויות שמורות.</span>
+      <span>מרכז שירות ופחחות לרכב · הוד השרון</span>
+    </div>
+  </div>
+</footer>
+
+<!-- FLOATING WHATSAPP -->
+<a class="fab" href="https://wa.me/972732187990" target="_blank" rel="noopener" aria-label="וואטסאפ">
+  <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3 .79.8-2.93-.19-.3A8 8 0 1 1 12 20Zm4.4-5.6c-.24-.12-1.42-.7-1.64-.78s-.38-.12-.54.12-.62.78-.76.94-.28.18-.52.06a6.5 6.5 0 0 1-1.92-1.18 7.2 7.2 0 0 1-1.33-1.65c-.14-.24 0-.37.1-.49s.24-.28.36-.42a1.6 1.6 0 0 0 .24-.4.44.44 0 0 0 0-.42c-.06-.12-.54-1.3-.74-1.78s-.39-.4-.54-.41h-.46a.88.88 0 0 0-.64.3 2.68 2.68 0 0 0-.84 2 4.65 4.65 0 0 0 .98 2.48 10.6 10.6 0 0 0 4.06 3.58c.57.25 1.01.4 1.36.5a3.3 3.3 0 0 0 1.5.1 2.45 2.45 0 0 0 1.6-1.14 2 2 0 0 0 .14-1.13c-.06-.1-.22-.16-.46-.28Z"/></svg>
+</a>
+
+<script>
+  // Header scroll state
+  const header=document.getElementById('header');
+  addEventListener('scroll',()=>header.classList.toggle('scrolled',scrollY>20));
+
+  // Mobile menu
+  const burger=document.getElementById('burger'), mm=document.getElementById('mobileMenu');
+  burger.addEventListener('click',()=>mm.classList.toggle('open'));
+  mm.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>mm.classList.remove('open')));
+
+  // Reveal on scroll
+  const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.15});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // Count up
+  const cio=new IntersectionObserver((es)=>es.forEach(e=>{
+    if(!e.isIntersecting)return; const el=e.target; cio.unobserve(el);
+    const target=parseFloat(el.dataset.count), dec=+(el.dataset.dec||0), suf=el.dataset.suf||'';
+    let cur=0, step=target/60;
+    const t=setInterval(()=>{cur+=step; if(cur>=target){cur=target;clearInterval(t);} el.textContent=(dec?cur.toFixed(dec):Math.floor(cur))+suf;},22);
+  }),{threshold:.5});
+  document.querySelectorAll('[data-count]').forEach(el=>cio.observe(el));
+
+  document.getElementById('yr').textContent=new Date().getFullYear();
+</script>
+</body>
+</html>
