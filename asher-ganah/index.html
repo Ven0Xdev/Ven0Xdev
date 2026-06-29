@@ -33,7 +33,7 @@
     --maxw:1180px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
+  html{scroll-behavior:smooth;overflow-x:hidden}
   body{
     font-family:'Heebo','Rubik',system-ui,sans-serif;
     background:var(--bg);
@@ -138,16 +138,16 @@
   .hm span{font-size:.82rem;color:var(--muted);letter-spacing:.05em}
   .stars{color:#ffc24b;letter-spacing:2px}
 
-  /* Hero visual — logo medallion */
+  /* Hero visual — logo emblem (isolated, blends into theme) */
   .medallion{position:relative;display:flex;align-items:center;justify-content:center;padding:14px}
-  .medallion .glow{position:absolute;width:80%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,var(--accent-glow),transparent 62%);filter:blur(38px);z-index:0}
-  .medallion::before{content:"";position:absolute;width:min(440px,90%);aspect-ratio:1;border-radius:50%;
-    background:conic-gradient(from 90deg,rgba(255,255,255,.20),transparent 22%,rgba(91,155,213,.22) 50%,transparent 78%,rgba(255,255,255,.20));
-    -webkit-mask:radial-gradient(circle,transparent 66%,#000 67%);mask:radial-gradient(circle,transparent 66%,#000 67%);
-    animation:spin 16s linear infinite;z-index:1;opacity:.65}
+  .medallion .glow{position:absolute;width:74%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(91,155,213,.30),transparent 62%);filter:blur(46px);z-index:0}
+  .medallion::before{content:"";position:absolute;width:min(470px,96%);aspect-ratio:1;border-radius:50%;
+    background:conic-gradient(from 90deg,rgba(255,255,255,.16),transparent 24%,rgba(91,155,213,.20) 50%,transparent 76%,rgba(255,255,255,.16));
+    -webkit-mask:radial-gradient(circle,transparent 78%,#000 79%);mask:radial-gradient(circle,transparent 78%,#000 79%);
+    animation:spin 22s linear infinite;z-index:1;opacity:.45}
   .medallion img{
-    width:min(400px,82%);position:relative;z-index:2;
-    filter:drop-shadow(0 30px 55px rgba(0,0,0,.7)) drop-shadow(0 0 46px rgba(91,155,213,.22));
+    width:min(420px,86%);position:relative;z-index:2;
+    filter:drop-shadow(0 24px 46px rgba(0,0,0,.6)) drop-shadow(0 0 40px rgba(91,155,213,.22));
     animation:float 6s ease-in-out infinite;
   }
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -165,7 +165,7 @@
   @keyframes slide{to{transform:translateX(50%)}}
 
   /* Generic section padding */
-  .sec{padding:100px 0}
+  .sec{padding:100px 0;overflow-x:clip}
   .sec-head{text-align:center;max-width:680px;margin:0 auto 60px}
   .sec-head .lead{margin-inline:auto}
 
