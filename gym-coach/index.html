@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Gym Coach – המאמן האישי שלך</title>
+  <meta name="description" content="ממלאים שאלון קצר ומקבלים תוכנית אימונים ותזונה אישית." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 100: '#cffafe', 200: '#a5f3fc', 300: '#67e8f9', 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2' },
+            ink: { 700: '#1e293b', 800: '#0f172a', 900: '#0b1120' }
+          },
+          fontFamily: { sans: ['Heebo', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Heebo', system-ui, sans-serif;
+      background-color: #0b1120;
+      color: #f1f5f9;
+      background-image:
+        radial-gradient(900px 600px at 100% -10%, rgba(6,182,212,.12), transparent),
+        radial-gradient(700px 500px at -10% 110%, rgba(8,145,178,.10), transparent);
+      background-attachment: fixed;
+    }
+    .card { border-radius: 1rem; border: 1px solid rgba(255,255,255,.10); background: rgba(15,23,42,.70); backdrop-filter: blur(8px); }
+    .field-input {
+      width: 100%; border-radius: .75rem; border: 1px solid rgba(255,255,255,.10);
+      background: rgba(11,17,32,.60); padding: .625rem 1rem; color: #f1f5f9; outline: none; transition: .15s;
+    }
+    .field-input:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,.30); }
+    .field-label { display:block; margin-bottom:.375rem; font-size:.875rem; font-weight:500; color:#cbd5e1; }
+    .chip {
+      cursor:pointer; border-radius:.75rem; border:1px solid rgba(255,255,255,.10);
+      background: rgba(11,17,32,.60); padding:.625rem 1rem; text-align:center; font-size:.875rem; font-weight:500; transition:.15s;
+    }
+    .chip:hover { border-color: rgba(6,182,212,.60); }
+    .chip-active { border-color:#06b6d4; background: rgba(6,182,212,.15); color:#cffafe; }
+    .btn-primary {
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      border-radius:.75rem; background:#06b6d4; padding:.75rem 1.5rem; font-weight:600; color:#0b1120; transition:.15s;
+    }
+    .btn-primary:hover { background:#22d3ee; }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <main class="mx-auto max-w-3xl px-5 py-10">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between">
+      <div class="text-lg font-extrabold tracking-tight">AI <span class="text-brand-400">Gym</span> Coach</div>
+      <span class="rounded-full border border-white/10 bg-ink-800/60 px-3 py-1 text-xs text-brand-200">המאמן האישי שלך</span>
+    </header>
+
+    <!-- Hero -->
+    <section class="py-8 text-center">
+      <h1 class="text-3xl sm:text-4xl font-extrabold leading-tight">
+        תוכנית אימונים ותזונה <span class="text-brand-400">אישית</span> תוך דקה
+      </h1>
+      <p class="mt-3 text-slate-400">עונים על כמה שאלות, לוחצים כפתור אחד, ומקבלים תוכנית ריאלית ובטוחה.</p>
+    </section>
+
+    <!-- Form -->
+    <form id="form" class="card p-6 space-y-6">
+
+      <!-- Numbers -->
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label class="field-label" for="age">גיל</label>
+          <input id="age" type="number" min="12" max="100" value="25" required class="field-input" />
+        </div>
+        <div>
+          <label class="field-label" for="height">גובה (ס"מ)</label>
+          <input id="height" type="number" min="120" max="230" value="175" required class="field-input" />
+        </div>
+        <div>
+          <label class="field-label" for="weight">משקל (ק"ג)</label>
+          <input id="weight" type="number" min="30" max="250" value="75" required class="field-input" />
+        </div>
+      </div>
+
+      <!-- Sex (used for calorie estimate) -->
+      <div>
+        <span class="field-label">מין</span>
+        <div class="grid grid-cols-2 gap-2" data-group="sex" data-value="male">
+          <button type="button" class="chip chip-active" data-val="male">זכר</button>
+          <button type="button" class="chip" data-val="female">נקבה</button>
+        </div>
+      </div>
+
+      <!-- Goal -->
+      <div>
+        <span class="field-label">מטרה</span>
+        <div class="grid grid-cols-3 gap-2" data-group="goal" data-value="mass">
+          <button type="button" class="chip" data-val="cut">חיטוב</button>
+          <button type="button" class="chip chip-active" data-val="mass">מסה</button>
+          <button type="button" class="chip" data-val="strength">כוח</button>
+        </div>
+      </div>
+
+      <!-- Frequency -->
+      <div>
+        <label class="field-label" for="days">כמה פעמים בשבוע מתאמנים? (<span id="daysOut">3</span>)</label>
+        <input id="days" type="range" min="1" max="7" value="3" class="w-full" style="accent-color:#06b6d4" />
+      </div>
+
+      <!-- Place -->
+      <div>
+        <span class="field-label">איפה מתאמנים?</span>
+        <div class="grid grid-cols-2 gap-2" data-group="place" data-value="gym">
+          <button type="button" class="chip" data-val="home">בית</button>
+          <button type="button" class="chip chip-active" data-val="gym">חדר כושר</button>
+        </div>
+      </div>
+
+      <!-- Level -->
+      <div>
+        <span class="field-label">רמת ניסיון</span>
+        <div class="grid grid-cols-3 gap-2" data-group="level" data-value="beginner">
+          <button type="button" class="chip chip-active" data-val="beginner">מתחיל</button>
+          <button type="button" class="chip" data-val="intermediate">בינוני</button>
+          <button type="button" class="chip" data-val="advanced">מתקדם</button>
+        </div>
+      </div>
+
+      <!-- Free text -->
+      <div>
+        <label class="field-label" for="injuries">פציעות או מגבלות</label>
+        <textarea id="injuries" rows="2" class="field-input" placeholder="למשל: כאב בברך, בעיית גב תחתון... (אפשר להשאיר ריק)"></textarea>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="field-label" for="likes">מאכלים שאוהב</label>
+          <input id="likes" class="field-input" placeholder="עוף, אורז, בננה..." />
+        </div>
+        <div>
+          <label class="field-label" for="dislikes">מאכלים שלא אוהב</label>
+          <input id="dislikes" class="field-input" placeholder="דגים, ברוקולי..." />
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label" for="budget">תקציב לתזונה (אופציונלי)</label>
+        <input id="budget" class="field-input" placeholder="נמוך / בינוני / גבוה" />
+      </div>
+
+      <!-- Optional OpenAI key -->
+      <details class="rounded-xl border border-white/10 bg-ink-900/40 p-4">
+        <summary class="cursor-pointer text-sm font-medium text-slate-300">⚙️ חיבור ל-OpenAI אמיתי (אופציונלי)</summary>
+        <p class="mt-2 text-xs text-slate-400">
+          ללא מפתח — נשתמש במחולל חכם מובנה. אם תזינו מפתח OpenAI, התוכנית תיווצר ע"י ה-AI ישירות מהדפדפן.
+          המפתח נשמר מקומית בדפדפן בלבד ואינו נשלח לשום מקום מלבד OpenAI.
+        </p>
+        <input id="apiKey" type="password" class="field-input mt-3" placeholder="sk-..." autocomplete="off" />
+      </details>
+
+      <div id="error" class="hidden rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"></div>
+
+      <button id="submit" type="submit" class="btn-primary w-full text-lg">
+        <span id="submitText">✨ צור תוכנית</span>
+      </button>
+    </form>
+
+    <!-- Result -->
+    <section id="result" class="mt-10 hidden">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-2xl font-extrabold">התוכנית שלך</h2>
+        <span id="savedBadge" class="hidden text-sm text-emerald-300">✓ נשמר מקומית</span>
+      </div>
+      <div id="planView" class="space-y-6"></div>
+    </section>
+
+    <footer class="mt-12 border-t border-white/10 pt-6 text-center text-xs text-slate-500">
+      המידע אינו מהווה ייעוץ רפואי. בכל מגבלה או פציעה התייעצו עם איש מקצוע.
+    </footer>
+  </main>
+
+  <script>
+    // ---------- ניהול בחירות (chips) ----------
+    document.querySelectorAll('[data-group]').forEach(group => {
+      group.addEventListener('click', e => {
+        const btn = e.target.closest('[data-val]');
+        if (!btn) return;
+        group.dataset.value = btn.dataset.val;
+        group.querySelectorAll('[data-val]').forEach(b => b.classList.remove('chip-active'));
+        btn.classList.add('chip-active');
+      });
+    });
+
+    const daysEl = document.getElementById('days');
+    const daysOut = document.getElementById('daysOut');
+    daysEl.addEventListener('input', () => daysOut.textContent = daysEl.value);
+
+    // שחזור מפתח שמור
+    const apiKeyEl = document.getElementById('apiKey');
+    apiKeyEl.value = localStorage.getItem('gymcoach:openai-key') || '';
+
+    function readForm() {
+      const g = name => document.querySelector(`[data-group="${name}"]`).dataset.value;
+      return {
+        age: Number(document.getElementById('age').value),
+        heightCm: Number(document.getElementById('height').value),
+        weightKg: Number(document.getElementById('weight').value),
+        sex: g('sex'),
+        goal: g('goal'),
+        daysPerWeek: Number(daysEl.value),
+        place: g('place'),
+        level: g('level'),
+        injuries: document.getElementById('injuries').value.trim(),
+        foodLikes: document.getElementById('likes').value.trim(),
+        foodDislikes: document.getElementById('dislikes').value.trim(),
+        budget: document.getElementById('budget').value.trim()
+      };
+    }
+
+    // ---------- מחולל מקומי (ברירת מחדל) ----------
+    const goalHe = { cut: 'חיטוב', mass: 'מסה', strength: 'כוח' };
+
+    function estimateCalories(i) {
+      // נוסחת Mifflin-St Jeor
+      const s = i.sex === 'male' ? 5 : -161;
+      const bmr = 10 * i.weightKg + 6.25 * i.heightCm - 5 * i.age + s;
+      const activity = 1.375 + (i.daysPerWeek - 1) * 0.05; // 1.375–1.675
+      let tdee = bmr * activity;
+      if (i.goal === 'cut') tdee -= 400;
+      if (i.goal === 'mass') tdee += 300;
+      return Math.round(tdee / 10) * 10;
+    }
+
+    function proteinTarget(i) {
+      const perKg = i.goal === 'cut' ? 2.2 : i.goal === 'strength' ? 2.0 : 1.8;
+      return Math.round(i.weightKg * perKg);
+    }
+
+    const EXERCISES = {
+      gym: {
+        push: [['לחיצת חזה במוט','8-12'],['לחיצת כתפיים בדמבל','8-12'],['פרפר במכונה','12-15'],['פושאפ של טרייספס בכבל','12-15']],
+        pull: [['מתח / משיכת פולי עליון','8-12'],['חתירה בכבל','8-12'],['פייס פול','12-15'],['כפיפת מרפק במוט','10-12']],
+        legs: [['סקוואט','8-12'],['לחיצת רגליים','10-12'],['מכרעים בדמבל','10-12'],['הרמת עקבים','15-20']],
+        full: [['סקוואט','8-12'],['לחיצת חזה במוט','8-12'],['חתירה בכבל','8-12'],['לחיצת כתפיים','10-12'],['פלאנק','45 שניות']],
+        upper: [['לחיצת חזה במוט','8-12'],['משיכת פולי עליון','8-12'],['לחיצת כתפיים בדמבל','10-12'],['חתירה בכבל','10-12']],
+        lower: [['סקוואט','8-12'],['רומנית דדליפט','8-12'],['לחיצת רגליים','12-15'],['הרמת עקבים','15-20']]
+      },
+      home: {
+        push: [['שכיבות סמיכה','עד כשל'],['לחיצת כתפיים בבקבוקים/דמבל','12-15'],['שכיבות יהלום','עד כשל'],['דחיקת כתף בעמידה','12-15']],
+        pull: [['חתירה עם גומיית התנגדות','12-15'],['Superman','15'],['חתירה הפוכה מתחת לשולחן','עד כשל'],['כפיפת מרפק עם גומייה','12-15']],
+        legs: [['סקוואט משקל גוף','15-20'],['מכרעים בהליכה','12 לכל רגל'],['Glute Bridge','15-20'],['עליות עקב','20']],
+        full: [['סקוואט משקל גוף','15-20'],['שכיבות סמיכה','עד כשל'],['מכרעים','12 לכל רגל'],['פלאנק','45 שניות'],['ברפי','10']],
+        upper: [['שכיבות סמיכה','עד כשל'],['חתירה עם גומייה','12-15'],['לחיצת כתפיים','12-15'],['שכיבות יהלום','עד כשל']],
+        lower: [['סקוואט משקל גוף','15-20'],['מכרעים','12 לכל רגל'],['Glute Bridge','15-20'],['Wall Sit','45 שניות']]
+      }
+    };
+
+    const SPLITS = {
+      1: ['full'],
+      2: ['upper','lower'],
+      3: ['push','pull','legs'],
+      4: ['upper','lower','push','legs'],
+      5: ['push','pull','legs','upper','lower'],
+      6: ['push','pull','legs','push','pull','legs'],
+      7: ['push','pull','legs','upper','lower','full','full']
+    };
+    const FOCUS_HE = { push: 'דחיפה (חזה/כתף/טרייספס)', pull: 'משיכה (גב/ביצפס)', legs: 'רגליים', full: 'גוף מלא', upper: 'פלג גוף עליון', lower: 'פלג גוף תחתון' };
+    const DAYS_HE = ['יום א\'','יום ב\'','יום ג\'','יום ד\'','יום ה\'','יום ו\'','יום ש\''];
+
+    function setsByLevel(level) { return level === 'beginner' ? 3 : level === 'intermediate' ? 4 : 4; }
+
+    function buildWorkout(i) {
+      const split = SPLITS[i.daysPerWeek] || SPLITS[3];
+      const sets = setsByLevel(i.level);
+      const pool = EXERCISES[i.place];
+      const hasInjury = i.injuries.length > 0;
+      return split.map((type, idx) => ({
+        day: `${DAYS_HE[idx]} – ${FOCUS_HE[type]}`,
+        focus: FOCUS_HE[type],
+        exercises: pool[type].map(([name, reps]) => ({
+          name, sets, reps,
+          notes: hasInjury ? 'הימנעו מכאב; הפחיתו משקל/טווח בהתאם' : ''
+        }))
+      }));
+    }
+
+    function buildMeals(i, cals, protein) {
+      const likes = i.foodLikes ? ` (כולל מהמועדפים: ${i.foodLikes})` : '';
+      const note = i.foodDislikes ? ` ללא: ${i.foodDislikes}.` : '';
+      const p = Math.round(protein / 4);
+      const c = Math.round(cals / 4);
+      return [
+        { name: 'ארוחת בוקר', items: ['חביתה מ-3 ביצים','שיבולת שועל עם פרי','קפה/תה'], approxCalories: c, approxProtein: p },
+        { name: 'ארוחת צהריים', items: [`חזה עוף / טופו 200 ג'${likes}`, 'אורז מלא / תפו"א', 'סלט ירקות + שמן זית'], approxCalories: c + 100, approxProtein: p + 5 },
+        { name: 'ארוחת ביניים', items: ['יוגורט יווני', 'חופן שקדים', 'פרי'], approxCalories: Math.round(c * 0.6), approxProtein: Math.round(p * 0.6) },
+        { name: 'ארוחת ערב', items: [`דג / בשר רזה 200 ג'`, 'קטניות / קינואה', 'ירקות מאודים' + note], approxCalories: c, approxProtein: p }
+      ];
+    }
+
+    function localPlan(i) {
+      const cals = estimateCalories(i);
+      const protein = proteinTarget(i);
+      const tips = [
+        'הוסיפו בהדרגה משקל או חזרה כל שבוע-שבועיים (Progressive Overload).',
+        'שאפו ל-7–9 שעות שינה — שם השריר באמת גדל.',
+        'שתו מים לאורך היום ושמרו על עקביות מעל "מושלמות".',
+        'תעדו את האימונים כדי לראות התקדמות ולדעת מתי להעלות עומס.'
+      ];
+      if (i.goal === 'cut') tips.push('שמרו על חלבון גבוה כדי לשמר שריר בזמן הגירעון הקלורי.');
+      if (i.goal === 'mass') tips.push('עודף קלורי קטן ועקבי עדיף על "באלק" אגרסיבי.');
+
+      const motivations = [
+        'כל חזרה היום היא גרסה חזקה יותר שלך מחר. 💪',
+        'אתה לא צריך להיות מושלם — רק עקבי.',
+        'ההתחלה היא החלק הקשה, וכבר עברת אותה.',
+        'גוף חזק נבנה מהרגלים קטנים שחוזרים על עצמם.'
+      ];
+
+      return {
+        summary: `תוכנית ${goalHe[i.goal]} ל${i.daysPerWeek} אימונים בשבוע, מותאמת לרמת ${i.level === 'beginner' ? 'מתחיל' : i.level === 'intermediate' ? 'בינוני' : 'מתקדם'} ולאימון ${i.place === 'gym' ? 'בחדר כושר' : 'בבית'}.`,
+        caloriesTarget: cals,
+        proteinTargetGrams: protein,
+        workoutPlan: buildWorkout(i),
+        exampleMealPlan: buildMeals(i, cals, protein),
+        progressTips: tips,
+        dailyMotivation: motivations[Math.floor(Math.random() * motivations.length)],
+        safetyNote: i.injuries
+          ? 'ציינת פציעה/מגבלה — מומלץ להתייעץ עם פיזיותרפיסט/רופא לפני התחלה, ולהימנע מכל תרגיל שגורם כאב.'
+          : 'התחילו במשקלים נוחים, התמקדו בטכניקה, והפסיקו בכל כאב חד.'
+      };
+    }
+
+    // ---------- מסלול OpenAI (אופציונלי) ----------
+    async function aiPlan(i, key) {
+      const system = `You are an AI fitness coach. Create a safe and realistic workout and nutrition plan.
+Use the user's age, height, weight, goal, training level, equipment, weekly availability, injuries, food preferences, and budget.
+Rules: do not give medical advice; if injuries exist recommend a professional and adapt conservatively; keep it realistic; explain simply.
+Write ALL text content in Hebrew.
+Return ONLY a valid JSON object with EXACTLY this shape:
+{"summary":string,"caloriesTarget":number,"proteinTargetGrams":number,"workoutPlan":[{"day":string,"focus":string,"exercises":[{"name":string,"sets":number,"reps":string,"notes":string}]}],"exampleMealPlan":[{"name":string,"items":[string],"approxCalories":number,"approxProtein":number}],"progressTips":[string],"dailyMotivation":string,"safetyNote":string}
+The number of workout days must match the user's weekly availability.`;
+      const user = [
+        `גיל: ${i.age}`, `גובה: ${i.heightCm} ס"מ`, `משקל: ${i.weightKg} ק"ג`, `מין: ${i.sex === 'male' ? 'זכר' : 'נקבה'}`,
+        `מטרה: ${goalHe[i.goal]}`, `תדירות: ${i.daysPerWeek} בשבוע`, `מיקום: ${i.place === 'gym' ? 'חדר כושר' : 'בית'}`,
+        `רמה: ${i.level}`, `פציעות: ${i.injuries || 'אין'}`, `אוהב: ${i.foodLikes || 'לא צוין'}`,
+        `לא אוהב: ${i.foodDislikes || 'לא צוין'}`, `תקציב: ${i.budget || 'לא צוין'}`
+      ].join('\n');
+
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0.7,
+          response_format: { type: 'json_object' },
+          messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
+        })
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error('OpenAI: ' + (res.status) + ' ' + t.slice(0, 200));
+      }
+      const data = await res.json();
+      return JSON.parse(data.choices[0].message.content);
+    }
+
+    // ---------- רינדור ----------
+    function num(n) { return Number(n || 0).toLocaleString('he-IL'); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c])); }
+
+    function renderPlan(p) {
+      const workout = p.workoutPlan.map(d => `
+        <div class="card p-6">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="font-bold">${esc(d.day)}</h3>
+            <span class="text-sm text-brand-300">${esc(d.focus)}</span>
+          </div>
+          <div class="mt-3 overflow-x-auto">
+            <table class="w-full text-right text-sm">
+              <thead class="text-slate-400"><tr class="border-b border-white/10">
+                <th class="py-2 font-medium">תרגיל</th><th class="py-2 font-medium">סטים</th>
+                <th class="py-2 font-medium">חזרות</th><th class="py-2 font-medium">הערות</th>
+              </tr></thead>
+              <tbody>${d.exercises.map(e => `
+                <tr class="border-b border-white/5 last:border-0">
+                  <td class="py-2 font-medium">${esc(e.name)}</td>
+                  <td class="py-2">${esc(e.sets)}</td>
+                  <td class="py-2">${esc(e.reps)}</td>
+                  <td class="py-2 text-slate-400">${esc(e.notes) || '—'}</td>
+                </tr>`).join('')}</tbody>
+            </table>
+          </div>
+        </div>`).join('');
+
+      const meals = p.exampleMealPlan.map(m => `
+        <div class="card p-6">
+          <div class="flex items-baseline justify-between">
+            <h3 class="font-bold">${esc(m.name)}</h3>
+            <span class="text-xs text-slate-400">~${num(m.approxCalories)} קל' · ${num(m.approxProtein)} ג' חלבון</span>
+          </div>
+          <ul class="mt-2 list-disc space-y-1 pr-5 text-sm text-slate-300">
+            ${m.items.map(it => `<li>${esc(it)}</li>`).join('')}
+          </ul>
+        </div>`).join('');
+
+      const tips = p.progressTips.map(t => `<li>${esc(t)}</li>`).join('');
+
+      return `
+        <div class="card p-6 border-brand-500/30" style="background:rgba(6,182,212,.10)">
+          <p class="text-sm font-semibold text-brand-200">המוטיבציה היומית</p>
+          <p class="mt-1 text-lg font-bold">${esc(p.dailyMotivation)}</p>
+          ${p.summary ? `<p class="mt-3 text-sm text-slate-300">${esc(p.summary)}</p>` : ''}
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="card p-6 text-center">
+            <p class="text-sm text-slate-400">יעד קלוריות יומי</p>
+            <p class="mt-1 text-3xl font-extrabold text-brand-400">${num(p.caloriesTarget)}</p>
+            <p class="text-xs text-slate-500">קלוריות</p>
+          </div>
+          <div class="card p-6 text-center">
+            <p class="text-sm text-slate-400">יעד חלבון יומי</p>
+            <p class="mt-1 text-3xl font-extrabold text-brand-400">${num(p.proteinTargetGrams)}</p>
+            <p class="text-xs text-slate-500">גרם</p>
+          </div>
+        </div>
+
+        <section><h2 class="mb-3 text-xl font-bold">תוכנית אימונים שבועית</h2>
+          <div class="space-y-4">${workout}</div></section>
+
+        <section><h2 class="mb-3 text-xl font-bold">תפריט יומי לדוגמה</h2>
+          <div class="grid gap-4 sm:grid-cols-2">${meals}</div></section>
+
+        <section class="card p-6"><h2 class="mb-3 text-xl font-bold">טיפים להתקדמות</h2>
+          <ul class="list-disc space-y-2 pr-5 text-sm text-slate-300">${tips}</ul></section>
+
+        ${p.safetyNote ? `<p class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">⚠️ ${esc(p.safetyNote)}</p>` : ''}
+      `;
+    }
+
+    // ---------- שמירה ----------
+    function savePlan(input, plan) {
+      const key = 'gymcoach:plans';
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      list.unshift({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), input, plan });
+      localStorage.setItem(key, JSON.stringify(list.slice(0, 20)));
+    }
+
+    // ---------- שליחה ----------
+    const form = document.getElementById('form');
+    const errorEl = document.getElementById('error');
+    const submitBtn = document.getElementById('submit');
+    const submitText = document.getElementById('submitText');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      errorEl.classList.add('hidden');
+      const input = readForm();
+      const key = apiKeyEl.value.trim();
+      if (key) localStorage.setItem('gymcoach:openai-key', key);
+      else localStorage.removeItem('gymcoach:openai-key');
+
+      submitBtn.disabled = true;
+      submitText.innerHTML = '<span class="spin inline-block">⏳</span> בונה את התוכנית...';
+
+      try {
+        const plan = key ? await aiPlan(input, key) : (await new Promise(r => setTimeout(() => r(localPlan(input)), 400)));
+        savePlan(input, plan);
+
+        document.getElementById('planView').innerHTML = renderPlan(plan);
+        document.getElementById('savedBadge').classList.remove('hidden');
+        document.getElementById('result').classList.remove('hidden');
+        document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        errorEl.textContent = 'יצירת התוכנית נכשלה: ' + (err && err.message ? err.message : 'שגיאה לא ידועה');
+        errorEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitText.textContent = '✨ צור תוכנית';
+      }
+    });
+  </script>
+</body>
+</html>
