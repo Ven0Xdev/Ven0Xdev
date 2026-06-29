@@ -141,13 +141,17 @@
   .stars{color:#ffc24b;letter-spacing:2px}
 
   /* Hero visual — logo lockup (graphic mark + crisp text) */
-  .medallion{position:relative;display:flex;align-items:center;justify-content:center;padding:14px}
+  .medallion{position:relative;display:flex;align-items:center;justify-content:center;padding:14px;perspective:1500px}
   .medallion .glow{position:absolute;top:36%;left:50%;transform:translate(-50%,-50%);width:60%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(225,29,46,.30),transparent 62%);filter:blur(48px);z-index:0}
   .logo-lockup{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;animation:float 6s ease-in-out infinite}
-  .logo-badge{width:min(330px,74%);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
-    background:radial-gradient(circle at 50% 36%,#2b2e34,#0c0d10 72%);
+  .coin{width:min(330px,74%);aspect-ratio:1;position:relative;transform-style:preserve-3d;will-change:transform;transition:transform .08s linear}
+  .coin-face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center;overflow:hidden;
     box-shadow:0 34px 60px -22px rgba(20,22,30,.5),inset 0 2px 8px rgba(255,255,255,.07),0 0 0 7px #fff,0 0 0 10px var(--accent),0 0 0 11px rgba(20,22,30,.12)}
-  .logo-mark{width:88%;filter:drop-shadow(0 10px 22px rgba(0,0,0,.55))}
+  .coin-front{background:radial-gradient(circle at 50% 36%,#2b2e34,#0c0d10 72%)}
+  .coin-front .logo-mark{width:88%;filter:drop-shadow(0 10px 22px rgba(0,0,0,.55))}
+  .coin-back{transform:rotateY(180deg);background:#0c0d10}
+  .coin-back img{width:100%;height:100%;object-fit:cover;object-position:center}
+  .coin-back::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 120%,rgba(225,29,46,.28),transparent 55%),linear-gradient(180deg,transparent 55%,rgba(12,13,16,.55))}
   .logo-word{font-weight:900;font-size:clamp(1.9rem,5.4vw,3rem);letter-spacing:.16em;line-height:1;margin-top:22px;white-space:nowrap}
   .logo-tag{color:var(--accent);font-size:clamp(.84rem,2.1vw,1.04rem);letter-spacing:.12em;font-weight:700;margin-top:11px;text-align:center}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -466,7 +470,10 @@
     <div class="medallion" data-anim="scale">
       <div class="glow" data-parallax="1.4"></div>
       <div class="logo-lockup">
-        <div class="logo-badge"><img class="logo-mark" src="assets/logo_mark.png" alt="ASHER GANAH — מרכז שירות, פחחות וצבע" /></div>
+        <div class="coin" id="coin">
+          <div class="coin-face coin-front"><img class="logo-mark" src="assets/logo_mark.png" alt="ASHER GANAH — מרכז שירות, פחחות וצבע" /></div>
+          <div class="coin-face coin-back"><img src="assets/paint.jpeg" alt="מרכז פחחות וצבע — עבודת תא צבע" /></div>
+        </div>
         <div class="logo-word chrome-text">ASHER GANAH</div>
         <div class="logo-tag">מרכז שירות · פחחות וצבע</div>
       </div>
@@ -849,6 +856,8 @@
   const bar=document.getElementById('scrollBar');
   const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
   const parallax=[...document.querySelectorAll('[data-parallax]')];
+  const coin=document.getElementById('coin');
+  const hero=document.getElementById('top');
   let ticking=false;
   function onScroll(){
     if(ticking)return;ticking=true;
@@ -857,7 +866,8 @@
       header.classList.toggle('scrolled',y>20);
       const max=document.documentElement.scrollHeight-innerHeight;
       if(bar)bar.style.width=(max>0?(y/max)*100:0)+'%';
-      if(!reduce && !document.documentElement.classList.contains('acc-noanim')){
+      const anim=!reduce && !document.documentElement.classList.contains('acc-noanim');
+      if(anim){
         const vh=innerHeight;
         parallax.forEach(el=>{
           const sp=+el.dataset.parallax||1;
@@ -865,6 +875,15 @@
           const off=(r.top+r.height/2 - vh/2)*-0.05*sp;
           el.style.transform='translateY('+off.toFixed(1)+'px)';
         });
+      }
+      // Coin flip driven by scroll (reveals the spray-booth photo on the back)
+      if(coin){
+        if(anim){
+          const prog=Math.min(y/190,1);
+          coin.style.transform='rotateY('+(prog*180).toFixed(1)+'deg)';
+        }else{
+          coin.style.transform='none';
+        }
       }
       ticking=false;
     });
