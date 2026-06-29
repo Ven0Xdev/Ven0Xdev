@@ -263,9 +263,32 @@
   .fab svg{width:32px;height:32px;fill:#fff}
   @keyframes pulse{0%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 0 rgba(31,167,90,.5)}70%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 16px rgba(31,167,90,0)}100%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 0 rgba(31,167,90,0)}}
 
-  /* Reveal animation */
-  .reveal{opacity:0;transform:translateY(28px);transition:.7s cubic-bezier(.2,.7,.2,1)}
-  .reveal.in{opacity:1;transform:none}
+  /* ===== Rich scroll reveals ===== */
+  .reveal,[data-anim]{opacity:0;transform:translateY(46px);
+    transition:opacity .9s cubic-bezier(.16,.84,.34,1),transform .9s cubic-bezier(.16,.84,.34,1),filter .9s ease;
+    transition-delay:var(--d,0ms);will-change:opacity,transform}
+  [data-anim="right"]{transform:translateX(70px)}
+  [data-anim="left"]{transform:translateX(-70px)}
+  [data-anim="scale"]{transform:scale(.86)}
+  [data-anim="blur"]{transform:translateY(34px);filter:blur(18px)}
+  [data-anim="rotate"]{transform:translateY(40px) rotate(-5deg);transform-origin:bottom right}
+  .reveal.in,[data-anim].in{opacity:1;transform:none;filter:none}
+  /* Word-by-word title reveal */
+  .word{display:inline-block;opacity:0;transform:translateY(110%) rotate(4deg);
+    transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1);transition-delay:var(--wd,0ms)}
+  .word-wrap{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.08em}
+  .in .word,.word.in{opacity:1;transform:none}
+
+  /* Scroll progress bar */
+  .scroll-progress{position:fixed;top:0;inset-inline:0;height:3px;z-index:200;background:transparent;pointer-events:none}
+  .scroll-progress i{display:block;height:100%;width:0;background:var(--chrome);box-shadow:0 0 14px var(--accent-glow);transition:width .1s linear}
+
+  html.acc-noanim .reveal,html.acc-noanim [data-anim],html.acc-noanim .word{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+  html.acc-noanim [data-parallax]{transform:none!important}
+  @media (prefers-reduced-motion:reduce){
+    .reveal,[data-anim],.word{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+    [data-parallax]{transform:none!important}
+  }
 
   /* Responsive */
   @media(max-width:980px){
@@ -381,6 +404,7 @@
 <body>
 
 <a href="#top" class="skip-link">דלג לתוכן הראשי</a>
+<div class="scroll-progress" aria-hidden="true"><i id="scrollBar"></i></div>
 
 <!-- HEADER -->
 <header id="header">
@@ -416,9 +440,9 @@
 <!-- HERO -->
 <section class="hero" id="top" tabindex="-1">
   <div class="wrap hero-grid">
-    <div class="hero-copy">
+    <div class="hero-copy" data-stagger="120">
       <span class="eyebrow">מוסך איי ג'י · הוד השרון</span>
-      <h1>הרכב שלך <br><span class="chrome-text">בידיים מקצועיות.</span></h1>
+      <h1 data-words>הרכב שלך <br><span class="chrome-text">בידיים מקצועיות.</span></h1>
       <p class="sub">מרכז שירות, פחחות וצבע ברמה הגבוהה ביותר. אבחון מדויק, חלקים מקוריים ושקיפות מלאה — כדי שתחזרו לכביש בראש שקט.</p>
       <div class="hero-actions">
         <a href="https://wa.me/972522417741" target="_blank" rel="noopener" class="btn btn-wa">
@@ -438,8 +462,8 @@
       </div>
     </div>
 
-    <div class="medallion">
-      <div class="glow"></div>
+    <div class="medallion" data-anim="scale">
+      <div class="glow" data-parallax="1.4"></div>
       <img src="assets/logo.png" alt="ASHER GANAH — מרכז שירות ופחחות לרכב" />
     </div>
   </div>
@@ -462,7 +486,7 @@
       <h2 class="title">כל מה שהרכב שלך צריך, <span class="chrome-text">תחת קורת גג אחת</span></h2>
       <p class="lead">ממוסך מורשה ומקצועי — שירות מלא מפחחות וצבע ועד טיפולי מנוע ומערכות, בעבודה נקייה ואחריות מלאה.</p>
     </div>
-    <div class="cards">
+    <div class="cards" data-stagger="100">
       <div class="card reveal">
         <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 13l2-5a3 3 0 0 1 2.8-2h8.4A3 3 0 0 1 19 8l2 5"/><path d="M5 17h14v-4H5z"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg></div>
         <h3>פחחות וצבע</h3>
@@ -500,7 +524,7 @@
 <!-- WHY US -->
 <section class="sec" id="why" style="background:var(--bg-2)">
   <div class="wrap split">
-    <div class="reveal">
+    <div data-stagger="110">
       <span class="eyebrow">למה ASHER GANAH</span>
       <h2 class="title">מקצועיות, אמינות <span class="chrome-text">ושקיפות מלאה</span></h2>
       <p class="lead">המוסך בהובלת בעל מקצוע עם מעל 30 שנות ניסיון בענף הרכב. לקוחות בוחרים בנו שוב ושוב כי אנחנו מתייחסים לרכב שלכם כמו לשלנו — ודירוג 4.9 כוכבים עם 147 ביקורות מדבר בעד עצמו.</p>
@@ -519,9 +543,9 @@
       </div>
     </div>
 
-    <div class="visual-panel reveal">
-      <div class="badge-float bf-1"><b class="chrome-text">4.9★</b><small>דירוג גוגל</small></div>
-      <div class="badge-float bf-2"><b>147+</b><small>לקוחות מרוצים</small></div>
+    <div class="visual-panel" data-anim="left">
+      <div class="badge-float bf-1" data-parallax="2.2"><b class="chrome-text">4.9★</b><small>דירוג גוגל</small></div>
+      <div class="badge-float bf-2" data-parallax="-1.8"><b>147+</b><small>לקוחות מרוצים</small></div>
       <img src="assets/logo.png" alt="ASHER GANAH" />
     </div>
   </div>
@@ -529,7 +553,7 @@
 
 <!-- STATS -->
 <section class="sec" style="padding-block:70px">
-  <div class="wrap stats">
+  <div class="wrap stats" data-stagger="90">
     <div class="stat reveal"><b class="chrome-text" data-count="4.9" data-dec="1">0</b><span>דירוג ממוצע</span></div>
     <div class="stat reveal"><b class="chrome-text" data-count="147" data-suf="+">0</b><span>ביקורות גוגל</span></div>
     <div class="stat reveal"><b class="chrome-text" data-count="100" data-suf="%">0</b><span>אחריות מלאה</span></div>
@@ -545,7 +569,7 @@
       <h2 class="title">מה אומרים עלינו <span class="chrome-text">בגוגל</span></h2>
       <p class="lead">דירוג 4.9 מתוך 5 על בסיס 147 ביקורות אמיתיות של לקוחות.</p>
     </div>
-    <div class="reviews">
+    <div class="reviews" data-stagger="110">
       <div class="rev reveal">
         <div class="stars">★★★★★</div>
         <p>"שירות מעולה ומקצועי! הביאו את האוטו אחרי תאונה והחזירו אותו כמו חדש. יחס אישי, מחיר הוגן וזמני עבודה מדויקים. ממליץ בחום."</p>
@@ -574,7 +598,7 @@
       <p class="lead">אנחנו כאן בשבילכם. התקשרו, שלחו וואטסאפ או קפצו לביקור.</p>
     </div>
     <div class="contact-grid">
-      <div class="info-card reveal">
+      <div class="info-card" data-anim="right">
         <div class="info-row">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
           <div><small>כתובת</small><b>רחוב המסגר 5, הוד השרון</b><a href="https://maps.google.com/?q=HaMasger+St+5+Hod+Hasharon" target="_blank" rel="noopener" style="color:var(--accent);font-size:.9rem">פתח בניווט →</a></div>
@@ -604,7 +628,7 @@
           <a href="tel:0732187990" class="btn btn-primary">חייגו אלינו</a>
         </div>
       </div>
-      <div class="map-card reveal">
+      <div class="map-card" data-anim="left">
         <iframe
           title="מפה — אשר גנה הוד השרון"
           loading="lazy"
@@ -768,16 +792,76 @@
 <script>
   // Header scroll state
   const header=document.getElementById('header');
-  addEventListener('scroll',()=>header.classList.toggle('scrolled',scrollY>20));
 
   // Mobile menu
   const burger=document.getElementById('burger'), mm=document.getElementById('mobileMenu');
   burger.addEventListener('click',()=>mm.classList.toggle('open'));
   mm.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>mm.classList.remove('open')));
 
-  // Reveal on scroll
-  const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.15});
-  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+  /* ===== Rich scroll animations ===== */
+  // 1) Split [data-words] titles into animated word units (preserves chrome spans & <br>)
+  document.querySelectorAll('[data-words]').forEach(title=>{
+    const frag=document.createDocumentFragment(); let i=0;
+    [...title.childNodes].forEach(node=>{
+      if(node.nodeType===3){ // text
+        node.textContent.split(/(\s+)/).forEach(tok=>{
+          if(tok.trim()===''){frag.appendChild(document.createTextNode(tok));return;}
+          const wrap=document.createElement('span');wrap.className='word-wrap';
+          const w=document.createElement('span');w.className='word';w.textContent=tok;
+          w.style.setProperty('--wd',(i++*70)+'ms');wrap.appendChild(w);frag.appendChild(wrap);
+        });
+      }else if(node.nodeName==='BR'){frag.appendChild(node.cloneNode());}
+      else{ // element (e.g. chrome-text span) -> animate as one unit
+        const wrap=document.createElement('span');wrap.className='word-wrap';
+        const w=document.createElement('span');w.className='word';w.style.setProperty('--wd',(i++*70)+'ms');
+        w.appendChild(node.cloneNode(true));wrap.appendChild(w);frag.appendChild(wrap);
+      }
+    });
+    title.innerHTML='';title.appendChild(frag);
+  });
+
+  // 2) Stagger: assign incremental delay to children of [data-stagger]
+  document.querySelectorAll('[data-stagger]').forEach(c=>{
+    const step=+c.dataset.stagger||90;
+    [...c.children].forEach((ch,i)=>{
+      ch.style.setProperty('--d',(i*step)+'ms');
+      if(!ch.classList.contains('reveal')&&!ch.hasAttribute('data-anim')&&!ch.hasAttribute('data-words'))ch.classList.add('reveal');
+    });
+  });
+
+  // 3) Reveal observer (covers .reveal, [data-anim], [data-words])
+  const io=new IntersectionObserver((es)=>es.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}
+  }),{threshold:.12,rootMargin:'0px 0px -7% 0px'});
+  document.querySelectorAll('.reveal,[data-anim],[data-words]').forEach(el=>io.observe(el));
+
+  // 4) Scroll progress bar + header state (single rAF-throttled handler)
+  const bar=document.getElementById('scrollBar');
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const parallax=[...document.querySelectorAll('[data-parallax]')];
+  let ticking=false;
+  function onScroll(){
+    if(ticking)return;ticking=true;
+    requestAnimationFrame(()=>{
+      const y=scrollY||document.documentElement.scrollTop;
+      header.classList.toggle('scrolled',y>20);
+      const max=document.documentElement.scrollHeight-innerHeight;
+      if(bar)bar.style.width=(max>0?(y/max)*100:0)+'%';
+      if(!reduce && !document.documentElement.classList.contains('acc-noanim')){
+        const vh=innerHeight;
+        parallax.forEach(el=>{
+          const sp=+el.dataset.parallax||1;
+          const r=el.getBoundingClientRect();
+          const off=(r.top+r.height/2 - vh/2)*-0.05*sp;
+          el.style.transform='translateY('+off.toFixed(1)+'px)';
+        });
+      }
+      ticking=false;
+    });
+  }
+  addEventListener('scroll',onScroll,{passive:true});
+  addEventListener('resize',onScroll,{passive:true});
+  onScroll();
 
   // Count up
   const cio=new IntersectionObserver((es)=>es.forEach(e=>{
