@@ -106,7 +106,7 @@
   .nav-links{display:flex;align-items:center;gap:30px}
   .nav-links a{font-size:.96rem;color:var(--silver-2);font-weight:500;position:relative;transition:.2s}
   .nav-links a::after{content:"";position:absolute;right:0;bottom:-6px;height:2px;width:0;background:var(--chrome);transition:.25s}
-  .nav-links a:hover{color:#fff}
+  .nav-links a:hover{color:var(--accent)}
   .nav-links a:hover::after{width:100%}
   .nav-cta{display:flex;align-items:center;gap:12px}
   .nav-cta .btn{padding:11px 20px;font-size:.92rem}
@@ -301,10 +301,12 @@
     .medallion{order:-1;margin-bottom:10px}
     .cards,.reviews{grid-template-columns:1fr 1fr}
     .stats{grid-template-columns:1fr 1fr}
+    .steps{grid-template-columns:1fr 1fr;row-gap:44px}
     .nav-links{display:none}
   }
   @media(max-width:640px){
     .cards,.reviews{grid-template-columns:1fr}
+    .steps{grid-template-columns:1fr;row-gap:42px}
     .nav-cta .btn-ghost{display:none}
     .burger{display:flex}
     .hero{padding-top:104px}
@@ -316,6 +318,16 @@
     .brand .bs{font-size:.6rem;white-space:nowrap}
     .nav-cta .btn{padding:9px 16px;font-size:.86rem}
     .mobile-menu{inset:70px 0 auto 0}
+    .cta-band{padding:44px 22px;border-radius:22px}
+    /* Sticky mobile action bar */
+    body .mobile-bar{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:fixed;inset:auto 0 0 0;z-index:80;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-top:1px solid var(--line);box-shadow:0 -8px 24px -16px rgba(20,22,30,.4)}
+    .mobile-bar a{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;font-weight:800;font-size:1rem}
+    .mobile-bar .mb-call{background:linear-gradient(180deg,#e11d2e,#a3121d);color:#fff}
+    .mobile-bar .mb-wa{background:#1fa75a;color:#fff}
+    .mobile-bar svg{width:20px;height:20px;fill:currentColor}
+    body{padding-bottom:68px}
+    .fab{bottom:90px}
+    .a11y-btn{bottom:160px}
   }
   @media(max-width:380px){
     .brand .bs{display:none}
@@ -325,6 +337,47 @@
   .mobile-menu.open{transform:none}
   .mobile-menu a{display:block;padding:14px 4px;font-size:1.1rem;font-weight:600;border-bottom:1px solid var(--line)}
   .mobile-menu .btn{width:100%;justify-content:center;margin-top:16px}
+
+  /* ===== Max polish ===== */
+  ::selection{background:rgba(225,29,46,.9);color:#fff}
+  html{scrollbar-color:#e11d2e #eef0f3}
+  ::-webkit-scrollbar{width:12px;height:12px}
+  ::-webkit-scrollbar-track{background:#eef0f3}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(#e11d2e,#8c1019);border-radius:10px;border:3px solid #eef0f3}
+  .btn{position:relative;overflow:hidden}
+  .btn-primary::after,.btn-wa::after,.btn-white::after{content:"";position:absolute;top:0;inset-inline-start:-60%;width:38%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);transition:inset-inline-start .6s ease;pointer-events:none}
+  .btn-primary:hover::after,.btn-wa:hover::after,.btn-white:hover::after{inset-inline-start:130%}
+  .title-underline{width:66px;height:4px;border-radius:4px;background:var(--chrome);margin:16px auto 0}
+
+  /* Process steps */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:38px}
+  .step{position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:40px 24px 26px;box-shadow:0 10px 30px -22px rgba(20,22,30,.25);transition:.35s cubic-bezier(.2,.7,.2,1)}
+  .step:hover{transform:translateY(-8px);border-color:rgba(225,29,46,.4);box-shadow:0 30px 60px -26px rgba(20,22,30,.32)}
+  .step .num{position:absolute;top:-22px;inset-inline-start:24px;width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-weight:900;font-size:1.35rem;color:#fff;background:linear-gradient(180deg,#e11d2e,#8c1019);box-shadow:0 14px 26px -10px rgba(225,29,46,.6)}
+  .step h4{font-size:1.16rem;font-weight:800;margin:6px 0 8px}
+  .step p{color:var(--muted);font-size:.96rem}
+  .step .sico{width:34px;height:34px;stroke:var(--accent);fill:none;stroke-width:1.7}
+  .step:not(:last-child)::before{content:"";position:absolute;top:4px;inset-inline-start:-15px;width:22px;height:2px;background:repeating-linear-gradient(90deg,var(--accent) 0 5px,transparent 5px 9px);opacity:.5}
+
+  /* Trust chips */
+  .trust{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+  .trust .chip{display:inline-flex;align-items:center;gap:10px;padding:13px 22px;border-radius:999px;background:#fff;border:1px solid var(--line);font-weight:700;box-shadow:0 8px 22px -16px rgba(20,22,30,.35)}
+  .trust .chip svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.9}
+
+  /* CTA band */
+  .cta-band{position:relative;overflow:hidden;border-radius:28px;padding:60px 40px;text-align:center;
+    background:linear-gradient(135deg,#111219 0%,#2a0d10 55%,#7a0f16 100%);
+    box-shadow:0 44px 90px -34px rgba(225,29,46,.55)}
+  .cta-band::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.045) 0 2px,transparent 2px 8px);opacity:.6;pointer-events:none}
+  .cta-band::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(225,29,46,.55),transparent 62%);top:-150px;inset-inline-end:-130px;filter:blur(24px);pointer-events:none}
+  .cta-band h2{position:relative;color:#fff;font-size:clamp(1.7rem,4vw,2.6rem);font-weight:900;line-height:1.2}
+  .cta-band p{position:relative;color:rgba(255,255,255,.82);margin-top:12px;font-size:1.06rem}
+  .cta-actions{position:relative;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+  .btn-white{background:#fff;color:#12131a;box-shadow:0 12px 30px -12px rgba(0,0,0,.4)}
+  .btn-white:hover{transform:translateY(-2px)}
+
+  /* Sticky mobile action bar */
+  .mobile-bar{display:none}
 
   /* ============ ACCESSIBILITY (נגישות) ============ */
   .skip-link{position:fixed;top:-200px;right:18px;z-index:300;background:#fff;color:#000;padding:12px 22px;border-radius:10px;font-weight:800;transition:top .2s ease}
@@ -423,6 +476,7 @@
     </a>
     <nav class="nav-links">
       <a href="#services">שירותים</a>
+      <a href="#process">תהליך</a>
       <a href="#why">למה אנחנו</a>
       <a href="#reviews">ביקורות</a>
       <a href="#contact">צור קשר</a>
@@ -436,10 +490,11 @@
 </header>
 <div class="mobile-menu" id="mobileMenu">
   <a href="#services">שירותים</a>
+  <a href="#process">תהליך</a>
   <a href="#why">למה אנחנו</a>
   <a href="#reviews">ביקורות</a>
   <a href="#contact">צור קשר</a>
-  <a href="https://wa.me/972522417741" target="_blank" rel="noopener" class="btn btn-wa">שלחו וואטסאפ</a>
+  <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">שלחו וואטסאפ</a>
 </div>
 
 <!-- HERO -->
@@ -450,7 +505,7 @@
       <h1 data-words>הרכב שלך <br><span class="chrome-text">בידיים מקצועיות.</span></h1>
       <p class="sub">מרכז שירות, פחחות וצבע ברמה הגבוהה ביותר. אבחון מדויק, חלקים מקוריים ושקיפות מלאה — כדי שתחזרו לכביש בראש שקט.</p>
       <div class="hero-actions">
-        <a href="https://wa.me/972522417741" target="_blank" rel="noopener" class="btn btn-wa">
+        <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3 .79.8-2.93-.19-.3A8 8 0 1 1 12 20Zm4.4-5.6c-.24-.12-1.42-.7-1.64-.78s-.38-.12-.54.12-.62.78-.76.94-.28.18-.52.06a6.5 6.5 0 0 1-1.92-1.18 7.2 7.2 0 0 1-1.33-1.65c-.14-.24 0-.37.1-.49s.24-.28.36-.42a1.6 1.6 0 0 0 .24-.4.44.44 0 0 0 0-.42c-.06-.12-.54-1.3-.74-1.78s-.39-.4-.54-.41h-.46a.88.88 0 0 0-.64.3 2.68 2.68 0 0 0-.84 2 4.65 4.65 0 0 0 .98 2.48 10.6 10.6 0 0 0 4.06 3.58c.57.25 1.01.4 1.36.5a3.3 3.3 0 0 0 1.5.1 2.45 2.45 0 0 0 1.6-1.14 2 2 0 0 0 .14-1.13c-.06-.1-.22-.16-.46-.28Z"/></svg>
           תיאום תור בוואטסאפ
         </a>
@@ -539,6 +594,50 @@
 </section>
 
 <!-- WHY US -->
+<!-- PROCESS -->
+<section class="sec" id="process">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">איך זה עובד</span>
+      <h2 class="title">התהליך שלנו — פשוט ושקוף</h2>
+      <div class="title-underline"></div>
+      <p class="lead">מהרגע שהרכב מגיע ועד המסירה — אתם מעודכנים ובראש שקט בכל שלב.</p>
+    </div>
+    <div class="steps" data-stagger="120">
+      <div class="step">
+        <div class="num">1</div>
+        <svg class="sico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <h4>אבחון וקבלה</h4>
+        <p>בדיקה מקיפה של הרכב ואיתור מדויק של כל מה שצריך לתקן.</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <svg class="sico" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <h4>הצעת מחיר שקופה</h4>
+        <p>הצעת מחיר מפורטת וברורה מראש — בלי הפתעות ובלי אותיות קטנות.</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <svg class="sico" viewBox="0 0 24 24"><path d="M14 4l-3 3 2 2 3-3a4 4 0 0 1-2 5l-6 6a2.8 2.8 0 0 1-4-4l6-6a4 4 0 0 1 4-3z"/></svg>
+        <h4>תיקון וצביעה</h4>
+        <p>פחחות וצביעת תנור בגוון מקורי, בידיים מקצועיות ובחומרים איכותיים.</p>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <svg class="sico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <h4>בקרת איכות ומסירה</h4>
+        <p>בדיקת איכות קפדנית ומסירת רכב נקי ומושלם — עם אחריות מלאה.</p>
+      </div>
+    </div>
+    <div class="trust reveal" style="margin-top:46px">
+      <div class="chip"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>אחריות מלאה על כל עבודה</div>
+      <div class="chip"><svg viewBox="0 0 24 24"><path d="M12 17.3l-6.2 3.7 1.6-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.4 4.8 1.6 7z"/></svg>4.9★ · 147 ביקורות גוגל</div>
+      <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>30+ שנות ניסיון</div>
+      <div class="chip"><svg viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 6-10 6-10z"/></svg>צביעת תנור בגוון מקורי</div>
+    </div>
+  </div>
+</section>
+
 <section class="sec" id="why" style="background:var(--bg-2)">
   <div class="wrap split">
     <div data-stagger="110">
@@ -630,7 +729,7 @@
         </div>
         <div class="info-row">
           <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Z"/></svg></div>
-          <div><small>וואטסאפ</small><b><a href="https://wa.me/972522417741" target="_blank" rel="noopener">שלחו לנו הודעה</a></b></div>
+          <div><small>וואטסאפ</small><b><a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener">שלחו לנו הודעה</a></b></div>
         </div>
         <div class="info-row">
           <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg></div>
@@ -641,7 +740,7 @@
           <div><small>שעות פעילות</small><b>א׳–ה׳ · 07:30–16:00</b></div>
         </div>
         <div class="contact-cta">
-          <a href="https://wa.me/972522417741" target="_blank" rel="noopener" class="btn btn-wa">וואטסאפ</a>
+          <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">וואטסאפ</a>
           <a href="tel:0732187990" class="btn btn-primary">חייגו אלינו</a>
         </div>
       </div>
@@ -658,6 +757,23 @@
 </section>
 
 <!-- FOOTER -->
+<!-- CTA BAND -->
+<section class="sec" style="padding-top:10px">
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <h2>מוכנים להחזיר את הרכב למצב הכי טוב?</h2>
+      <p>דברו איתנו עוד היום לתיאום או להצעת מחיר — ללא התחייבות.</p>
+      <div class="cta-actions">
+        <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3 .79.8-2.93-.19-.3A8 8 0 1 1 12 20Z"/></svg>
+          שלחו הודעה בוואטסאפ
+        </a>
+        <a href="tel:0522417741" class="btn btn-white">חייגו 052-241-7741</a>
+      </div>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <div class="foot-top">
@@ -686,7 +802,7 @@
         <h5>יצירת קשר</h5>
         <a href="tel:0732187990">073-218-7990</a>
         <a href="tel:0522417741">052-241-7741 (נייד)</a>
-        <a href="https://wa.me/972522417741" target="_blank" rel="noopener">וואטסאפ</a>
+        <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener">וואטסאפ</a>
         <a href="https://www.instagram.com/ag_asherganah_garage" target="_blank" rel="noopener">אינסטגרם</a>
         <a href="https://maps.google.com/?q=HaMasger+St+5+Hod+Hasharon" target="_blank" rel="noopener">רחוב המסגר 5, הוד השרון</a>
       </div>
@@ -796,13 +912,19 @@
     <h4>החרגות נגישות</h4>
     <p>ייתכן שחלקים מסוימים באתר (כגון מפת Google המוטמעת) טרם הונגשו במלואם בשל תלות בצד שלישי. אנו ממשיכים לפעול לשיפור הנגישות.</p>
     <h4>יצירת קשר בנושא נגישות</h4>
-    <p>נתקלתם בבעיה או שיש לכם הצעה לשיפור? נשמח לסייע:<br>טלפון: <a href="tel:0522417741" style="color:#e11d2e">052-241-7741</a> · וואטסאפ: <a href="https://wa.me/972522417741" target="_blank" rel="noopener" style="color:#e11d2e">שלחו הודעה</a><br>כתובת: רחוב המסגר 5, הוד השרון.</p>
+    <p>נתקלתם בבעיה או שיש לכם הצעה לשיפור? נשמח לסייע:<br>טלפון: <a href="tel:0522417741" style="color:#e11d2e">052-241-7741</a> · וואטסאפ: <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" style="color:#e11d2e">שלחו הודעה</a><br>כתובת: רחוב המסגר 5, הוד השרון.</p>
     <p style="margin-top:14px;font-size:.85rem">הצהרה זו עודכנה בתאריך 29/06/2026.</p>
   </div>
 </div>
 
+<!-- STICKY MOBILE ACTION BAR -->
+<div class="mobile-bar">
+  <a class="mb-call" href="tel:0522417741"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11 11 0 0 0 3.4.55 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11 11 0 0 0 .55 3.4 1 1 0 0 1-.24 1z"/></svg>חייגו</a>
+  <a class="mb-wa" href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Z"/></svg>וואטסאפ</a>
+</div>
+
 <!-- FLOATING WHATSAPP -->
-<a class="fab" href="https://wa.me/972522417741" target="_blank" rel="noopener" aria-label="וואטסאפ">
+<a class="fab" href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" aria-label="וואטסאפ">
   <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3 .79.8-2.93-.19-.3A8 8 0 1 1 12 20Zm4.4-5.6c-.24-.12-1.42-.7-1.64-.78s-.38-.12-.54.12-.62.78-.76.94-.28.18-.52.06a6.5 6.5 0 0 1-1.92-1.18 7.2 7.2 0 0 1-1.33-1.65c-.14-.24 0-.37.1-.49s.24-.28.36-.42a1.6 1.6 0 0 0 .24-.4.44.44 0 0 0 0-.42c-.06-.12-.54-1.3-.74-1.78s-.39-.4-.54-.41h-.46a.88.88 0 0 0-.64.3 2.68 2.68 0 0 0-.84 2 4.65 4.65 0 0 0 .98 2.48 10.6 10.6 0 0 0 4.06 3.58c.57.25 1.01.4 1.36.5a3.3 3.3 0 0 0 1.5.1 2.45 2.45 0 0 0 1.6-1.14 2 2 0 0 0 .14-1.13c-.06-.1-.22-.16-.46-.28Z"/></svg>
 </a>
 
