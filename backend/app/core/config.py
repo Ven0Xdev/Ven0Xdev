@@ -40,10 +40,15 @@ class Settings(BaseSettings):
     # Real production deployments should set these. Without them the platform
     # transparently falls back to a deterministic synthetic OTC data provider
     # so the system is fully runnable/demoable out of the box.
-    market_data_provider: Literal["mock", "polygon", "finnhub", "otc_markets"] = "mock"
+    # Resolved against the provider registry (services/data_providers/registry.py)
+    # at startup — a plain string so new registered adapters need no config
+    # change here; unknown names fail with the list of registered providers.
+    market_data_provider: str = "mock"
     polygon_api_key: str | None = None
     finnhub_api_key: str | None = None
     otc_markets_api_key: str | None = None
+    alpaca_api_key: str | None = None
+    alpaca_api_secret: str | None = None
     sec_edgar_user_agent: str = "Ven0X OTC Intelligence Platform contact@ven0x.dev"
     # EDGAR enrichment overlays real dilution/filing facts onto fundamentals.
     # Meaningless for the synthetic provider (fake tickers), so it only

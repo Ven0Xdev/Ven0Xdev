@@ -1,11 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
+from dataclasses import asdict
 
-from app.api.deps import data_provider
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.api.deps import data_provider, db_session
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
+
+
+@router.get("/{symbol}/deliberation")
+def get_stock_deliberation(
+    symbol: str,
+    provider: MarketDataProvider = Depends(data_provider),
+    db: Session = Depends(db_session),
+):
+    """Full staged AI deliberation: evidence -> confidence -> contradiction
+    -> risk -> explanation -> recommendation. Returns the complete trace,
+    not just the verdict — the reasoning is the product.
+    """
+    from app.services.agents.reasoning_engine import ReasoningEngine
+
+    try:
+        deliberation = ReasoningEngine().deliberate(symbol, provider=provider, db=db)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=404, detail=f"Could not deliberate on {symbol}: {exc}") from exc
+    return asdict(deliberation)
 
 
 @router.get("/universe")

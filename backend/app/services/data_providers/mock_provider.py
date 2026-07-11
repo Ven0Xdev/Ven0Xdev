@@ -252,3 +252,11 @@ class MockOTCProvider(MarketDataProvider):
                 )
             )
         return actions
+
+
+from app.services.data_providers.registry import register_provider  # noqa: E402
+
+
+@register_provider("mock")
+def _build_mock(settings) -> MockOTCProvider:
+    return MockOTCProvider()

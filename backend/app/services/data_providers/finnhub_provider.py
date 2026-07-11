@@ -34,8 +34,6 @@ Operational behavior:
 from __future__ import annotations
 
 import logging
-import threading
-import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -49,54 +47,17 @@ from app.services.data_providers.base import (
     Quote,
     TickerMeta,
 )
+from app.services.data_providers.http_base import (
+    ProviderDataUnavailable,
+    RateLimitedHttpClient,
+)
 
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://finnhub.io/api/v1"
 _OTC_MICS = {"OOTC", "OTCM", "OTCB", "OTCQ", "PSGM", "PINX"}
 
-
-class ProviderDataUnavailable(RuntimeError):
-    """Raised when the vendor cannot supply the requested data."""
-
-
-class _TokenBucket:
-    def __init__(self, calls_per_minute: int):
-        self.capacity = calls_per_minute
-        self.tokens = float(calls_per_minute)
-        self.fill_rate = calls_per_minute / 60.0
-        self.last = time.monotonic()
-        self.lock = threading.Lock()
-
-    def acquire(self) -> None:
-        while True:
-            with self.lock:
-                now = time.monotonic()
-                self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.fill_rate)
-                self.last = now
-                if self.tokens >= 1:
-                    self.tokens -= 1
-                    return
-                wait = (1 - self.tokens) / self.fill_rate
-            time.sleep(wait)
-
-
-class _TTLCache:
-    def __init__(self, ttl_seconds: float):
-        self.ttl = ttl_seconds
-        self.store: dict = {}
-        self.lock = threading.Lock()
-
-    def get(self, key):
-        with self.lock:
-            hit = self.store.get(key)
-            if hit and time.monotonic() - hit[0] < self.ttl:
-                return hit[1]
-        return None
-
-    def put(self, key, value):
-        with self.lock:
-            self.store[key] = (time.monotonic(), value)
+__all__ = ["FinnhubProvider", "ProviderDataUnavailable"]
 
 
 class FinnhubProvider(MarketDataProvider):
@@ -114,38 +75,19 @@ class FinnhubProvider(MarketDataProvider):
             raise ProviderDataUnavailable(
                 "FINNHUB_API_KEY is not set. Get a free key at https://finnhub.io and add it to .env."
             )
-        self._client = httpx.Client(
+        self._http = RateLimitedHttpClient(
+            vendor="Finnhub",
             base_url=_BASE_URL,
-            params={"token": api_key},
-            timeout=20.0,
+            calls_per_minute=calls_per_minute,
+            cache_ttl_seconds=cache_ttl_seconds,
+            default_params={"token": api_key},
             transport=transport,
         )
-        self._bucket = _TokenBucket(calls_per_minute)
-        self._cache = _TTLCache(cache_ttl_seconds)
         self._universe_limit = universe_limit
 
     # --- plumbing ---------------------------------------------------------
     def _get(self, path: str, params: dict | None = None, cache_key: tuple | None = None):
-        if cache_key is not None:
-            cached = self._cache.get(cache_key)
-            if cached is not None:
-                return cached
-
-        self._bucket.acquire()
-        response = self._client.get(path, params=params or {})
-        if response.status_code == 429:
-            raise ProviderDataUnavailable("Finnhub rate limit exceeded (HTTP 429) — lower calls_per_minute.")
-        if response.status_code == 403:
-            raise ProviderDataUnavailable(
-                f"Finnhub returned 403 for {path} — this endpoint is not included in the current plan."
-            )
-        if response.status_code != 200:
-            raise ProviderDataUnavailable(f"Finnhub {path} failed: HTTP {response.status_code}")
-
-        payload = response.json()
-        if cache_key is not None:
-            self._cache.put(cache_key, payload)
-        return payload
+        return self._http.get_json(path, params, cache_key)
 
     # --- universe / meta ----------------------------------------------------
     def get_universe(self, limit: int | None = None) -> list[TickerMeta]:
@@ -296,3 +238,17 @@ class FinnhubProvider(MarketDataProvider):
         # EDGAR integration is the correct source. Empty = "no data", and the
         # manipulation detector treats it as such rather than "no risk".
         return []
+
+
+from app.services.data_providers.registry import register_provider  # noqa: E402
+
+
+@register_provider("finnhub")
+def _build_finnhub(settings) -> FinnhubProvider:
+    # Universe size is config-driven: on the free tier (60 calls/min), each
+    # analyzed ticker costs ~4 upstream calls, so a small universe keeps the
+    # first scan interactive.
+    return FinnhubProvider(
+        settings.finnhub_api_key,
+        universe_limit=settings.universe_max_tickers,
+    )
