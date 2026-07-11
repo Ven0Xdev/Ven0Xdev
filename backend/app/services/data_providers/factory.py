@@ -14,7 +14,13 @@ def get_data_provider() -> MarketDataProvider:
     if settings.market_data_provider == "finnhub":
         from app.services.data_providers.finnhub_provider import FinnhubProvider
 
-        return FinnhubProvider(settings.finnhub_api_key)
+        # Universe size is config-driven: on the free tier (60 calls/min),
+        # each analyzed ticker costs ~4 upstream calls, so a small universe
+        # keeps the first scan interactive instead of half an hour long.
+        return FinnhubProvider(
+            settings.finnhub_api_key,
+            universe_limit=settings.universe_max_tickers,
+        )
 
     from app.services.data_providers.real_providers import (
         OTCMarketsProvider,
