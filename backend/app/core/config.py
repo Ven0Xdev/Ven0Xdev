@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     finnhub_api_key: str | None = None
     otc_markets_api_key: str | None = None
     sec_edgar_user_agent: str = "Ven0X OTC Intelligence Platform contact@ven0x.dev"
+    # EDGAR enrichment overlays real dilution/filing facts onto fundamentals.
+    # Meaningless for the synthetic provider (fake tickers), so it only
+    # engages for real providers, and can be forced off here.
+    edgar_enrichment_enabled: bool = True
     news_api_key: str | None = None
 
     # --- LLM / chat assistant ---

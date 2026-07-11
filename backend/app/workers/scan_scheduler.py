@@ -101,6 +101,25 @@ def main() -> None:
     logger.info("Starting continuous OTC scan loop, interval=%ss", settings.scan_interval_seconds)
     while True:
         started = time.monotonic()
+
+        # EDGAR ingestion runs BEFORE analysis so the cycle's fundamentals
+        # already see fresh dilution/filing facts. Skipped for the mock
+        # provider (synthetic tickers have no CIK).
+        if settings.market_data_provider != "mock" and settings.edgar_enrichment_enabled:
+            try:
+                from app.services.data_providers.edgar_enricher import refresh_edgar_facts
+
+                db = SessionLocal()
+                try:
+                    tickers = [t.symbol for t in get_data_provider().get_universe()]
+                    written = refresh_edgar_facts(db, tickers)
+                    if written:
+                        logger.info("EDGAR ingestion: %d tickers refreshed", written)
+                finally:
+                    db.close()
+            except Exception:
+                logger.exception("EDGAR ingestion failed")
+
         try:
             count = run_scan_cycle()
             logger.info("Scan cycle complete: %d tickers analyzed in %.1fs", count, time.monotonic() - started)
