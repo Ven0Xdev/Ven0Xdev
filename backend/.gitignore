@@ -5,3 +5,4 @@ __pycache__/
 model_artifacts/
 .pytest_cache/
 .coverage
+catboost_info/
