@@ -242,19 +242,30 @@ def _build_probability_matrix(df, base_probabilities: dict[int, float]) -> list[
 
 
 def _trade_levels(tech: dict) -> tuple[float, float, float, float, float, float, float]:
+    """Levels are guaranteed strictly ordered (stop < entry < tp1 < tp2 < tp3)
+    even for sub-penny prices — the predictions table enforces this ordering
+    with a CHECK constraint, so rounding may never collapse two levels.
+    6-decimal rounding matches OTC sub-penny tick conventions; the stop is
+    floored at least 0.5% below entry so risk-per-share never rounds to zero.
+    """
     price = tech["price"]
     atr = max(tech["atr"], price * 0.01)
 
-    entry_zone_low = round(max(price - atr * 0.3, 0.0001), 4)
-    entry_zone_high = round(price + atr * 0.15, 4)
-    ideal_entry = round(price, 4)
+    ideal_entry = round(price, 6)
+    min_gap = max(ideal_entry * 0.005, 1e-6)
 
-    stop_loss = round(max(price - atr * 1.5, 0.0001), 4)
-    risk_per_share = max(ideal_entry - stop_loss, 0.0001)
+    entry_zone_low = round(max(price - atr * 0.3, 1e-6), 6)
+    entry_zone_high = round(price + atr * 0.15, 6)
 
-    tp1 = round(ideal_entry + risk_per_share * 1.0, 4)
-    tp2 = round(ideal_entry + risk_per_share * 2.0, 4)
-    tp3 = round(ideal_entry + risk_per_share * 3.5, 4)
+    raw_stop = max(price - atr * 1.5, 1e-6)
+    stop_loss = round(min(raw_stop, ideal_entry - min_gap), 6)
+    stop_loss = max(stop_loss, 1e-6)
+
+    risk_per_share = ideal_entry - stop_loss  # >= min_gap by construction
+
+    tp1 = round(ideal_entry + risk_per_share * 1.0, 6)
+    tp2 = round(ideal_entry + risk_per_share * 2.0, 6)
+    tp3 = round(ideal_entry + risk_per_share * 3.5, 6)
 
     return entry_zone_low, entry_zone_high, ideal_entry, stop_loss, tp1, tp2, tp3
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String
+from sqlalchemy import DateTime, Float, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -10,6 +10,9 @@ class Trade(Base):
     """Live/paper trade log, independent from backtest trades."""
 
     __tablename__ = "trades"
+    __table_args__ = (
+        Index("ix_trades_ticker_executed", "ticker_symbol", "executed_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)

@@ -33,7 +33,7 @@ class BacktestTrade(Base):
     __tablename__ = "backtest_trades"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    result_id: Mapped[int] = mapped_column(ForeignKey("backtest_results.id"))
+    result_id: Mapped[int] = mapped_column(ForeignKey("backtest_results.id"), index=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16))
     entry_ts: Mapped[datetime] = mapped_column(DateTime)
     exit_ts: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
