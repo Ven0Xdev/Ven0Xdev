@@ -1,12 +1,39 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import db_session
+from app.api.deps import data_provider, db_session
 from app.db.models.prediction import Outcome, Prediction
 from app.schemas.prediction import ModelPerformanceSummary, PredictionOut
+from app.services.data_providers.base import MarketDataProvider
+from app.services.evaluation.outcome_evaluator import build_calibration_report, evaluate_due_predictions
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/predictions", tags=["predictions"])
+
+
+@router.post("/evaluate-outcomes")
+def evaluate_outcomes(
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+):
+    """Grade every matured prediction against realized price history.
+    Runs automatically each scan cycle; this endpoint triggers it on demand.
+    """
+    summary = evaluate_due_predictions(db, provider)
+    return {
+        "evaluated": summary.evaluated,
+        "skipped_immature": summary.skipped_immature,
+        "skipped_no_data": summary.skipped_no_data,
+    }
+
+
+@router.get("/calibration")
+def calibration_report(db: Session = Depends(db_session)):
+    """Reliability report: predicted probability vs. realized frequency of
+    the +10% touch, bucketed. The honest measure of whether the platform's
+    probabilities mean anything.
+    """
+    return build_calibration_report(db)
 
 
 @router.post("/log/{symbol}", response_model=PredictionOut)

@@ -35,10 +35,12 @@ class OHLCVBar(Base):
     __tablename__ = "ohlcv_bars"
     __table_args__ = (Index("ix_ohlcv_ticker_ts", "ticker_id", "ts"),)
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    ticker_id: Mapped[int] = mapped_column(ForeignKey("tickers.id"))
+    # Natural composite key (no surrogate id): the canonical TimescaleDB
+    # hypertable layout, where the partition column (ts) must be part of
+    # the primary key.
+    ticker_id: Mapped[int] = mapped_column(ForeignKey("tickers.id"), primary_key=True)
     ts: Mapped[datetime] = mapped_column(DateTime, primary_key=True)
-    timeframe: Mapped[str] = mapped_column(String(8), default="1d")  # 1m, 5m, 1h, 1d
+    timeframe: Mapped[str] = mapped_column(String(8), primary_key=True, default="1d")  # 1m, 5m, 1h, 1d
     open: Mapped[float] = mapped_column(Float)
     high: Mapped[float] = mapped_column(Float)
     low: Mapped[float] = mapped_column(Float)

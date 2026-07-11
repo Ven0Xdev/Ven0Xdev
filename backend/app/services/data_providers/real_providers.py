@@ -6,9 +6,10 @@ docs rather than half-implementing paid, key-gated integrations blind. Fill
 these in once the corresponding API key is provisioned in `.env`:
 
 - PolygonOTCProvider   -> https://polygon.io/docs (OTC/grey-market feeds)
-- FinnhubProvider      -> https://finnhub.io/docs/api (fundamentals, news, sentiment)
 - OTCMarketsProvider   -> https://www.otcmarkets.com/corporate-services/data-api (tier,
                            disclosure, Level II)
+
+(Finnhub is fully implemented in `finnhub_provider.py`, not stubbed here.)
 - SECEdgarClient       -> https://www.sec.gov/edgar/sec-api-documentation (filings,
                            insider Form 3/4/5, delinquency)
 
@@ -73,14 +74,6 @@ class PolygonOTCProvider(_UnconfiguredProvider):
 
     def __init__(self, api_key: str | None):
         super().__init__("Polygon.io", "https://polygon.io/docs")
-        self.api_key = api_key
-
-
-class FinnhubProvider(_UnconfiguredProvider):
-    name = "finnhub"
-
-    def __init__(self, api_key: str | None):
-        super().__init__("Finnhub", "https://finnhub.io/docs/api")
         self.api_key = api_key
 
 

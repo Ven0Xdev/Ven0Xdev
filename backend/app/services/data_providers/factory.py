@@ -11,16 +11,18 @@ def get_data_provider() -> MarketDataProvider:
     if settings.market_data_provider == "mock":
         return MockOTCProvider()
 
+    if settings.market_data_provider == "finnhub":
+        from app.services.data_providers.finnhub_provider import FinnhubProvider
+
+        return FinnhubProvider(settings.finnhub_api_key)
+
     from app.services.data_providers.real_providers import (
-        FinnhubProvider,
         OTCMarketsProvider,
         PolygonOTCProvider,
     )
 
     if settings.market_data_provider == "polygon":
         return PolygonOTCProvider(settings.polygon_api_key)
-    if settings.market_data_provider == "finnhub":
-        return FinnhubProvider(settings.finnhub_api_key)
     if settings.market_data_provider == "otc_markets":
         return OTCMarketsProvider(settings.otc_markets_api_key)
 

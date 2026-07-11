@@ -112,20 +112,52 @@ production:
    should eventually read from these persisted snapshots rather than
    triggering computation on read, at real scale (Redis-cached read model).
 
-## What's stubbed for a production deployment
+## The outcome evaluation loop (learning from predictions)
 
-- **Real data providers** (`services/data_providers/real_providers.py`):
-  interfaces defined, vendor calls not implemented (needs API keys).
-- **SEC EDGAR filings / insider Form 3/4/5**: represented in
-  `Fundamentals.filing_delinquent` / `going_concern_flag` conceptually; a
-  real EDGAR full-text-search + XBRL parser is not implemented.
+`services/evaluation/outcome_evaluator.py` closes the prediction →
+realized-outcome loop. Once a logged `Prediction`'s horizon has fully
+matured (measured in traded bars, not calendar days), the evaluator replays
+actual price history over that window and grades it: did price *touch*
++5/10/20% (matching how the probabilities are defined), did the stop get
+hit first (same-bar ties conservatively go to the stop, identical to the
+backtest engine's rule), realized return and max drawdown. It runs
+automatically each scan cycle, is idempotent (one Outcome per prediction),
+and feeds `GET /api/v1/predictions/calibration` — a reliability report of
+predicted probability vs. realized frequency per bucket, which is the
+honest measure of whether the platform's probabilities mean anything. As
+real outcomes accumulate, this is also the dataset for re-fitting the
+isotonic calibrators on reality instead of training data.
+
+## Real market data: Finnhub provider
+
+`services/data_providers/finnhub_provider.py` is a complete
+`MarketDataProvider` over Finnhub's REST API, behind a token-bucket rate
+limiter (default 55 calls/min, under the free tier's 60) and a per-fact TTL
+cache so the full scan pipeline can point at it without tripping 429s.
+Activate with `MARKET_DATA_PROVIDER=finnhub` + `FINNHUB_API_KEY`.
+
+Its honesty contract matters more than its plumbing: bid/ask depth,
+dilution history, going-concern and filing-delinquency flags are **not
+available** from Finnhub, so they are reported as explicitly-neutral
+defaults and `Quote.bid/ask` are `None` — never approximated. Per the
+platform's no-fabricated-market-data rule, spread- and filing-based signals
+degrade visibly rather than silently running on invented numbers. The SEC
+EDGAR integration is the designated source for those fields.
+
+## What's still stubbed for a production deployment
+
+- **Polygon / OTC Markets providers**
+  (`services/data_providers/real_providers.py`): interfaces defined, vendor
+  calls not implemented (needs API keys).
+- **SEC EDGAR filings / insider Form 3/4/5**: the designated real source for
+  dilution history, going-concern and delinquency flags, float vs.
+  outstanding, and reverse-split history; a real EDGAR full-text-search +
+  XBRL parser is not implemented.
 - **Text/transformer sentiment model**: `services/features/sentiment.py`
   consumes provider-supplied per-article sentiment; a real deployment would
-  run a FinBERT-style classifier over live news/social text
-  (`services/ml/forecasting.py`'s docstring notes the equivalent plug point
-  for a sequence-model forecaster).
-- **Outcome-based recalibration loop**: `Outcome` rows and
-  `services/ml/calibration.py`'s isotonic calibrator are wired, but nothing
-  yet automatically closes the loop from realized price history back into
-  `Outcome` rows — that's a scheduled job to add once there's real
-  historical data to evaluate against.
+  run a FinBERT-style classifier over live news/social text. The Finnhub
+  provider deliberately reports neutral sentiment rather than keyword-guessing.
+- **Automatic recalibration**: outcomes now accumulate via the evaluator;
+  the remaining step is a scheduled job that re-fits
+  `services/ml/calibration.py` on realized outcomes once enough have
+  accumulated, and versions the result via `ModelVersion`.

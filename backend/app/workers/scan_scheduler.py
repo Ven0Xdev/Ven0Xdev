@@ -106,6 +106,23 @@ def main() -> None:
             logger.info("Scan cycle complete: %d tickers analyzed in %.1fs", count, time.monotonic() - started)
         except Exception:
             logger.exception("Scan cycle failed")
+
+        try:
+            from app.services.evaluation.outcome_evaluator import evaluate_due_predictions
+
+            db = SessionLocal()
+            try:
+                summary = evaluate_due_predictions(db, get_data_provider())
+                if summary.evaluated:
+                    logger.info(
+                        "Outcome evaluation: %d graded, %d immature, %d missing data",
+                        summary.evaluated, summary.skipped_immature, summary.skipped_no_data,
+                    )
+            finally:
+                db.close()
+        except Exception:
+            logger.exception("Outcome evaluation failed")
+
         elapsed = time.monotonic() - started
         time.sleep(max(1.0, settings.scan_interval_seconds - elapsed))
 

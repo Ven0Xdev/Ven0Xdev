@@ -33,10 +33,13 @@ def init_timescale_hypertables() -> None:
 
     from sqlalchemy import text
 
+    # Only the genuinely high-volume time series is a hypertable. Predictions
+    # and news are modest-volume tables where a plain B-tree time index is
+    # the right tool — and keeping a single-column autoincrement PK on them
+    # (which a hypertable's composite-key requirement would break) matters
+    # more than partitioning they don't need.
     hypertables = [
         ("ohlcv_bars", "ts"),
-        ("predictions", "created_at"),
-        ("news_items", "published_at"),
     ]
     with engine.begin() as conn:
         try:

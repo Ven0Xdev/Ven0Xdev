@@ -11,7 +11,7 @@ class NewsItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)
-    published_at: Mapped[datetime] = mapped_column(DateTime, primary_key=True, default=datetime.utcnow)
+    published_at: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.utcnow)
     source: Mapped[str] = mapped_column(String(64))
     headline: Mapped[str] = mapped_column(String(512))
     url: Mapped[str | None] = mapped_column(String(1024), nullable=True)

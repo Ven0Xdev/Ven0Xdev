@@ -14,7 +14,7 @@ class Prediction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)
     model_version_id: Mapped[int | None] = mapped_column(ForeignKey("model_versions.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, primary_key=True, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.utcnow)
 
     current_price: Mapped[float] = mapped_column(Float)
     liquidity_score: Mapped[float] = mapped_column(Float)

@@ -33,22 +33,32 @@ class TickerMeta:
 
 @dataclass
 class Quote:
+    """Top-of-book quote. bid/ask are None when the underlying data vendor
+    does not supply quote depth (e.g. Finnhub's free tier) — never
+    approximated, per the platform's no-fabricated-market-data rule.
+    Spread-dependent signals degrade explicitly rather than silently.
+    """
+
     symbol: str
     last: float
-    bid: float
-    ask: float
-    bid_size: float
-    ask_size: float
     timestamp: datetime
+    bid: float | None = None
+    ask: float | None = None
+    bid_size: float | None = None
+    ask_size: float | None = None
 
     @property
-    def spread(self) -> float:
+    def spread(self) -> float | None:
+        if self.bid is None or self.ask is None:
+            return None
         return max(self.ask - self.bid, 0.0)
 
     @property
-    def spread_pct(self) -> float:
+    def spread_pct(self) -> float | None:
+        if self.bid is None or self.ask is None:
+            return None
         mid = (self.bid + self.ask) / 2 or 1e-9
-        return self.spread / mid * 100
+        return (self.ask - self.bid) / mid * 100
 
 
 @dataclass
