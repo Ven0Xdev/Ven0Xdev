@@ -54,6 +54,11 @@ class StockAnalysis(BaseModel):
     explanation: str
     manipulation_flags: list[ManipulationFlagOut]
     top_factors: list[TopFactor]
+    # Canonical model-input features at analysis time (name -> value).
+    # Persisted into predictions.feature_snapshot so realized outcomes can
+    # be joined back to the exact inputs — the training set for
+    # challenger retraining (self-learning loop).
+    feature_vector: dict[str, float] = Field(default_factory=dict)
 
     class Config:
         from_attributes = True

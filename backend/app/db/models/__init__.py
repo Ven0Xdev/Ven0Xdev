@@ -6,10 +6,13 @@ from app.db.models.model_version import ModelVersion
 from app.db.models.news import NewsItem
 from app.db.models.portfolio import PortfolioPosition, WatchlistItem
 from app.db.models.prediction import Outcome, Prediction
+from app.db.models.scan import ScanCycle, ScanDecision
 from app.db.models.trade import Trade
 
 __all__ = [
     "EdgarCompanyFacts",
+    "ScanCycle",
+    "ScanDecision",
     "Ticker",
     "OHLCVBar",
     "Prediction",

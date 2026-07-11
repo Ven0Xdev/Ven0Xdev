@@ -29,15 +29,22 @@ platform. You help users evaluate OTC/penny stock setups the platform's AI has a
 Hard rules, never break these:
 1. NEVER claim certainty about future price movement. Always speak in probabilities \
 ("there's roughly a 30% modeled probability...", not "this will go up").
-2. Always ground your answer in the provided analysis JSON — cite the actual scores, \
-probabilities, and flags rather than inventing numbers.
+2. NEVER answer from memory when live data is required. Any quantitative claim about a \
+stock (price, score, probability, risk flag, news) MUST come from calling a tool in this \
+conversation. If you did not call a tool for it, you may not state it as fact.
 3. Always mention at least one concrete risk or invalidation condition when discussing a \
 potential trade.
 4. If asked to guarantee a result, predict an exact future price, or act as a fiduciary, \
 decline and explain that you provide probabilistic research only, not financial advice.
-5. Keep answers concise (3-6 sentences) unless the user asks for depth.
+5. Keep answers concise unless the user asks for depth, and always explain the reasoning \
+behind the answer, not just the conclusion.
 6. OTC micro-caps are high risk: manipulation, dilution, and illiquidity are common. \
 Surface these risks proactively when relevant, even if not asked.
+7. End every substantive answer by explicitly separating what you said into:
+   - Facts: values retrieved from tools (computed by the platform from market data)
+   - Predictions: model probability estimates — statistical, calibrated, never guaranteed
+   - Assumptions: modeling assumptions or simplifications your answer relies on
+   - Missing: information that was unavailable and would change the answer if known
 """
 
 
@@ -58,7 +65,12 @@ def resolve_ticker(message: str, current_ticker: str | None) -> str | None:
     return _detect_ticker(message, known, current_ticker)
 
 
-def generate_reply(message: str, ticker: str | None, history: list[ChatTurn]) -> tuple[str, str | None]:
+def generate_reply(
+    message: str,
+    ticker: str | None,
+    history: list[ChatTurn],
+    db=None,
+) -> tuple[str, str | None]:
     """Returns (reply_text, resolved_ticker)."""
     resolved_ticker = resolve_ticker(message, ticker)
     analysis = None
@@ -70,41 +82,82 @@ def generate_reply(message: str, ticker: str | None, history: list[ChatTurn]) ->
 
     settings = get_settings()
     if settings.chat_backend == "llm" and settings.anthropic_api_key:
-        reply = _llm_reply(message, analysis, history)
+        reply = _llm_reply(message, resolved_ticker, history, db)
         if reply is not None:
             return reply, resolved_ticker
 
     return _template_reply(message, analysis), resolved_ticker
 
 
-def _llm_reply(message: str, analysis: StockAnalysis | None, history: list[ChatTurn]) -> str | None:
+def _llm_reply(message: str, resolved_ticker: str | None, history: list[ChatTurn], db=None) -> str | None:
+    """Agentic tool-calling loop: the model must fetch live data through the
+    tool registry before making quantitative claims — it receives no
+    pre-baked analysis blob, so answering 'from memory' has nothing to
+    answer from.
+    """
     try:
         import anthropic
 
+        from app.services.chat.tools import anthropic_tool_schemas, execute_tool
+
         settings = get_settings()
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        provider = get_data_provider()
 
-        context = analysis.model_dump() if analysis else {"note": "No specific ticker is currently in context."}
-        messages = []
+        messages: list[dict] = []
         for turn in history[-10:]:
             role = "user" if turn.role == "user" else "assistant"
             messages.append({"role": role, "content": turn.content})
-        messages.append(
-            {
-                "role": "user",
-                "content": f"Current analysis context (JSON):\n{json.dumps(context, indent=2)}\n\nUser question: {message}",
-            }
-        )
+        context_note = f"(Session ticker context: {resolved_ticker})\n" if resolved_ticker else ""
+        messages.append({"role": "user", "content": context_note + message})
 
-        response = client.messages.create(
-            model=settings.chat_model,
-            max_tokens=600,
-            system=SYSTEM_PROMPT,
-            messages=messages,
-        )
-        return "".join(block.text for block in response.content if hasattr(block, "text"))
+        for _ in range(6):  # bounded tool-use loop
+            response = client.messages.create(
+                model=settings.chat_model,
+                max_tokens=900,
+                system=SYSTEM_PROMPT,
+                tools=anthropic_tool_schemas(),
+                messages=messages,
+            )
+            if response.stop_reason != "tool_use":
+                return "".join(block.text for block in response.content if hasattr(block, "text"))
+
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in response.content:
+                if block.type == "tool_use":
+                    result = execute_tool(block.name, dict(block.input), db, provider)
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": json.dumps(result, default=str)[:20_000],
+                        }
+                    )
+            messages.append({"role": "user", "content": tool_results})
+
+        return "I hit the tool-call limit for one answer — please ask a narrower question."
     except Exception:
         return None
+
+
+def _epistemic_footer(a: StockAnalysis) -> str:
+    """Every substantive answer separates what kind of statement it made.
+    The template backend computes (never asserts from memory): all numbers
+    above were retrieved from the live scoring pipeline in this turn.
+    """
+    missing = []
+    if not a.manipulation_flags and a.manipulation_risk > 30:
+        missing.append("named manipulation pattern (only statistical anomaly available)")
+    if a.sentiment_score == 50.0:
+        missing.append("news sentiment classifier (neutral placeholder in use)")
+    missing_text = "; ".join(missing) if missing else "none material to this answer"
+    return (
+        f"\n\n— Facts: scores/prices retrieved live from the scoring pipeline for {a.ticker} this turn. "
+        f"Predictions: all probabilities are calibrated model estimates, not guarantees. "
+        f"Assumptions: OTC execution costs (spread/slippage) match recent history; horizons are trading days. "
+        f"Missing: {missing_text}."
+    )
 
 
 def _template_reply(message: str, analysis: StockAnalysis | None) -> str:
@@ -113,7 +166,10 @@ def _template_reply(message: str, analysis: StockAnalysis | None) -> str:
             "I don't have a ticker in context yet. Mention a symbol (e.g. \"$AXNT\" or \"what about AXNT\") "
             "and I'll pull up its current AI analysis — scores, risks, and probability-based outlook."
         )
+    return _template_reply_core(message, analysis) + _epistemic_footer(analysis)
 
+
+def _template_reply_core(message: str, analysis: StockAnalysis) -> str:
     q = message.lower()
     a = analysis
 

@@ -16,7 +16,7 @@ def send_message(request: ChatRequest, db: Session = Depends(db_session)):
 
     memory.append_message(db, session, "user", request.message)
 
-    reply, resolved_ticker = generate_reply(request.message, request.ticker or session.ticker_symbol, history)
+    reply, resolved_ticker = generate_reply(request.message, request.ticker or session.ticker_symbol, history, db=db)
 
     if resolved_ticker and resolved_ticker != session.ticker_symbol:
         memory.set_session_ticker(db, session, resolved_ticker)

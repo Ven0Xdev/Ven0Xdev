@@ -132,6 +132,7 @@ def _grade(prediction: Prediction, window: pd.DataFrame) -> Outcome:
 
     realized_return_pct = float((window["close"].iloc[-1] / entry - 1) * 100) if entry else 0.0
     max_drawdown_pct = float(min((lows.min() / entry - 1) * 100, 0.0)) if entry else 0.0
+    max_runup_pct = float((highs.max() / entry - 1) * 100) if entry else 0.0
 
     return Outcome(
         prediction_id=prediction.id,
@@ -142,6 +143,7 @@ def _grade(prediction: Prediction, window: pd.DataFrame) -> Outcome:
         hit_take_profit_3=bool(hit_tp3),
         hit_stop_loss=bool(stopped_out),
         max_drawdown_pct=max_drawdown_pct,
+        max_runup_pct=max_runup_pct,
         notes=None,
     )
 

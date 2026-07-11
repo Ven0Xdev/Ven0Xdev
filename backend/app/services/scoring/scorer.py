@@ -160,6 +160,7 @@ def _analyze_ticker_uncached(symbol: str, provider: MarketDataProvider) -> Stock
             ManipulationFlagOut(code=f.code, severity=f.severity, reason=f.reason) for f in manip_assessment.flags
         ],
         top_factors=[TopFactor(**f) for f in explanation_data["top_factors"]],
+        feature_vector={name: float(value) for name, value in zip(FEATURE_NAMES, feature_row)},
     )
 
 

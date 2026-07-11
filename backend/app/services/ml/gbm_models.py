@@ -40,11 +40,13 @@ class _SklearnFallback:
 
 
 class LightGBMModel:
+    # NB: only picklable state on the instance (a bool flag, never the
+    # imported module) — model artifacts are persisted with pickle.
     def __init__(self, random_state: int = 42, **kwargs):
         try:
             import lightgbm as lgb
 
-            self._lgb = lgb
+            self._native = True
             self.model = lgb.LGBMClassifier(
                 n_estimators=200,
                 max_depth=5,
@@ -54,7 +56,7 @@ class LightGBMModel:
                 **kwargs,
             )
         except ImportError:
-            self._lgb = None
+            self._native = False
             self.model = _SklearnFallback(random_state=random_state)
 
     def fit(self, X, y):
@@ -62,12 +64,12 @@ class LightGBMModel:
         return self
 
     def predict_proba_positive(self, X):
-        if self._lgb is not None:
+        if self._native:
             return self.model.predict_proba(X)[:, 1]
         return self.model.predict_proba_positive(X)
 
     def feature_importances(self):
-        if self._lgb is not None:
+        if self._native:
             imp = self.model.feature_importances_
             return imp / (imp.sum() or 1)
         return self.model.feature_importances()
@@ -78,7 +80,7 @@ class XGBoostModel:
         try:
             import xgboost as xgb
 
-            self._xgb = xgb
+            self._native = True
             self.model = xgb.XGBClassifier(
                 n_estimators=200,
                 max_depth=4,
@@ -88,7 +90,7 @@ class XGBoostModel:
                 **kwargs,
             )
         except ImportError:
-            self._xgb = None
+            self._native = False
             self.model = _SklearnFallback(random_state=random_state)
 
     def fit(self, X, y):
@@ -96,12 +98,12 @@ class XGBoostModel:
         return self
 
     def predict_proba_positive(self, X):
-        if self._xgb is not None:
+        if self._native:
             return self.model.predict_proba(X)[:, 1]
         return self.model.predict_proba_positive(X)
 
     def feature_importances(self):
-        if self._xgb is not None:
+        if self._native:
             imp = self.model.feature_importances_
             return imp / (imp.sum() or 1)
         return self.model.feature_importances()

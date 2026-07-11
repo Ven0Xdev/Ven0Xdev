@@ -103,6 +103,10 @@ class Outcome(Base):
     hit_take_profit_3: Mapped[bool] = mapped_column(default=False)
     hit_stop_loss: Mapped[bool] = mapped_column(default=False)
     max_drawdown_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    # Peak favorable excursion: (max high in window / entry - 1) * 100.
+    # This is the label source for retraining — "did the path touch
+    # +5/10/20%?" is exactly `max_runup_pct >= threshold`.
+    max_runup_pct: Mapped[float] = mapped_column(Float, default=0.0)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
 
     prediction: Mapped["Prediction"] = relationship(back_populates="outcome")

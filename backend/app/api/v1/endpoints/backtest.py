@@ -8,6 +8,21 @@ from app.services.data_providers.base import MarketDataProvider
 router = APIRouter(prefix="/backtest", tags=["backtest"])
 
 
+@router.post("/walk-forward")
+def walk_forward_validation(
+    universe_limit: int = 6,
+    n_folds: int = 3,
+    lookback_days: int = 300,
+    provider: MarketDataProvider = Depends(data_provider),
+):
+    """Walk-forward validation of the probability model itself: train on the
+    past, test on the future, report out-of-sample AUC and calibration."""
+    from app.services.backtest.walkforward import run_walk_forward_validation
+
+    symbols = [t.symbol for t in provider.get_universe(limit=universe_limit)]
+    return run_walk_forward_validation(provider, symbols, n_folds=n_folds, lookback_days=lookback_days)
+
+
 @router.post("/run", response_model=BacktestResponse)
 def run_backtest(request: BacktestRequest, provider: MarketDataProvider = Depends(data_provider)):
     symbols = request.symbols or [t.symbol for t in provider.get_universe(limit=request.universe_limit)]

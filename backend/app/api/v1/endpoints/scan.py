@@ -1,13 +1,81 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
-from app.api.deps import data_provider
+from app.api.deps import data_provider, db_session
+from app.db.models.scan import ScanCycle, ScanDecision
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/scan", tags=["scan"])
+
+
+@router.post("/run-cycle")
+def run_cycle_now(
+    provider: MarketDataProvider = Depends(data_provider),
+    db: Session = Depends(db_session),
+):
+    """Trigger one full scanner cycle on demand (normally the background
+    worker runs these continuously)."""
+    from app.workers.scan_scheduler import run_scan_cycle
+
+    analyzed = run_scan_cycle(provider=provider, db=db)
+    latest = db.query(ScanCycle).order_by(ScanCycle.id.desc()).first()
+    return {
+        "analyzed": analyzed,
+        "cycle_id": latest.id if latest else None,
+        "accepted": latest.accepted_count if latest else 0,
+        "rejected": latest.rejected_count if latest else 0,
+        "failed": latest.failed_count if latest else 0,
+    }
+
+
+@router.get("/cycles")
+def scan_history(limit: int = Query(20, le=100), db: Session = Depends(db_session)):
+    """Scanner history: every completed cycle with its accept/reject split."""
+    cycles = db.query(ScanCycle).order_by(ScanCycle.started_at.desc()).limit(limit).all()
+    return [
+        {
+            "cycle_id": c.id,
+            "started_at": c.started_at,
+            "finished_at": c.finished_at,
+            "provider": c.provider_name,
+            "universe_size": c.universe_size,
+            "accepted": c.accepted_count,
+            "rejected": c.rejected_count,
+            "failed": c.failed_count,
+        }
+        for c in cycles
+    ]
+
+
+@router.get("/cycles/{cycle_id}/decisions")
+def cycle_decisions(
+    cycle_id: int,
+    decision: str | None = Query(None, pattern="^(accepted|rejected|failed)$"),
+    db: Session = Depends(db_session),
+):
+    """Why every stock was selected or rejected in a specific cycle."""
+    if db.query(ScanCycle).filter_by(id=cycle_id).one_or_none() is None:
+        raise HTTPException(status_code=404, detail=f"Scan cycle {cycle_id} not found")
+    query = db.query(ScanDecision).filter_by(cycle_id=cycle_id)
+    if decision:
+        query = query.filter_by(decision=decision)
+    rows = query.order_by(ScanDecision.rank.isnot(None).desc(), ScanDecision.rank).all()
+    return [
+        {
+            "ticker": r.ticker_symbol,
+            "decision": r.decision,
+            "rank": r.rank,
+            "ai_score": r.ai_score,
+            "confidence": r.confidence,
+            "manipulation_risk": r.manipulation_risk,
+            "reasons": r.reasons,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/opportunities", response_model=list[StockAnalysis])
