@@ -71,8 +71,21 @@ class PortfolioHealth:
     alerts: list[dict] = field(default_factory=list)
 
 
-def assess_portfolio(db: Session, provider: MarketDataProvider) -> PortfolioHealth:
-    positions = db.query(PortfolioPosition).filter_by(status="open").all()
+def assess_portfolio(
+    db: Session,
+    provider: MarketDataProvider,
+    user_id: int | None = None,
+    include_unowned: bool = False,
+) -> PortfolioHealth:
+    query = db.query(PortfolioPosition).filter_by(status="open")
+    if user_id is not None:
+        from sqlalchemy import or_
+
+        if include_unowned:  # local dev principal also sees pre-tenancy rows
+            query = query.filter(or_(PortfolioPosition.user_id == user_id, PortfolioPosition.user_id.is_(None)))
+        else:
+            query = query.filter(PortfolioPosition.user_id == user_id)
+    positions = query.all()
 
     assessments: list[PositionAssessment] = []
     analyses: dict[str, object] = {}

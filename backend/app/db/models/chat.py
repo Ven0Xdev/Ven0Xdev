@@ -10,6 +10,7 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     session_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     ticker_symbol: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

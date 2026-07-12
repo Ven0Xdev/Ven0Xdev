@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import data_provider, db_session
+from app.api.deps import data_provider, db_session, require_operator
 from app.db.models.prediction import Outcome, Prediction
 from app.schemas.prediction import ModelPerformanceSummary, PredictionOut
 from app.services.data_providers.base import MarketDataProvider
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/predictions", tags=["predictions"])
 def evaluate_outcomes(
     db: Session = Depends(db_session),
     provider: MarketDataProvider = Depends(data_provider),
+    _operator=Depends(require_operator),
 ):
     """Grade every matured prediction against realized price history.
     Runs automatically each scan cycle; this endpoint triggers it on demand.

@@ -21,9 +21,17 @@ class Settings(BaseSettings):
 
     # --- Security ---
     secret_key: str = Field(default="CHANGE_ME_IN_PRODUCTION")
-    access_token_expire_minutes: int = 60 * 24
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 14
     algorithm: str = "HS256"
     cors_origins: list[str] = ["http://localhost:3000"]
+    # AUTH_REQUIRED=false keeps localhost development friction-free (a
+    # local "dev@local" operator principal is injected). Production MUST
+    # run with true — main.py refuses production+default-secret outright.
+    auth_required: bool = False
+    allow_registration: bool = True
+    rate_limit_enabled: bool = False
+    rate_limit_expensive_per_minute: int = 6
 
     # --- Database ---
     database_url: str = Field(

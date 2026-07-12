@@ -1,18 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import data_provider, db_session
+from app.api.deps import DEV_EMAIL, data_provider, db_session, get_current_user
 from app.db.models.portfolio import PortfolioPosition
+from app.db.models.user import User
 from app.schemas.portfolio import PortfolioPositionCreate, PortfolioPositionOut
 from app.services.data_providers.base import MarketDataProvider
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
+def _owned(query, user: User):
+    if user.email == DEV_EMAIL:
+        return query.filter(or_(PortfolioPosition.user_id == user.id, PortfolioPosition.user_id.is_(None)))
+    return query.filter(PortfolioPosition.user_id == user.id)
+
+
 @router.get("/health")
 def portfolio_health(
     db: Session = Depends(db_session),
     provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
 ):
     """Portfolio Intelligence report: exposure, concentration (HHI, sector),
     weighted risk profile, diversification grade, per-position sizing
@@ -21,7 +30,8 @@ def portfolio_health(
 
     from app.services.portfolio_intel.engine import assess_portfolio
 
-    return asdict(assess_portfolio(db, provider))
+    include_legacy = user.email == DEV_EMAIL
+    return asdict(assess_portfolio(db, provider, user_id=user.id, include_unowned=include_legacy))
 
 
 @router.get("/recommendation/{symbol}")
@@ -44,8 +54,12 @@ def position_recommendation(
 
 
 @router.get("", response_model=list[PortfolioPositionOut])
-def list_positions(db: Session = Depends(db_session), provider: MarketDataProvider = Depends(data_provider)):
-    positions = db.query(PortfolioPosition).filter_by(status="open").all()
+def list_positions(
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
+):
+    positions = _owned(db.query(PortfolioPosition).filter_by(status="open"), user).all()
     out = []
     for p in positions:
         try:
@@ -69,11 +83,16 @@ def list_positions(db: Session = Depends(db_session), provider: MarketDataProvid
 
 
 @router.post("", response_model=PortfolioPositionOut)
-def open_position(request: PortfolioPositionCreate, db: Session = Depends(db_session)):
+def open_position(
+    request: PortfolioPositionCreate,
+    db: Session = Depends(db_session),
+    user: User = Depends(get_current_user),
+):
     position = PortfolioPosition(
         ticker_symbol=request.ticker_symbol.upper(),
         quantity=request.quantity,
         avg_entry_price=request.avg_entry_price,
+        user_id=user.id,
     )
     db.add(position)
     db.commit()
@@ -88,8 +107,12 @@ def open_position(request: PortfolioPositionCreate, db: Session = Depends(db_ses
 
 
 @router.post("/{position_id}/close")
-def close_position(position_id: int, db: Session = Depends(db_session)):
-    position = db.query(PortfolioPosition).filter_by(id=position_id).one_or_none()
+def close_position(
+    position_id: int,
+    db: Session = Depends(db_session),
+    user: User = Depends(get_current_user),
+):
+    position = _owned(db.query(PortfolioPosition).filter_by(id=position_id), user).one_or_none()
     if not position:
         raise HTTPException(status_code=404, detail="Position not found")
     position.status = "closed"

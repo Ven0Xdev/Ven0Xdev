@@ -12,6 +12,13 @@ from app.db.session import engine, init_timescale_hypertables
 settings = get_settings()
 configure_logging("DEBUG" if settings.debug else "INFO")
 
+# Refuse to boot a production deployment with development security posture.
+if settings.environment == "production":
+    if settings.secret_key == "CHANGE_ME_IN_PRODUCTION":
+        raise RuntimeError("Refusing to start: SECRET_KEY is the development default in production.")
+    if not settings.auth_required:
+        raise RuntimeError("Refusing to start: AUTH_REQUIRED must be true in production.")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

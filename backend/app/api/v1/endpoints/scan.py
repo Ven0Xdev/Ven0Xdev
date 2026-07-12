@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import data_provider, db_session
+from app.api.deps import data_provider, db_session, require_operator
 from app.db.models.scan import ScanCycle, ScanDecision
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/scan", tags=["scan"])
 def run_cycle_now(
     provider: MarketDataProvider = Depends(data_provider),
     db: Session = Depends(db_session),
+    _operator=Depends(require_operator),
 ):
     """Trigger one full scanner cycle on demand (normally the background
     worker runs these continuously)."""

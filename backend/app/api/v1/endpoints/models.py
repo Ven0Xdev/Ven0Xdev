@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import db_session
+from app.api.deps import db_session, require_operator
 from app.db.models.model_version import ModelVersion
+from app.db.models.user import User
 from app.services.ml.champion_challenger import NotEnoughHistory, promote_model, train_challenger
 
 router = APIRouter(prefix="/models", tags=["models"])
@@ -30,7 +31,7 @@ def list_models(db: Session = Depends(db_session)):
 
 
 @router.post("/train-challenger")
-def train_challenger_endpoint(db: Session = Depends(db_session)):
+def train_challenger_endpoint(db: Session = Depends(db_session), operator: User = Depends(require_operator)):
     """Train a challenger on real graded outcomes. The result is REGISTERED
     but NEVER deployed — read the comparison, then decide to promote."""
     try:
@@ -41,7 +42,7 @@ def train_challenger_endpoint(db: Session = Depends(db_session)):
 
 
 @router.post("/{version_id}/promote")
-def promote_endpoint(version_id: int, db: Session = Depends(db_session)):
+def promote_endpoint(version_id: int, db: Session = Depends(db_session), operator: User = Depends(require_operator)):
     """Human approval gate: promote a registered challenger to champion.
     This is the ONLY path by which a new model starts serving predictions."""
     try:

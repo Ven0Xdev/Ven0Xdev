@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.api.deps import data_provider
+from app.api.deps import data_provider, expensive_rate_limit
 from app.schemas.backtest import BacktestRequest, BacktestResponse, TradeOut
 from app.services.backtest.engine import BacktestConfig, BacktestEngine
 from app.services.data_providers.base import MarketDataProvider
@@ -14,6 +14,7 @@ def walk_forward_validation(
     n_folds: int = 3,
     lookback_days: int = 300,
     provider: MarketDataProvider = Depends(data_provider),
+    _user=Depends(expensive_rate_limit),
 ):
     """Walk-forward validation of the probability model itself: train on the
     past, test on the future, report out-of-sample AUC and calibration."""
@@ -24,7 +25,11 @@ def walk_forward_validation(
 
 
 @router.post("/run", response_model=BacktestResponse)
-def run_backtest(request: BacktestRequest, provider: MarketDataProvider = Depends(data_provider)):
+def run_backtest(
+    request: BacktestRequest,
+    provider: MarketDataProvider = Depends(data_provider),
+    _user=Depends(expensive_rate_limit),
+):
     symbols = request.symbols or [t.symbol for t in provider.get_universe(limit=request.universe_limit)]
 
     config = BacktestConfig(
