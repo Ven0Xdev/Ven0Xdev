@@ -9,6 +9,40 @@ from app.services.data_providers.base import MarketDataProvider
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
+@router.get("/health")
+def portfolio_health(
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+):
+    """Portfolio Intelligence report: exposure, concentration (HHI, sector),
+    weighted risk profile, diversification grade, per-position sizing
+    verdicts against risk-derived ceilings, and named alerts."""
+    from dataclasses import asdict
+
+    from app.services.portfolio_intel.engine import assess_portfolio
+
+    return asdict(assess_portfolio(db, provider))
+
+
+@router.get("/recommendation/{symbol}")
+def position_recommendation(
+    symbol: str,
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+):
+    """Full recommendation dossier: why buy, why not, biggest risks,
+    confidence calculation, manipulation, liquidity, historical
+    similarities, missing information, invalidation conditions."""
+    from fastapi import HTTPException
+
+    from app.services.portfolio_intel.recommendation import build_recommendation_dossier
+
+    try:
+        return build_recommendation_dossier(symbol, provider, db=db)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=404, detail=f"Could not build dossier for {symbol}: {exc}") from exc
+
+
 @router.get("", response_model=list[PortfolioPositionOut])
 def list_positions(db: Session = Depends(db_session), provider: MarketDataProvider = Depends(data_provider)):
     positions = db.query(PortfolioPosition).filter_by(status="open").all()

@@ -41,6 +41,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def record_request_latency(request, call_next):
+    import time as _time
+
+    from app.services.monitoring import counters
+
+    started = _time.perf_counter()
+    response = await call_next(request)
+    counters.record_latency(
+        f"{request.method} {request.url.path}",
+        (_time.perf_counter() - started) * 1000,
+    )
+    return response
+
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 

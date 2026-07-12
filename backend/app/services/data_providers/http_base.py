@@ -85,13 +85,24 @@ class RateLimitedHttpClient:
         self._cache = TTLCache(cache_ttl_seconds)
 
     def get_json(self, path: str, params: dict | None = None, cache_key: tuple | None = None):
+        from app.services.monitoring import counters
+
         if cache_key is not None:
             cached = self._cache.get(cache_key)
             if cached is not None:
                 return cached
 
         self._bucket.acquire()
-        response = self._client.get(path, params=params or {})
+        counters.increment("provider.calls")
+        try:
+            response = self._client.get(path, params=params or {})
+        except Exception:
+            counters.increment("provider.failures")
+            counters.increment(f"provider.failures.{self.vendor}")
+            raise
+        if response.status_code != 200:
+            counters.increment("provider.failures")
+            counters.increment(f"provider.failures.{self.vendor}")
         if response.status_code == 429:
             raise ProviderDataUnavailable(
                 f"{self.vendor} rate limit exceeded (HTTP 429) — lower calls_per_minute."
