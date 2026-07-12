@@ -152,8 +152,9 @@ def _epistemic_footer(a: StockAnalysis) -> str:
     if a.sentiment_score == 50.0:
         missing.append("news sentiment classifier (neutral placeholder in use)")
     missing_text = "; ".join(missing) if missing else "none material to this answer"
+    as_of = a.as_of.strftime("%Y-%m-%d %H:%M UTC") if a.as_of else "unknown time"
     return (
-        f"\n\n— Facts: scores/prices retrieved live from the scoring pipeline for {a.ticker} this turn. "
+        f"\n\n— Facts: scores/prices computed from '{a.data_source}' data ({a.data_mode}) at {as_of} for {a.ticker}. "
         f"Predictions: all probabilities are calibrated model estimates, not guarantees. "
         f"Assumptions: OTC execution costs (spread/slippage) match recent history; horizons are trading days. "
         f"Missing: {missing_text}."

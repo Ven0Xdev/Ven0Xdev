@@ -117,6 +117,7 @@ class EdgarEnrichedProvider(MarketDataProvider):
     def __init__(self, inner: MarketDataProvider, session_factory):
         self.inner = inner
         self.name = f"{inner.name}+edgar"
+        self.data_mode = inner.data_mode
         self._session_factory = session_factory
 
     # --- enriched call -----------------------------------------------------

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -27,6 +29,14 @@ class StockAnalysis(BaseModel):
     current_price: float = Field(..., description="Latest traded/last price")
     tier: str
     sector: str
+
+    # --- Provenance (P0-1): every analysis says where its data came from,
+    # what kind of data it is, and when it was computed. Consumers (UI,
+    # chat, dossier) inherit these labels instead of inventing their own.
+    data_source: str = Field("unknown", description="Provider that supplied the underlying data, e.g. 'mock', 'finnhub+edgar'")
+    data_mode: str = Field("unspecified", description="'synthetic' | 'delayed' | 'live' | 'unspecified' — synthetic/delayed data is never unlabeled")
+    as_of: datetime | None = Field(None, description="UTC time this analysis was computed")
+    price_as_of: datetime | None = Field(None, description="Timestamp of the most recent price bar used")
 
     liquidity_score: float = Field(..., ge=0, le=100)
     manipulation_risk: float = Field(..., ge=0, le=100)

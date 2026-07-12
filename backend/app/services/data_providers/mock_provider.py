@@ -48,6 +48,7 @@ def _regime_for(symbol: str) -> str:
 
 class MockOTCProvider(MarketDataProvider):
     name = "mock"
+    data_mode = "synthetic"
 
     def __init__(self) -> None:
         self._universe = [self._build_meta(sym) for sym in _UNIVERSE_SYMBOLS]
@@ -81,11 +82,21 @@ class MockOTCProvider(MarketDataProvider):
         return self._universe[:limit] if limit else list(self._universe)
 
     def get_ticker_meta(self, symbol: str) -> TickerMeta:
+        """Unknown symbols are unknown — even in synthetic mode. Fabricating
+        a company for an arbitrary string is fabricated financial data
+        (audit finding P0-2), so the mock validates against its universe
+        exactly like a real vendor validates against the market.
+        """
         symbol = symbol.upper()
-        if symbol not in self._universe_by_symbol:
-            self._universe_by_symbol[symbol] = self._build_meta(symbol)
-            self._universe.append(self._universe_by_symbol[symbol])
-        return self._universe_by_symbol[symbol]
+        meta = self._universe_by_symbol.get(symbol)
+        if meta is None:
+            from app.services.data_providers.http_base import ProviderDataUnavailable
+
+            raise ProviderDataUnavailable(
+                f"Unknown symbol {symbol!r} — not in the synthetic universe. "
+                f"(The mock provider never invents companies for unrecognized tickers.)"
+            )
+        return meta
 
     # --- OHLCV -------------------------------------------------------------
     def get_ohlcv(self, symbol: str, timeframe: str = "1d", lookback_days: int = 250) -> pd.DataFrame:

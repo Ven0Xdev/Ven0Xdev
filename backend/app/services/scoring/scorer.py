@@ -129,12 +129,20 @@ def _analyze_ticker_uncached(symbol: str, provider: MarketDataProvider) -> Stock
         confidence=confidence_score,
     )
 
+    from datetime import datetime, timezone
+
+    last_bar_ts = df.index[-1].to_pydatetime() if len(df) else None
+
     return StockAnalysis(
         ticker=symbol,
         company_name=meta.company_name,
         current_price=tech["price"],
         tier=meta.tier,
         sector=meta.sector,
+        data_source=provider.name,
+        data_mode=getattr(provider, "data_mode", "unspecified"),
+        as_of=datetime.now(timezone.utc),
+        price_as_of=last_bar_ts,
         liquidity_score=liquidity_score,
         manipulation_risk=manipulation_risk,
         fundamental_score=fundamental_score,

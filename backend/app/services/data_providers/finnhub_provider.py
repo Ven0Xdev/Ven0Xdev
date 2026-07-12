@@ -62,6 +62,7 @@ __all__ = ["FinnhubProvider", "ProviderDataUnavailable"]
 
 class FinnhubProvider(MarketDataProvider):
     name = "finnhub"
+    data_mode = "delayed"  # real market data; daily candles are end-of-day
 
     def __init__(
         self,

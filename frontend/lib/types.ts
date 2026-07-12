@@ -24,6 +24,10 @@ export interface StockAnalysis {
   current_price: number;
   tier: string;
   sector: string;
+  data_source: string;
+  data_mode: "synthetic" | "delayed" | "live" | "unspecified";
+  as_of: string | null;
+  price_as_of: string | null;
   liquidity_score: number;
   manipulation_risk: number;
   fundamental_score: number;
@@ -140,4 +144,51 @@ export interface SectorHeatmapEntry {
   sector: string;
   avg_score: number;
   count: number;
+}
+
+export interface SearchMatch {
+  symbol: string;
+  company_name: string;
+  tier: string;
+  sector: string;
+  in_universe: boolean;
+}
+
+export interface SearchResponse {
+  query: string;
+  valid_format: boolean;
+  source: string;
+  data_mode: string;
+  as_of: string;
+  matches: SearchMatch[];
+}
+
+export interface DeliberationEvidence {
+  agent: string;
+  claim: string;
+  direction: "bullish" | "bearish" | "neutral";
+  strength: number;
+  source: string;
+}
+
+export interface DeliberationStage {
+  stage: string;
+  summary: string;
+  evidence: DeliberationEvidence[];
+  metrics: Record<string, unknown>;
+}
+
+export interface Deliberation {
+  ticker: string;
+  stages: DeliberationStage[];
+  verdict: {
+    stance: string;
+    conviction: number;
+    probability_up_10: number;
+    probability_downside_first: number;
+    key_reasons_for: string[];
+    key_reasons_against: string[];
+    invalidation_conditions: string[];
+    narrative: string;
+  };
 }

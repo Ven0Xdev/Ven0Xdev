@@ -10,6 +10,50 @@ from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
 
+_SYMBOL_RE = __import__("re").compile(r"^[A-Z0-9.\-]{1,10}$")
+
+
+@router.get("/search")
+def search_and_validate(q: str, provider: MarketDataProvider = Depends(data_provider)):
+    """Ticker search + validation (P0-2). Searches the provider universe by
+    symbol/name fragment; if nothing matches but the query is a validly
+    formatted symbol, attempts a direct provider lookup. Unknown symbols
+    are reported as unknown — never fabricated.
+    """
+    from datetime import datetime, timezone
+
+    query = q.strip().upper()
+    valid_format = bool(_SYMBOL_RE.match(query))
+    response = {
+        "query": query,
+        "valid_format": valid_format,
+        "source": provider.name,
+        "data_mode": getattr(provider, "data_mode", "unspecified"),
+        "as_of": datetime.now(timezone.utc).isoformat(),
+        "matches": [],
+    }
+    if not query:
+        return response
+
+    matches = [
+        {"symbol": t.symbol, "company_name": t.company_name, "tier": t.tier, "sector": t.sector, "in_universe": True}
+        for t in provider.get_universe()
+        if query in t.symbol or query in t.company_name.upper()
+    ][:20]
+
+    if not matches and valid_format:
+        try:
+            meta = provider.get_ticker_meta(query)
+            matches = [{
+                "symbol": meta.symbol, "company_name": meta.company_name,
+                "tier": meta.tier, "sector": meta.sector, "in_universe": False,
+            }]
+        except Exception:
+            matches = []  # honestly unknown
+
+    response["matches"] = matches
+    return response
+
 
 @router.get("/{symbol}/deliberation")
 def get_stock_deliberation(

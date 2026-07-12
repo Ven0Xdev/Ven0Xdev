@@ -101,6 +101,11 @@ class MarketDataProvider(ABC):
     """Contract every concrete data source must satisfy."""
 
     name: str = "base"
+    # Provenance label propagated into every analysis response (P0-1):
+    # "synthetic" (generated demo data) | "delayed" (real, not real-time,
+    # e.g. EOD candles) | "live" | "unspecified". The UI renders this as a
+    # visible badge — demo data is never silent.
+    data_mode: str = "unspecified"
 
     @abstractmethod
     def get_universe(self, limit: int | None = None) -> list[TickerMeta]:

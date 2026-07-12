@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { api } from "@/lib/api";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
@@ -14,15 +16,67 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  const runSearch = async () => {
+    const q = query.trim();
+    if (!q || searching) return;
+    setSearching(true);
+    setSearchError(null);
+    try {
+      const result = await api.search(q);
+      if (!result.valid_format) {
+        setSearchError("Invalid symbol format");
+      } else if (result.matches.length === 0) {
+        setSearchError(`"${q.toUpperCase()}" not found (${result.source})`);
+      } else {
+        setQuery("");
+        router.push(`/stock/${result.matches[0].symbol}`);
+      }
+    } catch {
+      setSearchError("Search failed — is the API running?");
+    } finally {
+      setSearching(false);
+    }
+  };
+
   return (
     <aside
       className="hidden w-56 shrink-0 flex-col gap-1 border-r p-4 sm:flex"
       style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
     >
-      <div className="mb-6 flex items-center gap-2 px-2">
+      <div className="mb-4 flex items-center gap-2 px-2">
         <div className="h-7 w-7 rounded-md" style={{ background: "var(--series-blue)" }} />
         <span className="text-base font-semibold">Ven0X OTC</span>
       </div>
+
+      <form
+        className="mb-4 px-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          runSearch();
+        }}
+      >
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearchError(null);
+          }}
+          placeholder="Search ticker…"
+          aria-label="Search ticker"
+          className="w-full rounded-lg border px-3 py-1.5 text-sm outline-none"
+          style={{ borderColor: "var(--border)", background: "var(--page-plane)", color: "var(--text-primary)" }}
+        />
+        {searchError && (
+          <p className="mt-1 px-1 text-xs" style={{ color: "var(--status-critical)" }}>
+            {searchError}
+          </p>
+        )}
+      </form>
       {NAV_ITEMS.map((item) => {
         const active = pathname === item.href;
         return (

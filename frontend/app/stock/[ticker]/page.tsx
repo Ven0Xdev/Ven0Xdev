@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
-import type { StockAnalysis } from "@/lib/types";
+import type { Deliberation, NewsArticle, OhlcvBar, StockAnalysis } from "@/lib/types";
 import { ScoreMeter } from "@/components/ui/ScoreMeter";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
+import { DataBadge } from "@/components/ui/DataBadge";
+import { PriceChart } from "@/components/charts/PriceChart";
 import { ProbabilityMatrix } from "@/components/dashboard/ProbabilityMatrix";
 import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
 import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
@@ -15,6 +17,9 @@ export default function StockDetailPage() {
   const params = useParams<{ ticker: string }>();
   const ticker = params.ticker;
   const [analysis, setAnalysis] = useState<StockAnalysis | null>(null);
+  const [bars, setBars] = useState<OhlcvBar[] | null>(null);
+  const [news, setNews] = useState<NewsArticle[] | null>(null);
+  const [deliberation, setDeliberation] = useState<Deliberation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -28,6 +33,9 @@ export default function StockDetailPage() {
       .catch((e) => {
         if (!cancelled) setError(String(e));
       });
+    api.ohlcv(ticker, 120).then((d) => !cancelled && setBars(d.bars)).catch(() => !cancelled && setBars([]));
+    api.news(ticker, 8).then((d) => !cancelled && setNews(d)).catch(() => !cancelled && setNews([]));
+    api.deliberation(ticker).then((d) => !cancelled && setDeliberation(d)).catch(() => !cancelled && setDeliberation(null));
     return () => {
       cancelled = true;
     };
@@ -80,6 +88,29 @@ export default function StockDetailPage() {
           <p className="mt-4 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {a.explanation}
           </p>
+          <div className="mt-3">
+            <DataBadge mode={a.data_mode} source={a.data_source} asOf={a.as_of} priceAsOf={a.price_as_of} />
+          </div>
+        </div>
+
+        <div className="card p-5">
+          <h2 className="mb-4 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
+            Price — last {bars?.length ?? "…"} sessions, with trade-plan levels
+          </h2>
+          {bars === null ? (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading price history…</p>
+          ) : (
+            <PriceChart
+              bars={bars}
+              markers={[
+                { label: "Entry", price: a.ideal_entry_price, color: "var(--series-blue)" },
+                { label: "Stop", price: a.stop_loss, color: "var(--status-critical)" },
+                { label: "TP1", price: a.take_profit_1, color: "var(--status-good)" },
+                { label: "TP2", price: a.take_profit_2, color: "var(--status-good)" },
+                { label: "TP3", price: a.take_profit_3, color: "var(--status-good)" },
+              ]}
+            />
+          )}
         </div>
 
         <div className="card grid grid-cols-2 gap-5 p-5 sm:grid-cols-3">
@@ -131,6 +162,81 @@ export default function StockDetailPage() {
         <div className="card p-5">
           <ManipulationPanel score={a.manipulation_risk} flags={a.manipulation_flags} />
         </div>
+
+        <div className="card p-5">
+          <h2 className="mb-4 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
+            Multi-agent deliberation
+          </h2>
+          {deliberation === null ? (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Deliberation unavailable.</p>
+          ) : (
+            <div className="flex flex-col gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={deliberation.verdict.stance === "favorable" || deliberation.verdict.stance === "constructive" ? "good" : deliberation.verdict.stance === "neutral" ? "warning" : "critical"}>
+                  {deliberation.verdict.stance}
+                </Badge>
+                <span className="tabular text-xs" style={{ color: "var(--text-muted)" }}>
+                  conviction {(deliberation.verdict.conviction * 100).toFixed(0)}%
+                </span>
+              </div>
+              <p style={{ color: "var(--text-secondary)" }}>{deliberation.verdict.narrative}</p>
+              <div>
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                  Contrarian findings
+                </h3>
+                <ul className="flex flex-col gap-1.5">
+                  {(deliberation.stages.find((s) => s.stage === "contradiction")?.evidence ?? []).map((e, i) => (
+                    <li key={i} className="rounded-lg px-3 py-2" style={{ background: "var(--page-plane)", color: "var(--text-secondary)" }}>
+                      {e.claim}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                  Invalidation conditions
+                </h3>
+                <ul className="list-disc pl-5" style={{ color: "var(--text-secondary)" }}>
+                  {deliberation.verdict.invalidation_conditions.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="card p-5">
+          <h2 className="mb-4 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
+            Recent news
+          </h2>
+          {news === null ? (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading news…</p>
+          ) : news.length === 0 ? (
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>No recent coverage found by the active provider.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {news.map((n, i) => (
+                <li key={i} className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--page-plane)" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{n.headline}</span>
+                    {n.is_promotional && <Badge variant="serious">promotional</Badge>}
+                  </div>
+                  <div className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                    {n.source} · {n.published_at.slice(0, 10)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <p className="px-1 text-xs" style={{ color: "var(--text-muted)" }}>
+          Sources &amp; timestamps: market data from &quot;{a.data_source}&quot; ({a.data_mode}); analysis computed{" "}
+          {a.as_of ? new Date(a.as_of).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "at unknown time"}; last
+          price bar {a.price_as_of ? new Date(a.price_as_of).toISOString().slice(0, 10) : "unknown"}. Probabilities are
+          model estimates, never guarantees.
+        </p>
       </div>
 
       <div className="xl:col-span-1">

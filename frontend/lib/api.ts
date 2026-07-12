@@ -1,9 +1,11 @@
 import type {
   BacktestResult,
   DashboardSummary,
+  Deliberation,
   NewsArticle,
   OhlcvBar,
   PortfolioPosition,
+  SearchResponse,
   SectorHeatmapEntry,
   StockAnalysis,
   UniverseTicker,
@@ -27,6 +29,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   universe: (limit = 100) => request<UniverseTicker[]>(`/stocks/universe?limit=${limit}`),
+  search: (q: string) => request<SearchResponse>(`/stocks/search?q=${encodeURIComponent(q)}`),
+  deliberation: (symbol: string) => request<Deliberation>(`/stocks/${symbol}/deliberation`),
+  health: async () => {
+    const res = await fetch(API_BASE.replace(/\/api\/v1$/, "") + "/health", { cache: "no-store" });
+    if (!res.ok) throw new Error(`health check failed: ${res.status}`);
+    return res.json() as Promise<{ status: string; environment: string; data_provider: string }>;
+  },
   analysis: (symbol: string) => request<StockAnalysis>(`/stocks/${symbol}/analysis`),
   ohlcv: (symbol: string, lookbackDays = 250) =>
     request<{ symbol: string; bars: OhlcvBar[] }>(`/stocks/${symbol}/ohlcv?lookback_days=${lookbackDays}`),

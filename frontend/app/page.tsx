@@ -11,6 +11,7 @@ import { SectorHeatmap } from "@/components/charts/SectorHeatmap";
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [heatmap, setHeatmap] = useState<SectorHeatmapEntry[]>([]);
+  const [dataProvider, setDataProvider] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,6 +21,7 @@ export default function DashboardPage() {
         setHeatmap(h);
       })
       .catch((e) => setError(String(e)));
+    api.health().then((h) => setDataProvider(h.data_provider)).catch(() => setDataProvider(null));
   }, []);
 
   if (error) return <ErrorState message={error} />;
@@ -33,6 +35,20 @@ export default function DashboardPage() {
           Continuous AI scan across the OTC universe. All scores are probability-based, never certainty.
         </p>
       </div>
+
+      {dataProvider === "mock" && (
+        <div
+          className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium"
+          style={{
+            color: "var(--status-warning)",
+            background: "color-mix(in srgb, var(--status-warning) 12%, transparent)",
+          }}
+        >
+          <span className="h-2 w-2 rounded-full" style={{ background: "var(--status-warning)" }} />
+          Synthetic data mode — no live market-data provider is configured. Every number on this screen is generated
+          demo data. Set MARKET_DATA_PROVIDER in backend/.env to connect real data.
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Universe scanned" value={summary.universe_size.toString()} />
