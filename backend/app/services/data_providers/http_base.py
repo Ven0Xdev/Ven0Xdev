@@ -7,10 +7,27 @@ no duplicated infrastructure.
 """
 from __future__ import annotations
 
+import logging
 import threading
 import time
 
 import httpx
+
+logger = logging.getLogger(__name__)
+
+# Query parameters that must never appear in logs or error messages.
+_SECRET_PARAMS = {"token", "apikey", "api_key", "apiKey", "key"}
+
+_MAX_REDIRECTS = 3
+
+
+def sanitize_url(url: str | httpx.URL) -> str:
+    """Redact credential-bearing query parameters so URLs are log-safe."""
+    u = httpx.URL(url)
+    params = httpx.QueryParams(
+        [(k, "***" if k in _SECRET_PARAMS else v) for k, v in u.params.multi_items()]
+    )
+    return str(u.copy_with(query=str(params).encode() or None))
 
 
 class ProviderDataUnavailable(RuntimeError):
@@ -74,15 +91,54 @@ class RateLimitedHttpClient:
         transport: httpx.BaseTransport | None = None,
     ):
         self.vendor = vendor
+        self.timeout = timeout
+        self._base_host = httpx.URL(base_url).host
         self._client = httpx.Client(
             base_url=base_url,
             params=default_params or {},
             headers=headers or {},
             timeout=timeout,
             transport=transport,
+            # Redirects are followed manually in get_json so each hop can be
+            # domain-validated and logged (sanitized) — never blindly.
+            follow_redirects=False,
         )
         self._bucket = TokenBucket(calls_per_minute)
         self._cache = TTLCache(cache_ttl_seconds)
+
+    def _request(self, path_or_url: str, params: dict | None) -> httpx.Response:
+        """One GET plus a bounded, domain-validated redirect chase.
+
+        Legitimate vendor redirects (http→https upgrades, path moves) are
+        followed up to _MAX_REDIRECTS as long as they stay on the vendor's
+        host. A redirect to any other domain (captive portal, proxy login,
+        API relocation) is surfaced as a typed error with the sanitized
+        destination — that Location header is the root-cause evidence.
+        """
+        response = self._client.get(path_or_url, params=params or {})
+        hops = 0
+        while response.is_redirect:
+            location = response.headers.get("location", "")
+            target = response.url.join(location)
+            logger.warning(
+                "%s %s redirected (HTTP %d) to %s",
+                self.vendor, sanitize_url(response.url), response.status_code, sanitize_url(target),
+            )
+            if target.host != self._base_host:
+                raise ProviderDataUnavailable(
+                    f"{self.vendor} redirected to an unexpected domain "
+                    f"({sanitize_url(target)}) — refusing to follow. This usually means a "
+                    f"proxy/captive portal intercepted the request or the vendor API moved."
+                )
+            hops += 1
+            if hops > _MAX_REDIRECTS:
+                raise ProviderDataUnavailable(
+                    f"{self.vendor} exceeded {_MAX_REDIRECTS} redirects for {sanitize_url(target)}."
+                )
+            # client-level default params (incl. auth token) are re-merged by
+            # httpx on every request, so the follow-up stays authenticated.
+            response = self._client.get(str(target))
+        return response
 
     def get_json(self, path: str, params: dict | None = None, cache_key: tuple | None = None):
         from app.services.monitoring import counters
@@ -95,14 +151,31 @@ class RateLimitedHttpClient:
         self._bucket.acquire()
         counters.increment("provider.calls")
         try:
-            response = self._client.get(path, params=params or {})
-        except Exception:
+            response = self._request(path, params)
+        except ProviderDataUnavailable:
             counters.increment("provider.failures")
             counters.increment(f"provider.failures.{self.vendor}")
             raise
+        except httpx.TimeoutException:
+            counters.increment("provider.failures")
+            counters.increment(f"provider.failures.{self.vendor}")
+            raise ProviderDataUnavailable(
+                f"{self.vendor} {path} timed out after {self.timeout}s — vendor slow or unreachable."
+            )
+        except httpx.HTTPError as exc:
+            counters.increment("provider.failures")
+            counters.increment(f"provider.failures.{self.vendor}")
+            raise ProviderDataUnavailable(
+                f"{self.vendor} {path} connection failed: {type(exc).__name__}"
+            )
         if response.status_code != 200:
             counters.increment("provider.failures")
             counters.increment(f"provider.failures.{self.vendor}")
+        if response.status_code == 401:
+            raise ProviderDataUnavailable(
+                f"{self.vendor} rejected the API key (HTTP 401) — the key is invalid, expired, "
+                f"or revoked. Set a fresh key in .env."
+            )
         if response.status_code == 429:
             raise ProviderDataUnavailable(
                 f"{self.vendor} rate limit exceeded (HTTP 429) — lower calls_per_minute."

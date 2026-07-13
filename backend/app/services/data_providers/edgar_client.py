@@ -86,6 +86,10 @@ class EdgarClient:
             headers={"User-Agent": user_agent, "Accept-Encoding": "gzip"},
             timeout=30.0,
             transport=transport,
+            # SEC occasionally 301s between www.sec.gov/data.sec.gov; these
+            # URLs carry no secrets, so bounded following is safe here.
+            follow_redirects=True,
+            max_redirects=3,
         )
         self._limiter = _RateLimiter(calls_per_second)
         self._cik_map: dict[str, str] | None = None

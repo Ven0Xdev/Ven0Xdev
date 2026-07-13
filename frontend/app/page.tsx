@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, classifyApiError } from "@/lib/api";
 import type { DashboardSummary, SectorHeatmapEntry } from "@/lib/types";
 import { StatTile } from "@/components/ui/StatTile";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [heatmap, setHeatmap] = useState<SectorHeatmapEntry[]>([]);
   const [dataProvider, setDataProvider] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     Promise.all([api.dashboardSummary(), api.heatmap()])
@@ -20,11 +20,11 @@ export default function DashboardPage() {
         setSummary(s);
         setHeatmap(h);
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => setError(e));
     api.health().then((h) => setDataProvider(h.data_provider)).catch(() => setDataProvider(null));
   }, []);
 
-  if (error) return <ErrorState message={error} />;
+  if (error) return <ErrorState error={error} />;
   if (!summary) return <LoadingState />;
 
   return (
@@ -116,12 +116,14 @@ function LoadingState() {
   return <p style={{ color: "var(--text-muted)" }}>Scanning OTC universe…</p>;
 }
 
-function ErrorState({ message }: { message: string }) {
+function ErrorState({ error }: { error: unknown }) {
+  const { title, hint } = classifyApiError(error);
   return (
     <div className="card p-5 text-sm" style={{ color: "var(--status-critical)" }}>
-      Could not reach the backend API. Make sure it is running at NEXT_PUBLIC_API_URL.
+      {title}
+      <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{hint}</p>
       <pre className="mt-2 whitespace-pre-wrap text-xs" style={{ color: "var(--text-muted)" }}>
-        {message}
+        {String(error)}
       </pre>
     </div>
   );

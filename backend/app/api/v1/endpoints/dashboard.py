@@ -7,6 +7,7 @@ from app.api.deps import data_provider, db_session
 from app.db.models.portfolio import PortfolioPosition, WatchlistItem
 from app.db.models.prediction import Prediction
 from app.services.data_providers.base import MarketDataProvider
+from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -19,13 +20,18 @@ def dashboard_summary(
 ):
     tickers = provider.get_universe()
     analyses = []
+    provider_error: ProviderDataUnavailable | None = None
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = [pool.submit(analyze_ticker, t.symbol, provider) for t in tickers]
         for future in as_completed(futures):
             try:
                 analyses.append(future.result())
+            except ProviderDataUnavailable as exc:
+                provider_error = exc
             except Exception:
                 continue
+    if tickers and not analyses and provider_error is not None:
+        raise provider_error  # every ticker failed on the vendor — degraded, not "empty"
 
     analyses.sort(key=lambda a: a.overall_ai_score, reverse=True)
     top_opportunities = analyses[:5]

@@ -7,6 +7,7 @@ from app.api.deps import data_provider, db_session, require_operator
 from app.db.models.scan import ScanCycle, ScanDecision
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
+from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/scan", tags=["scan"])
@@ -92,15 +93,23 @@ def top_opportunities(
     tickers = provider.get_universe()
     results: list[StockAnalysis] = []
 
+    provider_error: ProviderDataUnavailable | None = None
+    analyzed = 0
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {pool.submit(analyze_ticker, t.symbol, provider): t.symbol for t in tickers}
         for future in as_completed(futures):
             try:
                 analysis = future.result()
+            except ProviderDataUnavailable as exc:
+                provider_error = exc
+                continue
             except Exception:
                 continue
+            analyzed += 1
             if analysis.overall_ai_score >= min_score and analysis.manipulation_risk <= max_manipulation_risk:
                 results.append(analysis)
+    if tickers and analyzed == 0 and provider_error is not None:
+        raise provider_error
 
     results.sort(key=lambda a: a.overall_ai_score, reverse=True)
     return results[:limit]
@@ -111,15 +120,21 @@ def sector_heatmap(provider: MarketDataProvider = Depends(data_provider)):
     tickers = provider.get_universe()
     sector_scores: dict[str, list[float]] = {}
 
+    provider_error: ProviderDataUnavailable | None = None
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {pool.submit(analyze_ticker, t.symbol, provider): t for t in tickers}
         for future in as_completed(futures):
             ticker = futures[future]
             try:
                 analysis = future.result()
+            except ProviderDataUnavailable as exc:
+                provider_error = exc
+                continue
             except Exception:
                 continue
             sector_scores.setdefault(ticker.sector, []).append(analysis.overall_ai_score)
+    if tickers and not sector_scores and provider_error is not None:
+        raise provider_error
 
     return [
         {"sector": sector, "avg_score": sum(scores) / len(scores), "count": len(scores)}

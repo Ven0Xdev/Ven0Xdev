@@ -81,7 +81,9 @@ class FinnhubProvider(MarketDataProvider):
             base_url=_BASE_URL,
             calls_per_minute=calls_per_minute,
             cache_ttl_seconds=cache_ttl_seconds,
-            default_params={"token": api_key},
+            # Auth via header, not query param: the token never appears in
+            # any URL, so it can't leak through logs, proxies, or redirects.
+            headers={"X-Finnhub-Token": api_key},
             transport=transport,
         )
         self._universe_limit = universe_limit

@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.base import Base
 from app.db.session import engine, init_timescale_hypertables
+from app.services.data_providers.http_base import ProviderDataUnavailable
 
 settings = get_settings()
 configure_logging("DEBUG" if settings.debug else "INFO")
@@ -47,6 +48,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(ProviderDataUnavailable)
+async def provider_unavailable_handler(request, exc):
+    """Degraded mode, not a crash: when the market-data vendor is down,
+    redirected, rate-limited, or unauthorized, endpoints answer 503 with a
+    structured, honest payload — never HTTP 500 and never substitute data."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": {
+                "code": "provider_unavailable",
+                "provider": settings.market_data_provider,
+                "message": str(exc),
+                "market_data_available": False,
+            }
+        },
+    )
 
 
 @app.middleware("http")
