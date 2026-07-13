@@ -43,10 +43,25 @@ def redact(text: str, secret: str) -> str:
     return text.replace(secret, "***") if secret and text else (text or "(none)")
 
 
+def _key_from_dotenv() -> str:
+    """Read FINNHUB_API_KEY from backend/.env so the diagnostic needs no
+    shell export — the same file the app itself loads."""
+    from pathlib import Path
+
+    env = Path(__file__).resolve().parent.parent / ".env"
+    if not env.exists():
+        return ""
+    for line in env.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("FINNHUB_API_KEY="):
+            return line.split("=", 1)[1].strip().strip("'\"")
+    return ""
+
+
 def main() -> int:
-    key = os.environ.get("FINNHUB_API_KEY", "").strip()
+    key = os.environ.get("FINNHUB_API_KEY", "").strip() or _key_from_dotenv()
     if not key:
-        print("Set FINNHUB_API_KEY in your environment first (do not paste it in chat).")
+        print("No FINNHUB_API_KEY found — set it in backend/.env or export it.")
         return 2
 
     print(f"Probing {BASE} (token sent as header, not in URL)\n")
