@@ -64,19 +64,32 @@ def main() -> int:
         print("No FINNHUB_API_KEY found — set it in backend/.env or export it.")
         return 2
 
-    print(f"Probing {BASE} (token sent as header, not in URL)\n")
-    with httpx.Client(timeout=15.0, follow_redirects=False,
-                      headers={"X-Finnhub-Token": key}) as client:
-        for path, params in ENDPOINTS:
-            try:
-                r = client.get(BASE + path, params=params)
-            except httpx.HTTPError as exc:
-                print(f"  {path:22} -> ERROR {type(exc).__name__}: {exc}")
-                continue
-            loc = redact(r.headers.get("location", ""), key)
-            extra = f"  Location: {loc}" if r.is_redirect else ""
-            print(f"  {path:22} -> HTTP {r.status_code}{extra}")
-    print("\nInterpretation is in the module docstring at the top of this file.")
+    masked = f"{key[:4]}…{key[-4:]} (len {len(key)})"
+    print(f"Probing {BASE}")
+    print(f"Key loaded: {masked}\n")
+
+    # Two auth methods, tested side by side, so a 401 tells us WHICH:
+    #   both 401      -> the key itself is rejected (wrong/revoked key)
+    #   header 401,
+    #   query  200    -> Finnhub wants ?token=, not the header
+    for label, kwargs in (
+        ("HEADER  X-Finnhub-Token", {"headers": {"X-Finnhub-Token": key}}),
+        ("QUERY   ?token=",         {"params_extra": {"token": key}}),
+    ):
+        print(f"[{label}]")
+        params_extra = kwargs.pop("params_extra", {})
+        with httpx.Client(timeout=15.0, follow_redirects=False, **kwargs) as client:
+            for path, params in ENDPOINTS:
+                try:
+                    r = client.get(BASE + path, params={**params, **params_extra})
+                except httpx.HTTPError as exc:
+                    print(f"  {path:22} -> ERROR {type(exc).__name__}: {exc}")
+                    continue
+                loc = redact(r.headers.get("location", ""), key)
+                extra = f"  Location: {loc}" if r.is_redirect else ""
+                print(f"  {path:22} -> HTTP {r.status_code}{extra}")
+        print()
+    print("Interpretation is in the module docstring at the top of this file.")
     return 0
 
 
