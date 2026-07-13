@@ -7,12 +7,15 @@ from app.db.models.news import NewsItem
 from app.db.models.portfolio import PortfolioPosition, WatchlistItem
 from app.db.models.prediction import Outcome, Prediction
 from app.db.models.scan import ScanCycle, ScanDecision
+from app.db.models.signal import Signal, SignalEvent
 from app.db.models.trade import Trade
 from app.db.models.user import User
 
 __all__ = [
     "EdgarCompanyFacts",
     "ScanCycle",
+    "Signal",
+    "SignalEvent",
     "ScanDecision",
     "Ticker",
     "User",

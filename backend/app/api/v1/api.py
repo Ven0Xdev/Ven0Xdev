@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, backtest, chat, dashboard, models, monitoring, portfolio, predictions, scan, stocks, watchlist
+from app.api.v1.endpoints import auth, backtest, chat, dashboard, models, monitoring, portfolio, predictions, providers, scan, stocks, stream, watchlist
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
@@ -14,3 +14,5 @@ api_router.include_router(watchlist.router)
 api_router.include_router(portfolio.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(monitoring.router)
+api_router.include_router(stream.router)
+api_router.include_router(providers.router)

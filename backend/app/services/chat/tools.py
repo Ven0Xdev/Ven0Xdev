@@ -189,3 +189,64 @@ def execute_tool(name: str, args: dict, db: Session | None, provider: MarketData
     except Exception as exc:  # noqa: BLE001
         logger.exception("Tool %s failed", name)
         return {"error": f"{name} failed: {exc}"}
+
+
+def _tool_get_live_quote(args: dict, db, provider) -> dict:
+    q = provider.get_quote(args["symbol"])
+    return {
+        "symbol": q.symbol, "last": q.last, "bid": q.bid, "ask": q.ask,
+        "spread_pct": q.spread_pct, "timestamp": q.timestamp.isoformat(),
+        "provider": provider.name, "data_mode": getattr(provider, "data_mode", "unspecified"),
+        "note": "bid/ask are None when the vendor supplies no depth — never approximated",
+    }
+
+
+def _tool_get_current_signal(args: dict, db, provider) -> dict:
+    if db is None:
+        return {"error": "signal store unavailable in this session"}
+    from app.db.models.signal import Signal
+
+    s = (db.query(Signal).filter_by(ticker_symbol=args["symbol"].upper())
+         .order_by(Signal.created_at.desc(), Signal.id.desc()).first())
+    if s is None:
+        return {"status": "NO_SIGNAL_YET", "note": "no signal evaluated for this ticker yet"}
+    from app.api.v1.endpoints.stream import _signal_payload
+
+    return _signal_payload(s)
+
+
+def _tool_get_signal_history(args: dict, db, provider) -> dict:
+    if db is None:
+        return {"error": "signal store unavailable in this session"}
+    from app.db.models.signal import Signal, SignalEvent
+
+    symbol = args["symbol"].upper()
+    events = (db.query(SignalEvent).join(Signal, Signal.id == SignalEvent.signal_id)
+              .filter(Signal.ticker_symbol == symbol)
+              .order_by(SignalEvent.created_at.desc()).limit(int(args.get("limit", 20))).all())
+    return {"symbol": symbol, "events": [
+        {"at": e.created_at.isoformat(), "type": e.event_type, "from": e.from_status,
+         "to": e.to_status, "reason": e.reason} for e in events]}
+
+
+TOOLS.extend([
+    {
+        "name": "get_live_quote",
+        "description": "Latest quote for a ticker with provenance (provider, data mode, timestamp). Use for current-price questions.",
+        "input_schema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]},
+        "executor": _tool_get_live_quote,
+    },
+    {
+        "name": "get_current_signal",
+        "description": "The deterministic Signal Engine's latest status for a ticker (NO_TRADE/AVOID/WATCH/SETUP_FORMING/POSSIBLE_ENTRY) with levels, safety-rule rejections, and reasons. Use for 'is there an entry right now' questions.",
+        "input_schema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]},
+        "executor": _tool_get_current_signal,
+    },
+    {
+        "name": "get_signal_history",
+        "description": "Signal status-change event log for a ticker. Use for 'why did the signal change' questions.",
+        "input_schema": {"type": "object", "properties": {"symbol": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["symbol"]},
+        "executor": _tool_get_signal_history,
+    },
+])
+_BY_NAME.update({t["name"]: t["executor"] for t in TOOLS[-3:]})

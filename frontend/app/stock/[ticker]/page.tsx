@@ -8,6 +8,7 @@ import { ScoreMeter } from "@/components/ui/ScoreMeter";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
 import { DataBadge } from "@/components/ui/DataBadge";
 import { PriceChart } from "@/components/charts/PriceChart";
+import { LiveChart } from "@/components/charts/LiveChart";
 import { ProbabilityMatrix } from "@/components/dashboard/ProbabilityMatrix";
 import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
 import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
@@ -91,6 +92,13 @@ export default function StockDetailPage() {
           <div className="mt-3">
             <DataBadge mode={a.data_mode} source={a.data_source} asOf={a.as_of} priceAsOf={a.price_as_of} />
           </div>
+        </div>
+
+        <div className="card p-5">
+          <h2 className="mb-4 text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
+            Live intraday (1m) — streamed from backend, with Signal Engine levels
+          </h2>
+          <LiveChart symbol={a.ticker} />
         </div>
 
         <div className="card p-5">

@@ -192,3 +192,55 @@ export interface Deliberation {
     narrative: string;
   };
 }
+
+export interface StreamBar {
+  symbol: string;
+  timeframe: string;
+  start: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  trade_count: number;
+  provider: string;
+  data_mode: string;
+  last_update: string;
+}
+
+export interface SignalPayload {
+  signal_id: number;
+  ticker: string;
+  created_at: string;
+  status:
+    | "NO_TRADE"
+    | "AVOID"
+    | "WATCH"
+    | "SETUP_FORMING"
+    | "POSSIBLE_ENTRY"
+    | "POSITION_ACTIVE"
+    | "REDUCE"
+    | "EXIT"
+    | "SIGNAL_INVALIDATED"
+    | "NO_SIGNAL_YET";
+  ideal_entry: number | null;
+  entry_zone: [number | null, number | null];
+  stop_loss: number | null;
+  targets: number[];
+  holding_period_days: number | null;
+  risk_reward: number | null;
+  calibrated_probability: number | null;
+  confidence: number;
+  technical_score: number;
+  liquidity_score: number;
+  manipulation_risk: number;
+  data_quality_score: number;
+  bullish_reasons: string[];
+  bearish_reasons: string[];
+  invalidation_conditions: string[];
+  rejection_reasons: string[];
+  data_source: string;
+  data_mode: string;
+  model_version: string;
+  feature_version: string;
+}
