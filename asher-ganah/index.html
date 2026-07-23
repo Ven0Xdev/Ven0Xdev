@@ -311,7 +311,9 @@
     .burger{display:flex}
     .hero{padding-top:104px}
     .sec{padding:72px 0}
-    .hero-meta{gap:18px}
+    .hero-meta{gap:20px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:10px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
+    .hero-meta::-webkit-scrollbar{display:none}
+    .hm{flex:0 0 auto;scroll-snap-align:start}
     .nav{height:70px}
     .brand img{width:42px;height:42px}
     .brand .bn{font-size:.92rem;white-space:nowrap}
