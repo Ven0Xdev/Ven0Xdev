@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>אשר גנה | ASHER GANAH — מרכז שירות · פחחות וצבע, הוד השרון</title>
+<meta name="description" content="ASHER GANAH — מוסך איי ג'י בהוד השרון. מרכז שירות, פחחות וצבע לרכב. דירוג 4.9 כוכבים, 147 ביקורות. רחוב המסגר 5, הוד השרון. 073-218-7990." />
+<meta name="theme-color" content="#0d0f12" />
+<meta property="og:title" content="ASHER GANAH — מרכז שירות · פחחות וצבע" />
+<meta property="og:description" content="מוסך איי ג'י הוד השרון · 4.9★ · פחחות, צבע, מיזוג, טיפולים ותיקוני מנוע." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="assets/logo.jpeg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#ffffff;
+    --bg-2:#f3f4f7;
+    --panel:#ffffff;
+    --panel-2:#f7f8fa;
+    --line:rgba(12,14,22,.12);
+    --txt:#14161b;
+    --muted:#5b626d;
+    --silver-1:#1a1c20;
+    --silver-2:#3a3f47;
+    --silver-3:#7a818b;
+    --chrome:linear-gradient(180deg,#4a4a4e 0%,#161618 24%,#e11d2e 52%,#8c1019 70%,#202024 100%);
+    --accent:#e11d2e;
+    --accent-glow:rgba(225,29,46,.30);
+    --radius:18px;
+    --shadow:0 24px 60px -26px rgba(20,22,30,.30);
+    --maxw:1180px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;overflow-x:hidden}
+  body{
+    font-family:'Heebo','Rubik',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--txt);
+    line-height:1.7;
+    overflow-x:hidden;
+    position:relative;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:
+    radial-gradient(900px 560px at 88% -8%,rgba(225,29,46,.10),transparent 60%),
+    radial-gradient(760px 520px at -5% 102%,rgba(20,22,30,.05),transparent 55%),
+    var(--bg);}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.6;
+    background-image:linear-gradient(rgba(20,22,30,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(20,22,30,.035) 1px,transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:radial-gradient(circle at 50% 0%,#000,transparent 72%);
+    mask-image:radial-gradient(circle at 50% 0%,#000,transparent 72%);}
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  section{position:relative}
+  .chrome-text{
+    background:var(--chrome);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+  }
+  .eyebrow{
+    font-size:.74rem;letter-spacing:.22em;font-weight:800;
+    color:var(--silver-2);text-transform:uppercase;margin-bottom:18px;
+    display:inline-flex;align-items:center;gap:9px;
+    padding:7px 15px;border-radius:999px;
+    background:rgba(225,29,46,.10);border:1px solid rgba(225,29,46,.26);
+  }
+  .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+  h2.title{font-size:clamp(1.9rem,4.4vw,3rem);font-weight:900;line-height:1.15;letter-spacing:-.5px;
+    background:var(--chrome);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+  h2.title .chrome-text{-webkit-text-fill-color:transparent}
+  .lead{color:var(--muted);font-size:1.06rem;max-width:620px;margin-top:16px}
+
+  /* Buttons */
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:14px 26px;border-radius:999px;font-weight:700;font-size:1rem;
+    cursor:pointer;border:1px solid transparent;transition:.25s ease;white-space:nowrap;
+  }
+  .btn-primary{
+    background:linear-gradient(180deg,#e11d2e,#a3121d);color:#fff;box-shadow:0 12px 30px -10px rgba(225,29,46,.55);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 40px -12px rgba(225,29,46,.7)}
+  .btn-wa{background:#1fa75a;color:#fff;box-shadow:0 10px 30px -12px rgba(31,167,90,.55)}
+  .btn-wa:hover{transform:translateY(-2px);background:#23b863}
+  .btn-ghost{border-color:var(--line);color:var(--txt);background:#fff}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:#fff}
+
+  /* Header */
+  header{
+    position:fixed;inset:0 0 auto 0;z-index:60;
+    transition:.35s ease;border-bottom:1px solid transparent;
+  }
+  header.scrolled{
+    background:rgba(255,255,255,.78);backdrop-filter:blur(20px) saturate(140%);
+    border-bottom:1px solid var(--line);box-shadow:0 8px 30px -18px rgba(20,22,30,.25);
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;height:78px}
+  .brand{display:flex;align-items:center;gap:13px}
+  .brand img{width:48px;height:48px;aspect-ratio:1;border-radius:50%;object-fit:cover;object-position:center;padding:2px;background:var(--chrome);box-shadow:0 6px 18px -6px rgba(0,0,0,.85)}
+  .brand .bn{font-weight:900;font-size:1.12rem;letter-spacing:.06em;line-height:1}
+  .brand .bs{font-size:.68rem;color:var(--muted);letter-spacing:.18em}
+  .nav-links{display:flex;align-items:center;gap:30px}
+  .nav-links a{font-size:.96rem;color:var(--silver-2);font-weight:500;position:relative;transition:.2s}
+  .nav-links a::after{content:"";position:absolute;right:0;bottom:-6px;height:2px;width:0;background:var(--chrome);transition:.25s}
+  .nav-links a:hover{color:var(--accent)}
+  .nav-links a:hover::after{width:100%}
+  .nav-cta{display:flex;align-items:center;gap:12px}
+  .nav-cta .btn{padding:11px 20px;font-size:.92rem}
+  .burger{display:none;flex-direction:column;gap:5px;background:none;border:0;cursor:pointer;padding:8px}
+  .burger span{width:26px;height:2px;background:var(--silver-1);border-radius:2px;transition:.3s}
+
+  /* Hero */
+  .hero{
+    min-height:100vh;display:flex;align-items:center;position:relative;overflow:hidden;
+    padding:120px 0 80px;
+    background:
+      radial-gradient(1200px 700px at 78% -10%,rgba(225,29,46,.12),transparent 60%),
+      radial-gradient(900px 600px at 10% 110%,rgba(20,22,30,.06),transparent 55%),
+      linear-gradient(180deg,#ffffff 0%,#f5f6f8 50%,#ffffff 100%);
+  }
+  .hero::before{ /* brushed-metal texture lines */
+    content:"";position:absolute;inset:0;opacity:.6;pointer-events:none;
+    background:repeating-linear-gradient(115deg,rgba(20,22,30,.03) 0 2px,transparent 2px 7px);
+    mask-image:radial-gradient(60% 60% at 70% 40%,#000 30%,transparent 75%);
+  }
+  .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:50px;align-items:center;width:100%}
+  .hero h1{
+    font-size:clamp(2.4rem,6vw,4.5rem);font-weight:900;line-height:1.05;letter-spacing:-1px;
+  }
+  .hero h1 .chrome-text{display:inline-block}
+  .hero p.sub{color:var(--silver-2);font-size:1.18rem;margin-top:22px;max-width:540px}
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}
+  .hero-meta{display:flex;gap:26px;margin-top:40px;flex-wrap:wrap}
+  .hm{display:flex;flex-direction:column}
+  .hm b{font-size:1.7rem;font-weight:900}
+  .hm span{font-size:.82rem;color:var(--muted);letter-spacing:.05em}
+  .stars{color:#ffc24b;letter-spacing:2px}
+
+  /* Hero visual — logo lockup (graphic mark + crisp text) */
+  .medallion{position:relative;display:flex;align-items:center;justify-content:center;padding:14px;perspective:1500px}
+  .medallion .glow{position:absolute;top:36%;left:50%;transform:translate(-50%,-50%);width:60%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(225,29,46,.30),transparent 62%);filter:blur(48px);z-index:0}
+  .logo-lockup{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;animation:float 6s ease-in-out infinite}
+  .coin{width:min(430px,86%);aspect-ratio:1;position:relative;transform-style:preserve-3d;will-change:transform;transition:transform .06s linear}
+  .coin-face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center;overflow:hidden;
+    box-shadow:0 34px 60px -22px rgba(20,22,30,.5),inset 0 2px 8px rgba(255,255,255,.07),0 0 0 7px #fff,0 0 0 10px var(--accent),0 0 0 11px rgba(20,22,30,.12)}
+  .coin-front{background:radial-gradient(circle at 50% 36%,#2b2e34,#0c0d10 72%)}
+  .coin-front .logo-mark{width:88%;filter:drop-shadow(0 10px 22px rgba(0,0,0,.55))}
+  .coin-back{transform:rotateY(180deg);background:#0c0d10}
+  .coin-back img{width:100%;height:100%;object-fit:cover;object-position:center}
+  .coin-back::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 120%,rgba(225,29,46,.28),transparent 55%),linear-gradient(180deg,transparent 55%,rgba(12,13,16,.55))}
+  .logo-word{font-weight:900;font-size:clamp(1.9rem,5.4vw,3rem);letter-spacing:.16em;line-height:1;margin-top:22px;white-space:nowrap}
+  .logo-tag{color:var(--accent);font-size:clamp(.84rem,2.1vw,1.04rem);letter-spacing:.12em;font-weight:700;margin-top:11px;text-align:center}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+  .scroll-cue{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);color:var(--silver-3);font-size:.78rem;letter-spacing:.25em;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.8}
+  .scroll-cue .dot{width:22px;height:36px;border:1px solid var(--silver-3);border-radius:14px;position:relative}
+  .scroll-cue .dot::after{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);width:4px;height:8px;background:var(--silver-2);border-radius:3px;animation:cue 1.6s ease-in-out infinite}
+  @keyframes cue{0%,100%{opacity:0;transform:translate(-50%,0)}50%{opacity:1;transform:translate(-50%,8px)}}
+
+  /* Marquee trust strip */
+  .strip{border-block:1px solid var(--line);background:var(--bg-2);overflow:hidden;padding:16px 0}
+  .marquee{display:flex;gap:60px;white-space:nowrap;animation:slide 28s linear infinite;width:max-content}
+  .marquee span{color:var(--silver-3);font-weight:700;letter-spacing:.12em;font-size:.95rem;display:inline-flex;align-items:center;gap:14px}
+  .marquee span::after{content:"◆";color:var(--accent);font-size:.6rem}
+  @keyframes slide{to{transform:translateX(50%)}}
+
+  /* Generic section padding */
+  .sec{padding:100px 0;overflow-x:clip}
+  .sec-head{text-align:center;max-width:680px;margin:0 auto 60px}
+  .sec-head .lead{margin-inline:auto}
+
+  /* Services */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .card{
+    background:#ffffff;
+    border:1px solid var(--line);border-radius:var(--radius);padding:30px;
+    box-shadow:0 10px 30px -20px rgba(20,22,30,.25);
+    transition:.35s cubic-bezier(.2,.7,.2,1);position:relative;overflow:hidden;
+  }
+  .card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:linear-gradient(140deg,#e11d2e,#161618 55%,transparent 80%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:.35s}
+  .card:hover{transform:translateY(-8px);border-color:rgba(225,29,46,.45);box-shadow:0 34px 60px -26px rgba(20,22,30,.35),0 0 50px -24px var(--accent-glow)}
+  .card:hover::before{opacity:1}
+  .card .ico{
+    width:58px;height:58px;border-radius:16px;display:grid;place-items:center;margin-bottom:18px;
+    background:linear-gradient(160deg,rgba(225,29,46,.22),rgba(225,29,46,.04));border:1px solid rgba(225,29,46,.28);
+    transition:.35s;
+  }
+  .card:hover .ico{transform:scale(1.06) rotate(-3deg);background:linear-gradient(160deg,rgba(225,29,46,.34),rgba(225,29,46,.08))}
+  .card .ico svg{width:28px;height:28px;stroke:#c01825;fill:none;stroke-width:1.7}
+  .card h3{font-size:1.22rem;font-weight:800;margin-bottom:8px}
+  .card p{color:var(--muted);font-size:.97rem}
+
+  /* Why us / split */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+  .feat{display:flex;gap:16px;margin-top:26px}
+  .feat .fi{flex:0 0 auto;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+  .feat .fi svg{width:24px;height:24px;stroke:var(--accent);fill:none;stroke-width:1.8}
+  .feat h4{font-size:1.08rem;font-weight:800}
+  .feat p{color:var(--muted);font-size:.95rem;margin-top:3px}
+  .visual-panel{
+    border-radius:var(--radius);border:1px solid var(--line);min-height:430px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(600px 300px at 70% 10%,rgba(225,29,46,.18),transparent 60%),
+      linear-gradient(160deg,#1a1f26,#0d1014);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .visual-panel::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(125deg,rgba(255,255,255,.02) 0 2px,transparent 2px 9px)}
+  .visual-panel img{width:70%;position:relative;z-index:2;filter:drop-shadow(0 26px 50px rgba(0,0,0,.6)) drop-shadow(0 0 40px rgba(225,29,46,.18));animation:float 7s ease-in-out infinite}
+  .badge-float{position:absolute;z-index:3;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:0 16px 36px -16px rgba(0,0,0,.55)}
+  .badge-float small{color:var(--muted)}
+  .bf-1{top:26px;right:26px}
+  .bf-2{bottom:26px;left:26px}
+  .badge-float b{font-size:1.3rem;display:block}
+  .badge-float small{color:var(--muted);font-size:.74rem;letter-spacing:.05em}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+  .stat{text-align:center;padding:34px 16px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:0 10px 30px -22px rgba(20,22,30,.25);transition:.35s cubic-bezier(.2,.7,.2,1)}
+  .stat:hover{transform:translateY(-5px);border-color:rgba(225,29,46,.4);box-shadow:0 26px 50px -26px rgba(20,22,30,.32)}
+  .stat b{font-size:clamp(2rem,5vw,3rem);font-weight:900;display:block;line-height:1}
+  .stat span{color:var(--muted);font-size:.92rem;letter-spacing:.04em}
+
+  /* Reviews */
+  .reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .rev{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:28px;position:relative;box-shadow:0 10px 30px -22px rgba(20,22,30,.25);transition:.35s cubic-bezier(.2,.7,.2,1)}
+  .rev:hover{transform:translateY(-6px);border-color:rgba(225,29,46,.4);box-shadow:0 28px 56px -26px rgba(20,22,30,.32)}
+  .rev::after{content:"\201D";position:absolute;top:8px;left:22px;font-size:5rem;line-height:1;color:rgba(225,29,46,.18);font-family:Georgia,serif;pointer-events:none}
+  .rev .stars{font-size:1rem;margin-bottom:12px}
+  .rev p{font-size:1rem;color:var(--silver-2);min-height:96px}
+  .rev .who{display:flex;align-items:center;gap:12px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  .rev .av{width:42px;height:42px;border-radius:50%;background:linear-gradient(180deg,#e11d2e,#a3121d);color:#fff;display:grid;place-items:center;font-weight:900}
+  .rev .who b{font-size:.96rem}
+  .rev .who small{color:var(--muted);font-size:.78rem}
+
+  /* Contact */
+  .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:stretch}
+  .info-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:34px;box-shadow:0 14px 40px -24px rgba(20,22,30,.28)}
+  .info-row .ic{transition:.3s}
+  .info-row:hover .ic{background:linear-gradient(160deg,rgba(225,29,46,.3),rgba(225,29,46,.08));border-color:rgba(225,29,46,.4)}
+  .info-row{display:flex;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+  .info-row:last-child{border-bottom:0}
+  .info-row .ic{flex:0 0 auto;width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:var(--bg-2);border:1px solid var(--line)}
+  .info-row .ic svg{width:24px;height:24px;stroke:var(--silver-1);fill:none;stroke-width:1.7}
+  .info-row small{color:var(--muted);font-size:.78rem;letter-spacing:.1em;display:block}
+  .info-row b{font-size:1.08rem;font-weight:700}
+  .info-row a:hover{color:var(--accent)}
+  .map-card{border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);min-height:420px}
+  .map-card iframe{width:100%;height:100%;min-height:420px;border:0;filter:grayscale(.3) contrast(1.05)}
+  .contact-cta{display:flex;gap:14px;margin-top:26px;flex-wrap:wrap}
+
+  /* Footer */
+  footer{border-top:1px solid var(--line);background:var(--bg-2);padding:54px 0 30px}
+  .foot-top{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
+  .foot-brand{max-width:330px}
+  .foot-brand .brand{margin-bottom:14px}
+  .foot-brand p{color:var(--muted);font-size:.95rem}
+  .foot-col h5{font-size:.82rem;letter-spacing:.18em;color:var(--silver-3);text-transform:uppercase;margin-bottom:16px}
+  .foot-col a{display:block;color:var(--muted);padding:5px 0;font-size:.96rem;transition:.2s}
+  .foot-col a:hover{color:#fff}
+  .foot-bottom{margin-top:40px;padding-top:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:var(--silver-3);font-size:.86rem}
+
+  /* Floating WhatsApp */
+  .fab{position:fixed;bottom:24px;left:24px;z-index:70;width:60px;height:60px;border-radius:50%;background:#1fa75a;display:grid;place-items:center;box-shadow:0 14px 34px -10px rgba(31,167,90,.6);animation:pulse 2.4s infinite}
+  .fab svg{width:32px;height:32px;fill:#fff}
+  @keyframes pulse{0%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 0 rgba(31,167,90,.5)}70%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 16px rgba(31,167,90,0)}100%{box-shadow:0 14px 34px -10px rgba(31,167,90,.6),0 0 0 0 rgba(31,167,90,0)}}
+
+  /* ===== Rich scroll reveals ===== */
+  .reveal,[data-anim]{opacity:0;transform:translateY(46px);
+    transition:opacity .9s cubic-bezier(.16,.84,.34,1),transform .9s cubic-bezier(.16,.84,.34,1),filter .9s ease;
+    transition-delay:var(--d,0ms);will-change:opacity,transform}
+  [data-anim="right"]{transform:translateX(70px)}
+  [data-anim="left"]{transform:translateX(-70px)}
+  [data-anim="scale"]{transform:scale(.86)}
+  [data-anim="blur"]{transform:translateY(34px);filter:blur(18px)}
+  [data-anim="rotate"]{transform:translateY(40px) rotate(-5deg);transform-origin:bottom right}
+  .reveal.in,[data-anim].in{opacity:1;transform:none;filter:none}
+  /* Word-by-word title reveal */
+  .word{display:inline-block;opacity:0;transform:translateY(110%) rotate(4deg);
+    transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1);transition-delay:var(--wd,0ms)}
+  .word-wrap{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.08em}
+  .in .word,.word.in{opacity:1;transform:none}
+
+  /* Scroll progress bar */
+  .scroll-progress{position:fixed;top:0;inset-inline:0;height:3px;z-index:200;background:transparent;pointer-events:none}
+  .scroll-progress i{display:block;height:100%;width:0;background:var(--chrome);box-shadow:0 0 14px var(--accent-glow);transition:width .1s linear}
+
+  html.acc-noanim .reveal,html.acc-noanim [data-anim],html.acc-noanim .word{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+  html.acc-noanim [data-parallax]{transform:none!important}
+  @media (prefers-reduced-motion:reduce){
+    .reveal,[data-anim],.word{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+    [data-parallax]{transform:none!important}
+  }
+
+  /* Responsive */
+  @media(max-width:980px){
+    .hero-grid,.split,.contact-grid{grid-template-columns:1fr}
+    .medallion{order:-1;margin-bottom:10px}
+    .cards,.reviews{grid-template-columns:1fr 1fr}
+    .stats{grid-template-columns:1fr 1fr}
+    .steps{grid-template-columns:1fr 1fr;row-gap:44px}
+    .nav-links{display:none}
+  }
+  @media(max-width:640px){
+    .cards,.reviews{grid-template-columns:1fr}
+    .steps{grid-template-columns:1fr;row-gap:42px}
+    .nav-cta .btn-ghost{display:none}
+    .burger{display:flex}
+    .hero{padding-top:104px}
+    .sec{padding:72px 0}
+    .hero-meta{gap:20px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding-bottom:10px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
+    .hero-meta::-webkit-scrollbar{display:none}
+    .hm{flex:0 0 auto;scroll-snap-align:start}
+    .nav{height:70px}
+    .brand img{width:42px;height:42px}
+    .brand .bn{font-size:.92rem;white-space:nowrap}
+    .brand .bs{font-size:.6rem;white-space:nowrap}
+    .nav-cta .btn{padding:9px 16px;font-size:.86rem}
+    .mobile-menu{inset:70px 0 auto 0}
+    .cta-band{padding:44px 22px;border-radius:22px}
+    /* Sticky mobile action bar */
+    body .mobile-bar{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:fixed;inset:auto 0 0 0;z-index:80;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-top:1px solid var(--line);box-shadow:0 -8px 24px -16px rgba(20,22,30,.4)}
+    .mobile-bar a{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;font-weight:800;font-size:1rem}
+    .mobile-bar .mb-call{background:linear-gradient(180deg,#e11d2e,#a3121d);color:#fff}
+    .mobile-bar .mb-wa{background:#1fa75a;color:#fff}
+    .mobile-bar svg{width:20px;height:20px;fill:currentColor}
+    body{padding-bottom:68px}
+    .a11y-btn{bottom:86px}
+  }
+  @media(max-width:380px){
+    .brand .bs{display:none}
+  }
+  /* Mobile menu */
+  .mobile-menu{position:fixed;inset:78px 0 auto 0;z-index:55;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);transform:translateY(-120%);transition:.35s ease;padding:18px 22px 28px;box-shadow:0 20px 40px -20px rgba(20,22,30,.3)}
+  .mobile-menu.open{transform:none}
+  .mobile-menu a{display:block;padding:14px 4px;font-size:1.1rem;font-weight:600;border-bottom:1px solid var(--line)}
+  .mobile-menu .btn{width:100%;justify-content:center;margin-top:16px}
+
+  /* ===== Max polish ===== */
+  ::selection{background:rgba(225,29,46,.9);color:#fff}
+  html{scrollbar-color:#e11d2e #eef0f3}
+  ::-webkit-scrollbar{width:12px;height:12px}
+  ::-webkit-scrollbar-track{background:#eef0f3}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(#e11d2e,#8c1019);border-radius:10px;border:3px solid #eef0f3}
+  .btn{position:relative;overflow:hidden}
+  .btn-primary::after,.btn-wa::after,.btn-white::after{content:"";position:absolute;top:0;inset-inline-start:-60%;width:38%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);transition:inset-inline-start .6s ease;pointer-events:none}
+  .btn-primary:hover::after,.btn-wa:hover::after,.btn-white:hover::after{inset-inline-start:130%}
+  .title-underline{width:66px;height:4px;border-radius:4px;background:var(--chrome);margin:16px auto 0}
+
+  /* Process steps */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:38px}
+  .step{position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:40px 24px 26px;box-shadow:0 10px 30px -22px rgba(20,22,30,.25);transition:.35s cubic-bezier(.2,.7,.2,1)}
+  .step:hover{transform:translateY(-8px);border-color:rgba(225,29,46,.4);box-shadow:0 30px 60px -26px rgba(20,22,30,.32)}
+  .step .num{position:absolute;top:-22px;inset-inline-start:24px;width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-weight:900;font-size:1.35rem;color:#fff;background:linear-gradient(180deg,#e11d2e,#8c1019);box-shadow:0 14px 26px -10px rgba(225,29,46,.6)}
+  .step h4{font-size:1.16rem;font-weight:800;margin:6px 0 8px}
+  .step p{color:var(--muted);font-size:.96rem}
+  .step .sico{width:34px;height:34px;stroke:var(--accent);fill:none;stroke-width:1.7}
+  .step:not(:last-child)::before{content:"";position:absolute;top:4px;inset-inline-start:-15px;width:22px;height:2px;background:repeating-linear-gradient(90deg,var(--accent) 0 5px,transparent 5px 9px);opacity:.5}
+
+  /* Trust chips */
+  .trust{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+  .trust .chip{display:inline-flex;align-items:center;gap:10px;padding:13px 22px;border-radius:999px;background:#fff;border:1px solid var(--line);font-weight:700;box-shadow:0 8px 22px -16px rgba(20,22,30,.35)}
+  .trust .chip svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.9}
+
+  /* CTA band */
+  .cta-band{position:relative;overflow:hidden;border-radius:28px;padding:60px 40px;text-align:center;
+    background:linear-gradient(135deg,#111219 0%,#2a0d10 55%,#7a0f16 100%);
+    box-shadow:0 44px 90px -34px rgba(225,29,46,.55)}
+  .cta-band::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,rgba(255,255,255,.045) 0 2px,transparent 2px 8px);opacity:.6;pointer-events:none}
+  .cta-band::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(225,29,46,.55),transparent 62%);top:-150px;inset-inline-end:-130px;filter:blur(24px);pointer-events:none}
+  .cta-band h2{position:relative;color:#fff;font-size:clamp(1.7rem,4vw,2.6rem);font-weight:900;line-height:1.2}
+  .cta-band p{position:relative;color:rgba(255,255,255,.82);margin-top:12px;font-size:1.06rem}
+  .cta-actions{position:relative;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+  .btn-white{background:#fff;color:#12131a;box-shadow:0 12px 30px -12px rgba(0,0,0,.4)}
+  .btn-white:hover{transform:translateY(-2px)}
+
+  /* Sticky mobile action bar */
+  .mobile-bar{display:none}
+
+  /* ============ ACCESSIBILITY (נגישות) ============ */
+  .skip-link{position:fixed;top:-200px;right:18px;z-index:300;background:#fff;color:#000;padding:12px 22px;border-radius:10px;font-weight:800;transition:top .2s ease}
+  .skip-link:focus{top:14px;outline:3px solid var(--accent);outline-offset:2px}
+  *:focus-visible{outline:3px solid #e11d2e;outline-offset:3px;border-radius:6px}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+  /* Accessibility launcher button */
+  .a11y-btn{position:fixed;bottom:24px;left:24px;z-index:95;width:56px;height:56px;border-radius:50%;background:#1d4ed8;border:2px solid #fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 12px 30px -10px rgba(29,78,216,.7)}
+  .a11y-btn:hover{background:#2563eb;transform:translateY(-2px)}
+  .a11y-btn svg{width:30px;height:30px;stroke:#fff;fill:none;stroke-width:1.8}
+  /* Panel */
+  .a11y-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:118;opacity:0;visibility:hidden;transition:.3s}
+  .a11y-overlay.open{opacity:1;visibility:visible}
+  .a11y-panel{position:fixed;top:0;bottom:0;left:0;width:340px;max-width:88vw;background:#0f1217;border-left:1px solid var(--line);z-index:120;transform:translateX(-110%);transition:transform .35s cubic-bezier(.2,.7,.2,1);overflow-y:auto;padding:22px 20px 40px;box-shadow:24px 0 60px -20px rgba(0,0,0,.8)}
+  .a11y-panel.open{transform:none}
+  .a11y-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .a11y-head h3{font-size:1.2rem;font-weight:900;display:flex;align-items:center;gap:10px}
+  .a11y-head h3 svg{width:24px;height:24px;stroke:#e11d2e;fill:none;stroke-width:1.8}
+  .a11y-close{background:none;border:1px solid var(--line);color:#fff;width:38px;height:38px;border-radius:10px;font-size:1.3rem;cursor:pointer;line-height:1}
+  .a11y-close:hover{border-color:#e11d2e}
+  .a11y-section{margin-bottom:20px}
+  .a11y-section>h4{font-size:.78rem;letter-spacing:.12em;color:var(--silver-3);text-transform:uppercase;margin-bottom:10px}
+  .a11y-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .a11y-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:14px 8px;border:1px solid var(--line);border-radius:12px;background:#161b22;color:#e9ecf1;cursor:pointer;font-size:.82rem;font-weight:600;text-align:center;transition:.18s;min-height:84px}
+  .a11y-item:hover{border-color:#e11d2e;background:#1a212b}
+  .a11y-item svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7}
+  .a11y-item[aria-pressed="true"]{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+  .a11y-fs{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#161b22;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .a11y-fs button{width:48px;height:48px;border-radius:10px;border:1px solid var(--line);background:#0f1217;color:#fff;font-size:1.3rem;font-weight:800;cursor:pointer}
+  .a11y-fs button:hover{border-color:#e11d2e;background:#1d4ed8}
+  .a11y-fs .lbl{font-weight:700;font-size:.95rem}
+  .a11y-fs .lbl b{display:block;font-size:1.2rem;color:#e11d2e}
+  .a11y-foot{display:grid;gap:10px;margin-top:8px}
+  .a11y-foot button,.a11y-foot a{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:11px;font-weight:700;cursor:pointer;font-size:.95rem;border:1px solid var(--line);background:#161b22;color:#fff}
+  .a11y-reset{background:#7f1d1d!important;border-color:#7f1d1d!important}
+  .a11y-foot button:hover,.a11y-foot a:hover{filter:brightness(1.15)}
+
+  /* Reading guide bar */
+  .a11y-guide{position:fixed;left:0;right:0;height:34px;background:rgba(225,29,46,.18);border-top:2px solid #e11d2e;border-bottom:2px solid #e11d2e;pointer-events:none;z-index:110;display:none;transform:translateY(-50%)}
+  html.acc-guide .a11y-guide{display:block}
+
+  /* ===== Applied accessibility modes (on <html>) ===== */
+  html.acc-fs--1{font-size:90%}
+  html.acc-fs-1{font-size:112.5%}
+  html.acc-fs-2{font-size:125%}
+  html.acc-fs-3{font-size:140%}
+
+  html.acc-contrast body{background:#000!important;color:#fff!important}
+  html.acc-contrast .card,html.acc-contrast .rev,html.acc-contrast .info-card,html.acc-contrast .stat,html.acc-contrast .visual-panel,html.acc-contrast header.scrolled,html.acc-contrast .strip,html.acc-contrast footer,html.acc-contrast .map-card,html.acc-contrast section{background:#000!important;border-color:#fff!important}
+  html.acc-contrast p,html.acc-contrast small,html.acc-contrast span,html.acc-contrast h1,html.acc-contrast h2,html.acc-contrast h3,html.acc-contrast h4,html.acc-contrast h5,html.acc-contrast a,html.acc-contrast b,html.acc-contrast div{color:#fff!important}
+  html.acc-contrast .chrome-text{-webkit-text-fill-color:#ffe600!important;color:#ffe600!important;background:none!important}
+  html.acc-contrast .stars{color:#ffe600!important}
+  html.acc-contrast .btn{background:#ffe600!important;color:#000!important;border:2px solid #fff!important}
+  html.acc-contrast .btn b,html.acc-contrast .btn{color:#000!important}
+
+  html.acc-grayscale{filter:grayscale(1)}
+  html.acc-invert{filter:invert(1) hue-rotate(180deg)}
+  html.acc-invert.acc-grayscale{filter:invert(1) hue-rotate(180deg) grayscale(1)}
+  html.acc-invert img,html.acc-invert iframe{filter:invert(1) hue-rotate(180deg)}
+
+  html.acc-links a{text-decoration:underline!important;text-underline-offset:3px;outline:1px dashed currentColor;outline-offset:2px;background:rgba(225,29,46,.16)}
+  html.acc-headings h1,html.acc-headings h2,html.acc-headings h3,html.acc-headings h4{outline:2px dashed #e11d2e;outline-offset:5px}
+  html.acc-readable,html.acc-readable *{font-family:Arial,'Heebo',sans-serif!important}
+  html.acc-spacing,html.acc-spacing *{line-height:2!important;letter-spacing:.05em!important;word-spacing:.14em!important}
+  html.acc-cursor,html.acc-cursor *{cursor:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 24 24"><path d="M5 2l13 7-5.5 1.8L9.5 18z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/></svg>') 6 4, auto !important}
+  html.acc-noanim *,html.acc-noanim *::before,html.acc-noanim *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  html.acc-noanim .reveal{opacity:1!important;transform:none!important}
+
+  /* Accessibility statement modal */
+  .a11y-modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.7)}
+  .a11y-modal.open{display:flex}
+  .a11y-modal-box{background:#101318;border:1px solid var(--line);border-radius:18px;max-width:640px;width:100%;max-height:86vh;overflow-y:auto;padding:32px}
+  .a11y-modal-box h2{font-size:1.5rem;font-weight:900;margin-bottom:6px}
+  .a11y-modal-box h4{margin-top:18px;font-size:1.05rem;color:#e11d2e}
+  .a11y-modal-box p{color:var(--muted);margin-top:6px;font-size:.97rem}
+  .a11y-modal-box .mclose{float:left;background:none;border:1px solid var(--line);color:#fff;width:38px;height:38px;border-radius:10px;font-size:1.3rem;cursor:pointer}
+
+  @media(max-width:640px){.a11y-btn{bottom:90px;width:52px;height:52px}}
+</style>
+</head>
+<body>
+
+<a href="#top" class="skip-link">דלג לתוכן הראשי</a>
+<div class="scroll-progress" aria-hidden="true"><i id="scrollBar"></i></div>
+
+<!-- HEADER -->
+<header id="header">
+  <div class="wrap nav">
+    <a href="#top" class="brand">
+      <img src="assets/logo.jpeg" alt="ASHER GANAH לוגו" />
+      <div>
+        <div class="bn chrome-text">ASHER GANAH</div>
+        <div class="bs">מרכז שירות · פחחות וצבע</div>
+      </div>
+    </a>
+    <nav class="nav-links">
+      <a href="#services">שירותים</a>
+      <a href="#process">תהליך</a>
+      <a href="#why">למה אנחנו</a>
+      <a href="#reviews">ביקורות</a>
+      <a href="#contact">צור קשר</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="tel:0732187990" class="btn btn-ghost">073-218-7990</a>
+      <a href="#contact" class="btn btn-primary">יצירת קשר</a>
+      <button class="burger" id="burger" aria-label="תפריט"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#services">שירותים</a>
+  <a href="#process">תהליך</a>
+  <a href="#why">למה אנחנו</a>
+  <a href="#reviews">ביקורות</a>
+  <a href="#contact">צור קשר</a>
+  <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">שלחו וואטסאפ</a>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="top" tabindex="-1">
+  <div class="wrap hero-grid">
+    <div class="hero-copy" data-stagger="120">
+      <span class="eyebrow">מוסך איי ג'י · הוד השרון</span>
+      <h1 data-words>הרכב שלך <br><span class="chrome-text">בידיים מקצועיות.</span></h1>
+      <p class="sub">מרכז שירות, פחחות וצבע ברמה הגבוהה ביותר. אבחון מדויק, חלקים מקוריים ושקיפות מלאה — כדי שתחזרו לכביש בראש שקט.</p>
+      <div class="hero-actions">
+        <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3 .79.8-2.93-.19-.3A8 8 0 1 1 12 20Zm4.4-5.6c-.24-.12-1.42-.7-1.64-.78s-.38-.12-.54.12-.62.78-.76.94-.28.18-.52.06a6.5 6.5 0 0 1-1.92-1.18 7.2 7.2 0 0 1-1.33-1.65c-.14-.24 0-.37.1-.49s.24-.28.36-.42a1.6 1.6 0 0 0 .24-.4.44.44 0 0 0 0-.42c-.06-.12-.54-1.3-.74-1.78s-.39-.4-.54-.41h-.46a.88.88 0 0 0-.64.3 2.68 2.68 0 0 0-.84 2 4.65 4.65 0 0 0 .98 2.48 10.6 10.6 0 0 0 4.06 3.58c.57.25 1.01.4 1.36.5a3.3 3.3 0 0 0 1.5.1 2.45 2.45 0 0 0 1.6-1.14 2 2 0 0 0 .14-1.13c-.06-.1-.22-.16-.46-.28Z"/></svg>
+          תיאום תור בוואטסאפ
+        </a>
+        <a href="tel:0732187990" class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+          התקשרו עכשיו
+        </a>
+      </div>
+      <div class="hero-meta">
+        <div class="hm"><b class="chrome-text">4.9</b><span class="stars">★★★★★</span></div>
+        <div class="hm"><b>147+</b><span>ביקורות גוגל</span></div>
+        <div class="hm"><b>30+</b><span>שנות ניסיון מקצועי</span></div>
+        <div class="hm"><b>אחריות</b><span>על כל עבודה</span></div>
+      </div>
+    </div>
+
+    <div class="medallion" data-anim="scale">
+      <div class="glow" data-parallax="1.4"></div>
+      <div class="logo-lockup">
+        <div class="coin" id="coin">
+          <div class="coin-face coin-front"><img class="logo-mark" src="assets/logo_mark.png" alt="ASHER GANAH — מרכז שירות, פחחות וצבע" /></div>
+          <div class="coin-face coin-back"><img src="assets/paint.jpeg" alt="מרכז פחחות וצבע — עבודת תא צבע" /></div>
+        </div>
+        <div class="logo-word chrome-text">ASHER GANAH</div>
+        <div class="logo-tag">מרכז שירות · פחחות וצבע</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-cue"><span class="dot"></span>גלול</div>
+</section>
+
+<!-- TRUST STRIP -->
+<div class="strip">
+  <div class="marquee">
+    <span>פחחות וצבע</span><span>מיזוג אוויר</span><span>החלפת מסננים</span><span>טיפולי מנוע</span><span>אבחון ממוחשב</span><span>בלמים ומתלים</span><span>הכנה והעברת טסט</span>
+    <span>פחחות וצבע</span><span>מיזוג אוויר</span><span>החלפת מסננים</span><span>טיפולי מנוע</span><span>אבחון ממוחשב</span><span>בלמים ומתלים</span><span>הכנה והעברת טסט</span>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section class="sec" id="services">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">השירותים שלנו</span>
+      <h2 class="title">כל מה שהרכב שלך צריך, <span class="chrome-text">תחת קורת גג אחת</span></h2>
+      <p class="lead">ממוסך מורשה ומקצועי — שירות מלא מפחחות וצבע ועד טיפולי מנוע ומערכות, בעבודה נקייה ואחריות מלאה.</p>
+    </div>
+    <div class="cards" data-stagger="100">
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 13l2-5a3 3 0 0 1 2.8-2h8.4A3 3 0 0 1 19 8l2 5"/><path d="M5 17h14v-4H5z"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg></div>
+        <h3>פחחות וצבע</h3>
+        <p>תיקוני תאונה, יישור פחים וצביעת תנור בגוון מקורי — להחזרת הרכב למצב מושלם.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M2 8c4 0 6 3 10 3s6-3 10-3"/><path d="M2 16c4 0 6-3 10-3s6 3 10 3"/></svg></div>
+        <h3>מיזוג אוויר</h3>
+        <p>טעינת גז, חיטוי מערכת ותיקון מזגן — נוחות ואוויר נקי בכל עונה.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+        <h3>החלפת מסננים</h3>
+        <p>מסנן אוויר, מזגן ודלק — החלפה תקופתית לשמירה על ביצועי המנוע ואיכות האוויר.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M14 4l-3 3 2 2 3-3a4 4 0 0 1-2 5l-6 6a2.8 2.8 0 0 1-4-4l6-6a4 4 0 0 1 4-3z"/></svg></div>
+        <h3>טיפולי מנוע</h3>
+        <p>טיפולים תקופתיים, החלפת שמן ורצועות ובדיקה יסודית של כל מערכות הרכב.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 17l5-5-5-5"/><path d="M12 19h8"/></svg></div>
+        <h3>אבחון ממוחשב</h3>
+        <p>סריקת תקלות מדויקת בעזרת מחשב אבחון מתקדם — אבחון נכון, תיקון יעיל.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
+        <h3>בלמים ומתלים</h3>
+        <p>בדיקה והחלפת רפידות, דיסקיות ומערכת המתלים — בטיחות ונסיעה חלקה.</p>
+      </div>
+      <div class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M9 4h6a1 1 0 0 1 1 1v1h2a1 1 0 0 1 1 1v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1h2V5a1 1 0 0 1 1-1z"/><path d="M9 13l2 2 4-4"/></svg></div>
+        <h3>הכנה והעברת טסט</h3>
+        <p>בדיקת הרכב לקראת מבחן רישוי שנתי, תיקון כל הליקויים הנדרשים והעברת הטסט עבורכם במכון — חוסכים לכם את הזמן, הטרחה והדאגות.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY US -->
+<!-- PROCESS -->
+<section class="sec" id="process">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">איך זה עובד</span>
+      <h2 class="title">התהליך שלנו — פשוט ושקוף</h2>
+      <div class="title-underline"></div>
+      <p class="lead">מהרגע שהרכב מגיע ועד המסירה — אתם מעודכנים ובראש שקט בכל שלב.</p>
+    </div>
+    <div class="steps" data-stagger="120">
+      <div class="step">
+        <div class="num">1</div>
+        <svg class="sico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <h4>אבחון וקבלה</h4>
+        <p>בדיקה מקיפה של הרכב ואיתור מדויק של כל מה שצריך לתקן.</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <svg class="sico" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <h4>הצעת מחיר שקופה</h4>
+        <p>הצעת מחיר מפורטת וברורה מראש — בלי הפתעות ובלי אותיות קטנות.</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <svg class="sico" viewBox="0 0 24 24"><path d="M14 4l-3 3 2 2 3-3a4 4 0 0 1-2 5l-6 6a2.8 2.8 0 0 1-4-4l6-6a4 4 0 0 1 4-3z"/></svg>
+        <h4>תיקון וצביעה</h4>
+        <p>פחחות וצביעת תנור בגוון מקורי, בידיים מקצועיות ובחומרים איכותיים.</p>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <svg class="sico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <h4>בקרת איכות ומסירה</h4>
+        <p>בדיקת איכות קפדנית ומסירת רכב נקי ומושלם — עם אחריות מלאה.</p>
+      </div>
+    </div>
+    <div class="trust reveal" style="margin-top:46px">
+      <div class="chip"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>אחריות מלאה על כל עבודה</div>
+      <div class="chip"><svg viewBox="0 0 24 24"><path d="M12 17.3l-6.2 3.7 1.6-7L2 9.2l7.1-.6L12 2l2.9 6.6 7.1.6-5.4 4.8 1.6 7z"/></svg>4.9★ · 147 ביקורות גוגל</div>
+      <div class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>30+ שנות ניסיון</div>
+      <div class="chip"><svg viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 6-10 6-10z"/></svg>צביעת תנור בגוון מקורי</div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="why" style="background:var(--bg-2)">
+  <div class="wrap split">
+    <div data-stagger="110">
+      <span class="eyebrow">למה ASHER GANAH</span>
+      <h2 class="title">מקצועיות, אמינות <span class="chrome-text">ושקיפות מלאה</span></h2>
+      <p class="lead">המוסך בהובלת בעל מקצוע עם מעל 30 שנות ניסיון בענף הרכב. לקוחות בוחרים בנו שוב ושוב כי אנחנו מתייחסים לרכב שלכם כמו לשלנו — ודירוג 4.9 כוכבים עם 147 ביקורות מדבר בעד עצמו.</p>
+
+      <div class="feat">
+        <div class="fi"><svg viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 10a6 6 0 0 1-12 0c0-3.5 6-10 6-10z"/></svg></div>
+        <div><h4>צבע בגוון מקורי מדויק</h4><p>התאמת גוון וצביעת תנור מקצועית — לגימור חלק ואחיד בדיוק כמו מהמפעל.</p></div>
+      </div>
+      <div class="feat">
+        <div class="fi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <div><h4>שירות מהיר ובזמן</h4><p>עמידה בלוחות זמנים ועדכון שוטף לאורך כל הטיפול ברכב.</p></div>
+      </div>
+      <div class="feat">
+        <div class="fi"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg></div>
+        <div><h4>אחריות על כל עבודה</h4><p>כל טיפול ותיקון מגיעים עם אחריות — לראש שקט אמיתי.</p></div>
+      </div>
+    </div>
+
+    <div class="visual-panel" data-anim="left">
+      <div class="badge-float bf-1" data-parallax="2.2"><b class="chrome-text">4.9★</b><small>דירוג גוגל</small></div>
+      <div class="badge-float bf-2" data-parallax="-1.8"><b>147+</b><small>לקוחות מרוצים</small></div>
+      <img src="assets/logo_mark.png" alt="ASHER GANAH" />
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="sec" style="padding-block:70px">
+  <div class="wrap stats" data-stagger="90">
+    <div class="stat reveal"><b class="chrome-text" data-count="4.9" data-dec="1">0</b><span>דירוג ממוצע</span></div>
+    <div class="stat reveal"><b class="chrome-text" data-count="147" data-suf="+">0</b><span>ביקורות גוגל</span></div>
+    <div class="stat reveal"><b class="chrome-text" data-count="100" data-suf="%">0</b><span>אחריות מלאה</span></div>
+    <div class="stat reveal"><b class="chrome-text" data-count="8000" data-suf="+">0</b><span>רכבים שטופלו לאורך השנים</span></div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="sec" id="reviews" style="background:var(--bg-2)">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">לקוחות ממליצים</span>
+      <h2 class="title">מה אומרים עלינו <span class="chrome-text">בגוגל</span></h2>
+      <p class="lead">דירוג 4.9 מתוך 5 על בסיס 147 ביקורות אמיתיות של לקוחות.</p>
+    </div>
+    <div class="reviews" data-stagger="110">
+      <div class="rev reveal">
+        <div class="stars">★★★★★</div>
+        <p>"שירות מעולה ומקצועי! הביאו את האוטו אחרי תאונה והחזירו אותו כמו חדש. יחס אישי, מחיר הוגן וזמני עבודה מדויקים. ממליץ בחום."</p>
+        <div class="who"><div class="av">ד</div><div><b>דניאל מ.</b><small>לקוח בגוגל</small></div></div>
+      </div>
+      <div class="rev reveal">
+        <div class="stars">★★★★★</div>
+        <p>"מוסך אמין שאפשר לסמוך עליו. הסבירו לי בדיוק מה צריך לתקן בלי למכור לי דברים מיותרים. שקיפות מלאה לאורך כל הדרך."</p>
+        <div class="who"><div class="av">ש</div><div><b>שירה כ.</b><small>לקוחה בגוגל</small></div></div>
+      </div>
+      <div class="rev reveal">
+        <div class="stars">★★★★★</div>
+        <p>"פחחות וצבע ברמה גבוהה מאוד. עבודה נקייה, צבע מושלם ויחס חם. סוף סוף מצאתי מוסך שאני נשאר אצלו. תודה על הכל!"</p>
+        <div class="who"><div class="av">א</div><div><b>אבי ל.</b><small>לקוח בגוגל</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="sec" id="contact">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">צור קשר</span>
+      <h2 class="title">מוזמנים להגיע <span class="chrome-text">או לתאם תור</span></h2>
+      <p class="lead">אנחנו כאן בשבילכם. התקשרו, שלחו וואטסאפ או קפצו לביקור.</p>
+    </div>
+    <div class="contact-grid">
+      <div class="info-card" data-anim="right">
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+          <div><small>כתובת</small><b>רחוב המסגר 5, הוד השרון</b><a href="https://maps.google.com/?q=HaMasger+St+5+Hod+Hasharon" target="_blank" rel="noopener" style="color:var(--accent);font-size:.9rem">פתח בניווט →</a></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg></div>
+          <div><small>טלפון</small><b><a href="tel:0732187990">073-218-7990</a></b></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
+          <div><small>נייד</small><b><a href="tel:0522417741">052-241-7741</a></b></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Z"/></svg></div>
+          <div><small>וואטסאפ</small><b><a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener">שלחו לנו הודעה</a></b></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg></div>
+          <div><small>אינסטגרם</small><b><a href="https://www.instagram.com/ag_asherganah_garage" target="_blank" rel="noopener">@ag_asherganah_garage</a></b></div>
+        </div>
+        <div class="info-row">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div><small>שעות פעילות</small><b>א׳–ה׳ · 07:30–16:00</b></div>
+        </div>
+        <div class="contact-cta">
+          <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">וואטסאפ</a>
+          <a href="tel:0732187990" class="btn btn-primary">חייגו אלינו</a>
+        </div>
+      </div>
+      <div class="map-card" data-anim="left">
+        <iframe
+          title="מפה — אשר גנה הוד השרון"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://www.google.com/maps?q=HaMasger%20St%205%20Hod%20Hasharon&output=embed">
+        </iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<!-- CTA BAND -->
+<section class="sec" style="padding-top:10px">
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <h2>מוכנים להחזיר את הרכב למצב הכי טוב?</h2>
+      <p>דברו איתנו עוד היום לתיאום או להצעת מחיר — ללא התחייבות.</p>
+      <div class="cta-actions">
+        <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" class="btn btn-wa">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4.08-1.12l-.29-.17-3 .79.8-2.93-.19-.3A8 8 0 1 1 12 20Z"/></svg>
+          שלחו הודעה בוואטסאפ
+        </a>
+        <a href="tel:0522417741" class="btn btn-white">חייגו 052-241-7741</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <div class="brand">
+          <img src="assets/logo.jpeg" alt="לוגו" style="width:50px;height:50px;aspect-ratio:1;object-fit:cover;object-position:center;border-radius:50%" />
+          <div><div class="bn chrome-text" style="font-weight:900">ASHER GANAH</div><div class="bs" style="font-size:.68rem;color:var(--muted);letter-spacing:.16em">מרכז שירות · פחחות וצבע</div></div>
+        </div>
+        <p>מוסך איי ג'י הוד השרון — מקצועיות, אמינות ושירות אישי לכל סוגי הרכבים.</p>
+      </div>
+      <div class="foot-col">
+        <h5>ניווט</h5>
+        <a href="#services">שירותים</a>
+        <a href="#why">למה אנחנו</a>
+        <a href="#reviews">ביקורות</a>
+        <a href="#contact">צור קשר</a>
+      </div>
+      <div class="foot-col">
+        <h5>שירותים</h5>
+        <a href="#services">פחחות וצבע</a>
+        <a href="#services">מיזוג אוויר</a>
+        <a href="#services">טיפולי מנוע</a>
+        <a href="#services">אבחון ממוחשב</a>
+      </div>
+      <div class="foot-col">
+        <h5>יצירת קשר</h5>
+        <a href="tel:0732187990">073-218-7990</a>
+        <a href="tel:0522417741">052-241-7741 (נייד)</a>
+        <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener">וואטסאפ</a>
+        <a href="https://www.instagram.com/ag_asherganah_garage" target="_blank" rel="noopener">אינסטגרם</a>
+        <a href="https://maps.google.com/?q=HaMasger+St+5+Hod+Hasharon" target="_blank" rel="noopener">רחוב המסגר 5, הוד השרון</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="yr"></span> ASHER GANAH · אשר גנה. כל הזכויות שמורות.</span>
+      <span><a href="#" id="a11yStatementFoot" style="color:var(--silver-2)">הצהרת נגישות</a> · מרכז שירות · פחחות וצבע · הוד השרון</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ACCESSIBILITY WIDGET (נגישות) -->
+<button class="a11y-btn" id="a11yBtn" aria-label="פתיחת תפריט נגישות" aria-haspopup="dialog" aria-expanded="false">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M5 8h14M12 6v6m0 0l-3.2 6M12 12l3.2 6"/></svg>
+</button>
+<div class="a11y-overlay" id="a11yOverlay"></div>
+<aside class="a11y-panel" id="a11yPanel" role="dialog" aria-modal="true" aria-label="תפריט נגישות" dir="rtl">
+  <div class="a11y-head">
+    <h3><svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M5 8h14M12 6v6m0 0l-3.2 6M12 12l3.2 6"/></svg> תפריט נגישות</h3>
+    <button class="a11y-close" id="a11yClose" aria-label="סגירת תפריט נגישות">×</button>
+  </div>
+
+  <div class="a11y-section">
+    <h4>גודל טקסט</h4>
+    <div class="a11y-fs">
+      <button data-acc="fs-dec" aria-label="הקטנת טקסט">−</button>
+      <span class="lbl">גודל טקסט<b id="a11yFsVal">100%</b></span>
+      <button data-acc="fs-inc" aria-label="הגדלת טקסט">+</button>
+    </div>
+  </div>
+
+  <div class="a11y-section">
+    <h4>צבע וניגודיות</h4>
+    <div class="a11y-grid">
+      <button class="a11y-item" data-acc="contrast" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" fill="currentColor"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>
+        ניגודיות גבוהה
+      </button>
+      <button class="a11y-item" data-acc="invert" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/></svg>
+        היפוך צבעים
+      </button>
+      <button class="a11y-item" data-acc="grayscale" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 8v8M15 8v8"/></svg>
+        גווני אפור
+      </button>
+      <button class="a11y-item" data-acc="links" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
+        הדגשת קישורים
+      </button>
+    </div>
+  </div>
+
+  <div class="a11y-section">
+    <h4>קריאוּת תוכן</h4>
+    <div class="a11y-grid">
+      <button class="a11y-item" data-acc="readable" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
+        גופן קריא
+      </button>
+      <button class="a11y-item" data-acc="spacing" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        ריווח טקסט
+      </button>
+      <button class="a11y-item" data-acc="headings" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M6 4v16M18 4v16M6 12h12"/></svg>
+        הדגשת כותרות
+      </button>
+      <button class="a11y-item" data-acc="guide" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg>
+        סרגל קריאה
+      </button>
+    </div>
+  </div>
+
+  <div class="a11y-section">
+    <h4>עזרי ניווט</h4>
+    <div class="a11y-grid">
+      <button class="a11y-item" data-acc="cursor" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/></svg>
+        סמן גדול
+      </button>
+      <button class="a11y-item" data-acc="noanim" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9z" fill="currentColor"/></svg>
+        עצירת אנימציות
+      </button>
+    </div>
+  </div>
+
+  <div class="a11y-foot">
+    <button class="a11y-reset" data-acc="reset">איפוס הגדרות נגישות</button>
+    <button id="a11yStatementOpen">הצהרת נגישות</button>
+  </div>
+</aside>
+
+<!-- Reading guide bar -->
+<div class="a11y-guide" id="a11yGuide" aria-hidden="true"></div>
+
+<!-- Accessibility statement modal -->
+<div class="a11y-modal" id="a11yModal" role="dialog" aria-modal="true" aria-label="הצהרת נגישות" dir="rtl">
+  <div class="a11y-modal-box">
+    <button class="mclose" id="a11yStatementClose" aria-label="סגירה">×</button>
+    <h2>הצהרת נגישות</h2>
+    <p>אתר ASHER GANAH — מרכז שירות · פחחות וצבע — רואה חשיבות רבה במתן שירות שוויוני לכלל הלקוחות ופועל להנגשת האתר בהתאם לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע״ג–2013, ולתקן הישראלי 5568 ברמת AA.</p>
+    <h4>אמצעי הנגישות באתר</h4>
+    <p>באתר מותקן תפריט נגישות (הלחצן הכחול בפינת המסך) המאפשר, בין היתר: הגדלה והקטנה של גודל הטקסט, ניגודיות גבוהה, היפוך צבעים וגווני אפור, הדגשת קישורים וכותרות, גופן קריא, הגדלת ריווח, סמן עכבר גדול, סרגל קריאה, עצירת אנימציות וניווט מלא באמצעות מקלדת.</p>
+    <h4>החרגות נגישות</h4>
+    <p>ייתכן שחלקים מסוימים באתר (כגון מפת Google המוטמעת) טרם הונגשו במלואם בשל תלות בצד שלישי. אנו ממשיכים לפעול לשיפור הנגישות.</p>
+    <h4>יצירת קשר בנושא נגישות</h4>
+    <p>נתקלתם בבעיה או שיש לכם הצעה לשיפור? נשמח לסייע:<br>טלפון: <a href="tel:0522417741" style="color:#e11d2e">052-241-7741</a> · וואטסאפ: <a href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener" style="color:#e11d2e">שלחו הודעה</a><br>כתובת: רחוב המסגר 5, הוד השרון.</p>
+    <p style="margin-top:14px;font-size:.85rem">הצהרה זו עודכנה בתאריך 29/06/2026.</p>
+  </div>
+</div>
+
+<!-- STICKY MOBILE ACTION BAR -->
+<div class="mobile-bar">
+  <a class="mb-call" href="tel:0522417741"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11 11 0 0 0 3.4.55 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11 11 0 0 0 .55 3.4 1 1 0 0 1-.24 1z"/></svg>חייגו</a>
+  <a class="mb-wa" href="https://wa.me/972522417741?text=%D7%A9%D7%9C%D7%95%D7%9D%20%F0%9F%91%8B%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%93%D7%A8%D7%9A%20%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20ASHER%20GANAH%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%AA%D7%90%D7%9D%20%D7%AA%D7%95%D7%A8%20/%20%D7%9C%D7%A7%D7%91%D7%9C%20%D7%94%D7%A6%D7%A2%D7%AA%20%D7%9E%D7%97%D7%99%D7%A8" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.07L2 22l5.07-1.33A10 10 0 1 0 12 2Z"/></svg>וואטסאפ</a>
+</div>
+
+
+<script>
+  // Header scroll state
+  const header=document.getElementById('header');
+
+  // Mobile menu
+  const burger=document.getElementById('burger'), mm=document.getElementById('mobileMenu');
+  burger.addEventListener('click',()=>mm.classList.toggle('open'));
+  mm.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>mm.classList.remove('open')));
+
+  /* ===== Rich scroll animations ===== */
+  // 1) Split [data-words] titles into animated word units (preserves chrome spans & <br>)
+  document.querySelectorAll('[data-words]').forEach(title=>{
+    const frag=document.createDocumentFragment(); let i=0;
+    [...title.childNodes].forEach(node=>{
+      if(node.nodeType===3){ // text
+        node.textContent.split(/(\s+)/).forEach(tok=>{
+          if(tok.trim()===''){frag.appendChild(document.createTextNode(tok));return;}
+          const wrap=document.createElement('span');wrap.className='word-wrap';
+          const w=document.createElement('span');w.className='word';w.textContent=tok;
+          w.style.setProperty('--wd',(i++*70)+'ms');wrap.appendChild(w);frag.appendChild(wrap);
+        });
+      }else if(node.nodeName==='BR'){frag.appendChild(node.cloneNode());}
+      else{ // element (e.g. chrome-text span) -> animate as one unit
+        const wrap=document.createElement('span');wrap.className='word-wrap';
+        const w=document.createElement('span');w.className='word';w.style.setProperty('--wd',(i++*70)+'ms');
+        w.appendChild(node.cloneNode(true));wrap.appendChild(w);frag.appendChild(wrap);
+      }
+    });
+    title.innerHTML='';title.appendChild(frag);
+  });
+
+  // 2) Stagger: assign incremental delay to children of [data-stagger]
+  document.querySelectorAll('[data-stagger]').forEach(c=>{
+    const step=+c.dataset.stagger||90;
+    [...c.children].forEach((ch,i)=>{
+      ch.style.setProperty('--d',(i*step)+'ms');
+      if(!ch.classList.contains('reveal')&&!ch.hasAttribute('data-anim')&&!ch.hasAttribute('data-words'))ch.classList.add('reveal');
+    });
+  });
+
+  // 3) Reveal observer (covers .reveal, [data-anim], [data-words])
+  const io=new IntersectionObserver((es)=>es.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}
+  }),{threshold:.12,rootMargin:'0px 0px -7% 0px'});
+  document.querySelectorAll('.reveal,[data-anim],[data-words]').forEach(el=>io.observe(el));
+
+  // 4) Scroll progress bar + header state (single rAF-throttled handler)
+  const bar=document.getElementById('scrollBar');
+  const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const parallax=[...document.querySelectorAll('[data-parallax]')];
+  const coin=document.getElementById('coin');
+  const hero=document.getElementById('top');
+  let ticking=false;
+  function onScroll(){
+    if(ticking)return;ticking=true;
+    requestAnimationFrame(()=>{
+      const y=scrollY||document.documentElement.scrollTop;
+      header.classList.toggle('scrolled',y>20);
+      const max=document.documentElement.scrollHeight-innerHeight;
+      if(bar)bar.style.width=(max>0?(y/max)*100:0)+'%';
+      const anim=!reduce && !document.documentElement.classList.contains('acc-noanim');
+      if(anim){
+        const vh=innerHeight;
+        parallax.forEach(el=>{
+          const sp=+el.dataset.parallax||1;
+          const r=el.getBoundingClientRect();
+          const off=(r.top+r.height/2 - vh/2)*-0.05*sp;
+          el.style.transform='translateY('+off.toFixed(1)+'px)';
+        });
+      }
+      // Coin flip driven by scroll (reveals the spray-booth photo on the back)
+      if(coin){
+        if(anim){
+          const prog=Math.min(y/70,1);
+          coin.style.transform='rotateY('+(prog*180).toFixed(1)+'deg)';
+        }else{
+          coin.style.transform='none';
+        }
+      }
+      ticking=false;
+    });
+  }
+  addEventListener('scroll',onScroll,{passive:true});
+  addEventListener('resize',onScroll,{passive:true});
+  onScroll();
+
+  // Count up
+  const cio=new IntersectionObserver((es)=>es.forEach(e=>{
+    if(!e.isIntersecting)return; const el=e.target; cio.unobserve(el);
+    const target=parseFloat(el.dataset.count), dec=+(el.dataset.dec||0), suf=el.dataset.suf||'';
+    let cur=0, step=target/60;
+    const t=setInterval(()=>{cur+=step; if(cur>=target){cur=target;clearInterval(t);} el.textContent=(dec?cur.toFixed(dec):Math.floor(cur))+suf;},22);
+  }),{threshold:.5});
+  document.querySelectorAll('[data-count]').forEach(el=>cio.observe(el));
+
+  document.getElementById('yr').textContent=new Date().getFullYear();
+
+  /* ============ ACCESSIBILITY WIDGET ============ */
+  (function(){
+    const root=document.documentElement, KEY='ag_a11y';
+    const FEATURES=['contrast','invert','grayscale','links','readable','spacing','headings','guide','cursor','noanim'];
+    let state={feat:[],fs:0};
+    try{const s=JSON.parse(localStorage.getItem(KEY));if(s){state.feat=Array.isArray(s.feat)?s.feat:[];state.fs=+s.fs||0;}}catch(e){}
+
+    const fsVal=document.getElementById('a11yFsVal');
+    const fsMap={'-1':'90%','0':'100%','1':'112%','2':'125%','3':'140%'};
+
+    function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+    function apply(){
+      FEATURES.forEach(f=>root.classList.toggle('acc-'+f,state.feat.includes(f)));
+      ['acc-fs--1','acc-fs-1','acc-fs-2','acc-fs-3'].forEach(c=>root.classList.remove(c));
+      if(state.fs<0)root.classList.add('acc-fs--1');
+      else if(state.fs>0)root.classList.add('acc-fs-'+Math.min(state.fs,3));
+      document.querySelectorAll('.a11y-item[data-acc]').forEach(b=>{
+        if(FEATURES.includes(b.dataset.acc))b.setAttribute('aria-pressed',state.feat.includes(b.dataset.acc));
+      });
+      fsVal.textContent=fsMap[String(state.fs)]||'100%';
+      save();
+    }
+    function toggle(f){const i=state.feat.indexOf(f);i>=0?state.feat.splice(i,1):state.feat.push(f);apply();}
+    function fs(d){state.fs=Math.max(-1,Math.min(3,state.fs+d));apply();}
+    function reset(){state={feat:[],fs:0};localStorage.removeItem(KEY);apply();}
+
+    document.querySelectorAll('[data-acc]').forEach(b=>b.addEventListener('click',()=>{
+      const a=b.dataset.acc;
+      if(a==='fs-inc')fs(1);else if(a==='fs-dec')fs(-1);else if(a==='reset')reset();else toggle(a);
+    }));
+
+    // Panel open/close
+    const btn=document.getElementById('a11yBtn'),panel=document.getElementById('a11yPanel'),
+          ov=document.getElementById('a11yOverlay'),cl=document.getElementById('a11yClose');
+    function openPanel(){panel.classList.add('open');ov.classList.add('open');btn.setAttribute('aria-expanded','true');cl.focus();}
+    function closePanel(){panel.classList.remove('open');ov.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.focus();}
+    btn.addEventListener('click',()=>panel.classList.contains('open')?closePanel():openPanel());
+    ov.addEventListener('click',closePanel);
+    cl.addEventListener('click',closePanel);
+
+    // Reading guide follows pointer
+    const guide=document.getElementById('a11yGuide');
+    document.addEventListener('mousemove',e=>{if(root.classList.contains('acc-guide'))guide.style.top=e.clientY+'px';});
+
+    // Statement modal
+    const modal=document.getElementById('a11yModal'),
+          mOpen=document.getElementById('a11yStatementOpen'),
+          mOpenFoot=document.getElementById('a11yStatementFoot'),
+          mClose=document.getElementById('a11yStatementClose');
+    function openModal(){modal.classList.add('open');mClose.focus();}
+    function closeModal(){modal.classList.remove('open');}
+    mOpen.addEventListener('click',openModal);
+    if(mOpenFoot)mOpenFoot.addEventListener('click',e=>{e.preventDefault();openModal();});
+    mClose.addEventListener('click',closeModal);
+    modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape'){if(modal.classList.contains('open'))closeModal();else if(panel.classList.contains('open'))closePanel();}
+    });
+
+    apply();
+  })();
+</script>
+</body>
+</html>
