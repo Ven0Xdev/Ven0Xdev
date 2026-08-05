@@ -90,7 +90,11 @@ if (!document.documentElement.hasAttribute("data-theme")) {
 
 /* ---------- Base ---------- */
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* גלילה לעוגן לא תסתתר מתחת ל-Header הדביק */
+  scroll-padding-top: calc(var(--header-h) + 16px);
+}
 body {
   margin: 0;
   font-family: var(--font);
@@ -118,11 +122,13 @@ button { font-family: inherit; cursor: pointer; }
   font-size: .72rem; font-weight: 700; color: var(--warn);
   background: var(--warn-bg); padding: 2px 8px; border-radius: 20px; white-space: nowrap;
 }
+/* קישור דילוג: מוסתר כלפי מעלה ולא הצידה —
+   הסתרה אופקית (right:-999px) יוצרת גלישה אופקית בכיוון RTL. */
 .fd-skip {
-  position: absolute; right: -999px; top: 8px; background: var(--brand); color: #fff;
-  padding: 10px 18px; border-radius: 8px; z-index: 200;
+  position: absolute; inset-inline-start: 8px; top: -80px; background: var(--brand); color: #fff;
+  padding: 10px 18px; border-radius: 8px; z-index: 200; transition: top .2s var(--ease);
 }
-.fd-skip:focus { right: 8px; }
+.fd-skip:focus { top: 8px; }
 
 /* ---------- Buttons ---------- */
 .fd-btn {
@@ -153,7 +159,9 @@ button { font-family: inherit; cursor: pointer; }
    ============================================================ */
 .fd-header {
   position: sticky; top: 0; z-index: 100;
+  background: var(--surface); /* fallback — ספארי ישן אינו תומך ב-color-mix */
   background: color-mix(in srgb, var(--surface) 88%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
   backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid var(--border);
   height: var(--header-h);
@@ -162,6 +170,7 @@ button { font-family: inherit; cursor: pointer; }
 .fd-logo {
   display: inline-flex; align-items: center; gap: 8px; font-weight: 800;
   font-size: 1.4rem; letter-spacing: -.02em; color: var(--text);
+  white-space: nowrap; /* מונע שבירה לשתי שורות בתוך Header בגובה קבוע */
 }
 .fd-logo:hover { text-decoration: none; }
 .fd-logo-mark {
@@ -189,6 +198,7 @@ button { font-family: inherit; cursor: pointer; }
    ============================================================ */
 .fd-hero {
   position: relative; padding: var(--sp-12) 0 var(--sp-10);
+  background: var(--bg-alt); /* fallback לפני הגרדיאנטים שמשתמשים ב-color-mix */
   background:
     radial-gradient(1200px 400px at 80% -10%, color-mix(in srgb, var(--brand) 22%, transparent), transparent),
     radial-gradient(900px 400px at 10% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent),
@@ -201,7 +211,7 @@ button { font-family: inherit; cursor: pointer; }
 .fd-hero-sub { font-size: clamp(1rem, 2vw, 1.2rem); color: var(--text-2); }
 .fd-demo-banner {
   display: inline-flex; align-items: center; gap: 8px; margin-top: var(--sp-4);
-  background: var(--warn-bg); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); border-color: color-mix(in srgb, var(--warn) 30%, transparent);
   padding: 8px 16px; border-radius: 30px; font-size: .85rem; font-weight: 700;
 }
 
@@ -280,7 +290,7 @@ select.fd-input { cursor: pointer; }
 
 .fd-search-submit { align-self: stretch; margin-top: var(--sp-2); }
 
-.fd-form-errors { background: var(--danger-bg); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: var(--radius-sm); padding: 12px 16px; }
+.fd-form-errors { background: var(--danger-bg); border: 1px solid var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); border-radius: var(--radius-sm); padding: 12px 16px; }
 .fd-error-list { margin: 0; padding-inline-start: 20px; color: var(--danger); font-weight: 600; font-size: .9rem; }
 .fd-error-list li { margin: 2px 0; }
 
@@ -312,7 +322,7 @@ select.fd-input { cursor: pointer; }
 
 .fd-transparency {
   display: flex; align-items: center; gap: 10px; background: var(--brand-050);
-  border: 1px solid color-mix(in srgb, var(--brand) 20%, transparent); color: var(--text-2);
+  border: 1px solid var(--brand); border-color: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--text-2);
   padding: 12px 16px; border-radius: var(--radius-sm); font-size: .88rem; margin-bottom: var(--sp-5);
 }
 .fd-transparency .fd-icon { color: var(--brand); flex-shrink: 0; }
@@ -324,7 +334,8 @@ select.fd-input { cursor: pointer; }
 .fd-filters-aside {
   position: sticky; top: calc(var(--header-h) + 16px); background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius); padding: var(--sp-5);
-  box-shadow: var(--shadow-sm); max-height: calc(100vh - var(--header-h) - 32px); overflow-y: auto;
+  box-shadow: var(--shadow-sm); max-height: calc(100vh - var(--header-h) - 32px);
+  max-height: calc(100dvh - var(--header-h) - 32px); overflow-y: auto;
 }
 .fd-filters-aside-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-3); }
 .fd-filters-aside-head h3 { margin: 0; font-size: 1.15rem; }
@@ -545,9 +556,9 @@ select.fd-input { cursor: pointer; }
 /* ============================================================
    Modal + Toast
    ============================================================ */
-.fd-modal-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(9,16,26,.55); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: var(--sp-4); }
+.fd-modal-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(9,16,26,.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: var(--sp-4); }
 .fd-modal-overlay[hidden] { display: none; }
-.fd-modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); max-width: 680px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; animation: fd-modal-in .25s var(--ease); }
+.fd-modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); max-width: 680px; width: 100%; max-height: 90vh; max-height: 90dvh; display: flex; flex-direction: column; animation: fd-modal-in .25s var(--ease); }
 @keyframes fd-modal-in { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: none; } }
 .fd-modal-head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-5); border-bottom: 1px solid var(--border); }
 .fd-modal-title { font-size: 1.3rem; margin: 0; }
@@ -644,7 +655,7 @@ select.fd-input { cursor: pointer; }
   .fd-footer-grid { grid-template-columns: 1fr 1fr; }
   .fd-results-layout { grid-template-columns: 1fr; }
   .fd-filters-aside {
-    position: fixed; inset: 0; z-index: 320; border-radius: 0; max-height: 100vh;
+    position: fixed; inset: 0; z-index: 320; border-radius: 0; max-height: 100vh; max-height: 100dvh;
     transform: translateX(-100%); transition: transform .3s var(--ease); max-width: 340px;
   }
   :root[dir] .fd-filters-aside { transform: translateX(100%); }
@@ -653,7 +664,19 @@ select.fd-input { cursor: pointer; }
   .fd-mobile-filter-btn { display: inline-flex; }
 }
 @media (max-width: 720px) {
+  /* iOS מבצע זום אוטומטי על שדה שגופנו קטן מ-16px — מונעים זאת */
+  .fd-input, select.fd-input, input.fd-input { font-size: 16px; }
   .fd-nav { display: none; }
+
+  /* Header צר: מכווצים כדי שהכול ייכנס ברוחב 390px ולא יגלוש */
+  .fd-container { padding: 0 var(--sp-3); }
+  .fd-header-inner { gap: var(--sp-2); }
+  .fd-logo { font-size: 1.05rem; gap: 6px; }
+  .fd-logo-mark { width: 30px; height: 30px; border-radius: 8px; }
+  .fd-logo-mark svg { width: 18px; height: 18px; }
+  .fd-header-actions { gap: 4px; }
+  .fd-icon-btn { width: 38px; height: 38px; }
+  #fd-login-btn { padding: 7px 10px; font-size: .8rem; }
   .fd-hero { padding: var(--sp-8) 0; }
   .fd-search-card { padding: var(--sp-4); }
   .fd-form-grid { grid-template-columns: 1fr; }
@@ -672,9 +695,14 @@ select.fd-input { cursor: pointer; }
   .fd-tabs { width: 100%; overflow-x: auto; justify-content: flex-start; }
   .fd-tab { flex: 1; justify-content: center; padding: 11px 14px; }
   .fd-results-head { flex-direction: column; align-items: stretch; }
+  /* סרגל החיפוש הדביק הוא fixed — בלי הריווח הזה הוא מכסה את תחתית התוכן
+     והקלקות על כפתורים שם נבלעות בו. כולל safe-area של אייפון. */
+  body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  html { scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   .fd-mobile-search {
     display: flex; position: fixed; bottom: 0; inset-inline: 0; z-index: 200;
-    padding: 12px var(--sp-4); background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+    padding: 12px var(--sp-4); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 16px rgba(0,0,0,.08);
   }
   .fd-mobile-search .fd-btn { width: 100%; }
   .fd-to-top { bottom: 76px; }
