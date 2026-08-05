@@ -51,15 +51,22 @@ export function LiveChart({ symbol }: { symbol: string }) {
     const dark = document.documentElement.dataset.theme === "dark" ||
       (window.matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light");
 
+    // lightweight-charts renders to <canvas> and needs literal color values —
+    // it cannot resolve CSS var(--x) the way DOM elements do — so these
+    // mirror app/globals.css's token values exactly, per theme.
+    const good = "#0bb981"; // brand green doubles as "bullish" in both themes
+    const bad = dark ? "#f87171" : "#dc2626";
+    const neutralLine = dark ? "#60a5fa" : "#2563eb";
+
     const chart = createChart(el, {
       height: 320,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: dark ? "#c3c2b7" : "#52514e",
+        textColor: dark ? "#a7adb5" : "#545c66",
       },
       grid: {
-        vertLines: { color: dark ? "#2c2c2a" : "#e1e0d9" },
-        horzLines: { color: dark ? "#2c2c2a" : "#e1e0d9" },
+        vertLines: { color: dark ? "#232427" : "#e7e9ec" },
+        horzLines: { color: dark ? "#232427" : "#e7e9ec" },
       },
       crosshair: { mode: 0 },
       timeScale: { timeVisible: true, secondsVisible: false },
@@ -68,15 +75,15 @@ export function LiveChart({ symbol }: { symbol: string }) {
     chartRef.current = chart;
 
     const candles = chart.addSeries(CandlestickSeries, {
-      upColor: "#0ca30c", downColor: "#d03b3b",
-      wickUpColor: "#0ca30c", wickDownColor: "#d03b3b",
+      upColor: good, downColor: bad,
+      wickUpColor: good, wickDownColor: bad,
       borderVisible: false,
       priceFormat: { type: "price", precision: 4, minMove: 0.0001 },
     });
     candleRef.current = candles;
 
     const volume = chart.addSeries(HistogramSeries, {
-      priceScaleId: "vol", priceFormat: { type: "volume" }, color: dark ? "#3987e5" : "#2a78d6",
+      priceScaleId: "vol", priceFormat: { type: "volume" }, color: neutralLine,
     });
     volumeRef.current = volume;
     chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
@@ -160,12 +167,18 @@ export function LiveChart({ symbol }: { symbol: string }) {
     priceLinesRef.current = [];
     if (!signal || signal.status === "NO_SIGNAL_YET") return;
 
+    const dark = document.documentElement.dataset.theme === "dark" ||
+      (window.matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light");
+    const entryColor = dark ? "#60a5fa" : "#2563eb";
+    const stopColor = dark ? "#f87171" : "#dc2626";
+    const targetColor = "#0bb981";
+
     const lines: [string, number | null | undefined, string][] = [
-      ["Entry", signal.ideal_entry, "#2a78d6"],
-      ["Stop", signal.stop_loss, "#d03b3b"],
-      ["TP1", signal.targets?.[0], "#0ca30c"],
-      ["TP2", signal.targets?.[1], "#0ca30c"],
-      ["TP3", signal.targets?.[2], "#0ca30c"],
+      ["Entry", signal.ideal_entry, entryColor],
+      ["Stop", signal.stop_loss, stopColor],
+      ["TP1", signal.targets?.[0], targetColor],
+      ["TP2", signal.targets?.[1], targetColor],
+      ["TP3", signal.targets?.[2], targetColor],
     ];
     for (const [title, price, color] of lines) {
       if (price) {
@@ -186,22 +199,36 @@ export function LiveChart({ symbol }: { symbol: string }) {
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: connColor }} />
           {conn.toUpperCase()}
         </span>
-        <span
-          className="rounded-md px-2 py-0.5 font-semibold tracking-wide"
-          style={{ color: "var(--status-warning)", background: "color-mix(in srgb, var(--status-warning) 14%, transparent)" }}
-        >
-          {conn !== "live"
-            ? // Never claim LIVE/DELAYED once the stream has dropped — that
-              // would present a stale, possibly cached last-known price as
-              // if it were current. streamMode only reflects the *last*
-              // event received, not what's on screen right now.
-              "LAST KNOWN (not live)"
-            : streamMode === "live"
-              ? "LIVE FEED"
-              : streamMode === "delayed"
-                ? "DELAYED FEED"
-                : "SYNTHETIC FEED"}
-        </span>
+        {(() => {
+          // Never claim LIVE/DELAYED once the stream has dropped — that
+          // would present a stale, possibly cached last-known price as if
+          // it were current. streamMode only reflects the *last* event
+          // received, not what's on screen right now.
+          const label =
+            conn !== "live"
+              ? "LAST KNOWN (not live)"
+              : streamMode === "live"
+                ? "LIVE FEED"
+                : streamMode === "delayed"
+                  ? "DELAYED FEED"
+                  : "SYNTHETIC FEED";
+          const feedColor =
+            conn !== "live"
+              ? "var(--status-warning)"
+              : streamMode === "live"
+                ? "var(--status-good)"
+                : streamMode === "delayed"
+                  ? "var(--series-blue)"
+                  : "var(--text-muted)";
+          return (
+            <span
+              className="rounded-md px-2 py-0.5 font-semibold tracking-wide"
+              style={{ color: feedColor, background: "color-mix(in srgb, currentColor 12%, transparent)" }}
+            >
+              {label}
+            </span>
+          );
+        })()}
         {signal && signal.status !== "NO_SIGNAL_YET" && (
           <span
             className="rounded-md px-2 py-0.5 font-semibold tracking-wide"

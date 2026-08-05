@@ -10,10 +10,10 @@ export function Badge({ children, variant = "neutral" }: { children: React.React
   const color = VARIANT_COLORS[variant];
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold tabular"
       style={{ color, background: `color-mix(in srgb, ${color} 14%, transparent)` }}
     >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
       {children}
     </span>
   );

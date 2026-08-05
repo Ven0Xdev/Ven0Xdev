@@ -4,22 +4,31 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { StockAnalysis } from "@/lib/types";
 import { OpportunityTable } from "@/components/dashboard/OpportunityTable";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { CardSkeleton } from "@/components/ui/Skeleton";
 
 export default function OpportunitiesPage() {
   const [rows, setRows] = useState<StockAnalysis[] | null>(null);
   const [minScore, setMinScore] = useState(0);
   const [maxRisk, setMaxRisk] = useState(100);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchRows = () => {
     api
       .opportunities(50)
-      .then(setRows)
-      .catch((e) => setError(String(e)));
+      .then((r) => {
+        setRows(r);
+        setRefreshing(false);
+      })
+      .catch((e) => {
+        setError(String(e));
+        setRefreshing(false);
+      });
   };
 
   const refresh = () => {
-    setRows(null);
+    setRefreshing(true);
     fetchRows();
   };
 
@@ -29,38 +38,56 @@ export default function OpportunitiesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Opportunities</h1>
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          Full OTC universe, ranked by overall AI score. Filter by minimum score and maximum manipulation risk.
-        </p>
-      </div>
+      <PageHeader
+        title="Opportunities"
+        description="Full OTC universe, ranked by overall AI score. Filter by minimum score and maximum manipulation risk."
+      />
 
-      <div className="card flex flex-wrap items-center gap-6 p-4">
-        <label className="flex items-center gap-2 text-sm">
+      <div className="card animate-in flex flex-wrap items-center gap-x-8 gap-y-4 p-5">
+        <label className="flex items-center gap-3 text-sm font-medium">
           Min AI score
-          <input type="range" min={0} max={100} value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} />
-          <span className="tabular w-8">{minScore}</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={minScore}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+            style={{ accentColor: "var(--accent)" }}
+          />
+          <span className="tabular w-7 text-right font-semibold" style={{ color: "var(--accent)" }}>
+            {minScore}
+          </span>
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-3 text-sm font-medium">
           Max manipulation risk
-          <input type="range" min={0} max={100} value={maxRisk} onChange={(e) => setMaxRisk(Number(e.target.value))} />
-          <span className="tabular w-8">{maxRisk}</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={maxRisk}
+            onChange={(e) => setMaxRisk(Number(e.target.value))}
+            style={{ accentColor: "var(--accent)" }}
+          />
+          <span className="tabular w-7 text-right font-semibold" style={{ color: "var(--accent)" }}>
+            {maxRisk}
+          </span>
         </label>
-        <button onClick={refresh} className="ml-auto rounded-lg px-3 py-1.5 text-sm font-medium" style={{ background: "var(--series-blue)", color: "#fff" }}>
-          Refresh scan
+        <button onClick={refresh} disabled={refreshing} className="btn btn-primary ml-auto">
+          {refreshing ? "Scanning…" : "Refresh scan"}
         </button>
       </div>
 
-      <div className="card">
-        {error ? (
-          <p className="p-6 text-sm" style={{ color: "var(--status-critical)" }}>{error}</p>
-        ) : filtered === null ? (
-          <p className="p-6 text-sm" style={{ color: "var(--text-muted)" }}>Scanning universe…</p>
-        ) : (
-          <OpportunityTable rows={filtered} />
-        )}
-      </div>
+      {filtered === null && !error ? (
+        <CardSkeleton lines={6} />
+      ) : (
+        <div className="card animate-in overflow-hidden">
+          {error ? (
+            <p className="p-6 text-sm" style={{ color: "var(--status-critical)" }}>{error}</p>
+          ) : (
+            <OpportunityTable rows={filtered!} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

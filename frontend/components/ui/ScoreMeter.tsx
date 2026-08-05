@@ -1,4 +1,4 @@
-const SEQ_STEPS = ["#cde2fb", "#9ec5f4", "#5598e7", "#2a78d6", "#1c5cab", "#104281"];
+const SEQ_STEPS = ["var(--seq-100)", "var(--seq-250)", "var(--seq-400)", "var(--seq-450)", "var(--seq-550)", "var(--seq-650)"];
 
 function seqColor(score: number): string {
   const idx = Math.min(SEQ_STEPS.length - 1, Math.floor((score / 100) * SEQ_STEPS.length));
@@ -35,10 +35,14 @@ export function ScoreMeter({
           {value.toFixed(0)}
         </span>
       </div>
-      <div className="h-2 w-full rounded-full" style={{ background: "var(--gridline)" }}>
+      <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--gridline)" }}>
         <div
-          className="h-2 rounded-full transition-[width]"
-          style={{ width: `${Math.max(2, Math.min(100, value))}%`, background: fillColor }}
+          className="h-1.5 rounded-full"
+          style={{
+            width: `${Math.max(2, Math.min(100, value))}%`,
+            background: fillColor,
+            transition: "width var(--duration-slow) var(--ease-out)",
+          }}
         />
       </div>
     </div>

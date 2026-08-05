@@ -54,10 +54,10 @@ export function EquityCurveChart({ data }: { data: number[] }) {
           <line key={i} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="var(--gridline)" strokeWidth={1} />
         ))}
 
-        <path d={areaPath} fill="var(--series-blue)" opacity={0.1} stroke="none" />
-        <path d={path} fill="none" stroke="var(--series-blue)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={areaPath} fill="var(--accent)" opacity={0.1} stroke="none" />
+        <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
 
-        <circle cx={last.x} cy={last.y} r={4} fill="var(--series-blue)" stroke="var(--surface-1)" strokeWidth={2} />
+        <circle cx={last.x} cy={last.y} r={4} fill="var(--accent)" stroke="var(--surface-1)" strokeWidth={2} />
         <text x={last.x - 6} y={last.y - 10} textAnchor="end" fontSize={11} fill="var(--text-primary)" fontWeight={600}>
           ${last.v.toFixed(0)}
         </text>
@@ -65,7 +65,7 @@ export function EquityCurveChart({ data }: { data: number[] }) {
         {hovered && (
           <>
             <line x1={hovered.x} x2={hovered.x} y1={padding.top} y2={height - padding.bottom} stroke="var(--baseline)" strokeWidth={1} />
-            <circle cx={hovered.x} cy={hovered.y} r={4} fill="var(--series-blue)" stroke="var(--surface-1)" strokeWidth={2} />
+            <circle cx={hovered.x} cy={hovered.y} r={4} fill="var(--accent)" stroke="var(--surface-1)" strokeWidth={2} />
           </>
         )}
       </svg>

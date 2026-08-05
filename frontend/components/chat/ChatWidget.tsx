@@ -64,35 +64,62 @@ export function ChatWidget({ initialTicker }: { initialTicker?: string }) {
             Ask about risk, catalysts, confidence, position sizing, or what would invalidate this setup.
           </p>
         )}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
           {messages.map((m, i) => (
             <div
               key={i}
-              className="max-w-[92%] rounded-xl px-3 py-2 text-sm leading-relaxed"
+              className="animate-in max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed"
               style={{
                 alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                background: m.role === "user" ? "var(--series-blue)" : "var(--page-plane)",
-                color: m.role === "user" ? "#fff" : "var(--text-primary)",
+                background: m.role === "user" ? "var(--accent)" : "var(--surface-2)",
+                color: m.role === "user" ? "var(--text-on-accent)" : "var(--text-primary)",
+                borderBottomRightRadius: m.role === "user" ? 4 : undefined,
+                borderBottomLeftRadius: m.role === "assistant" ? 4 : undefined,
               }}
             >
               {m.content}
             </div>
           ))}
           {sending && (
-            <div className="max-w-[92%] self-start rounded-xl px-3 py-2 text-sm" style={{ background: "var(--page-plane)", color: "var(--text-muted)" }}>
-              Thinking…
+            <div
+              className="flex max-w-[92%] items-center gap-1.5 self-start rounded-2xl px-3.5 py-3"
+              style={{ background: "var(--surface-2)", borderBottomLeftRadius: 4 }}
+              aria-label="Assistant is thinking"
+            >
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{
+                    background: "var(--text-muted)",
+                    animation: `typing-bounce 1.1s ${i * 0.15}s ease-in-out infinite`,
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      <div className="mt-3 flex flex-wrap gap-1.5">
         {SUGGESTIONS.map((s) => (
           <button
             key={s}
             onClick={() => send(s)}
-            className="rounded-full px-2.5 py-1 text-xs"
-            style={{ background: "var(--page-plane)", color: "var(--text-secondary)" }}
+            className="rounded-full px-2.5 py-1 text-xs font-medium"
+            style={{
+              background: "var(--surface-2)",
+              color: "var(--text-secondary)",
+              transition: "background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--accent-soft)";
+              e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--surface-2)";
+              e.currentTarget.style.color = "var(--text-secondary)";
+            }}
           >
             {s}
           </button>
@@ -100,7 +127,7 @@ export function ChatWidget({ initialTicker }: { initialTicker?: string }) {
       </div>
 
       <form
-        className="mt-2 flex gap-2"
+        className="mt-3 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           send(input);
@@ -110,15 +137,9 @@ export function ChatWidget({ initialTicker }: { initialTicker?: string }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={initialTicker ? `Ask about ${initialTicker}…` : "Ask about any ticker…"}
-          className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+          className="input flex-1"
         />
-        <button
-          type="submit"
-          disabled={sending}
-          className="rounded-lg px-4 py-2 text-sm font-medium"
-          style={{ background: "var(--series-blue)", color: "#fff" }}
-        >
+        <button type="submit" disabled={sending} className="btn btn-primary">
           Send
         </button>
       </form>

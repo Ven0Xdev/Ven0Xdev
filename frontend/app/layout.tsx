@@ -1,7 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { PwaProvider } from "@/components/pwa/PwaProvider";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Nexora — AI Market Research Platform",
@@ -22,12 +31,20 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`h-full antialiased ${inter.variable}`}>
+      <head>
+        {/* Blocking, pre-hydration: applies the stored/OS theme before first
+            paint so there is never a flash of the wrong theme. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <PwaProvider />
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen flex-col sm:flex-row">
           <Sidebar />
-          <main className="flex-1 p-6 sm:p-8">{children}</main>
+          <MobileNav />
+          <main className="flex-1 p-4 sm:p-8 lg:p-10">
+            <div className="mx-auto w-full max-w-7xl">{children}</div>
+          </main>
         </div>
       </body>
     </html>

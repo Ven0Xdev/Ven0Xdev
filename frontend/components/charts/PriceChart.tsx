@@ -64,8 +64,8 @@ export function PriceChart({
           <line key={t} x1={PAD.l} x2={W - PAD.r} y1={PAD.t + t * (H - PAD.t - PAD.b)} y2={PAD.t + t * (H - PAD.t - PAD.b)} stroke="var(--gridline)" strokeWidth={1} />
         ))}
 
-        <path d={model.area} fill="var(--series-blue)" opacity={0.1} />
-        <path d={model.path} fill="none" stroke="var(--series-blue)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <path d={model.area} fill="var(--accent)" opacity={0.1} />
+        <path d={model.path} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
 
         {markers.map((m) => {
           const my = model.y(m.price);
@@ -82,7 +82,7 @@ export function PriceChart({
         {hovered && (
           <>
             <line x1={hovered.pt[0]} x2={hovered.pt[0]} y1={PAD.t} y2={H - PAD.b} stroke="var(--baseline)" strokeWidth={1} />
-            <circle cx={hovered.pt[0]} cy={hovered.pt[1]} r={4} fill="var(--series-blue)" stroke="var(--surface-1)" strokeWidth={2} />
+            <circle cx={hovered.pt[0]} cy={hovered.pt[1]} r={4} fill="var(--accent)" stroke="var(--surface-1)" strokeWidth={2} />
           </>
         )}
       </svg>
