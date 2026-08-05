@@ -12,6 +12,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { api } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import type { SignalPayload, StreamBar } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
@@ -112,7 +113,14 @@ export function LiveChart({ symbol }: { symbol: string }) {
 
     // Live stream over SSE; paint throttled to ~4 fps (backend accuracy
     // is preserved — only rendering is throttled).
-    const es = new EventSource(`${API_BASE}/stream/${symbol}`);
+    // EventSource cannot set an Authorization header (a browser platform
+    // limitation, not a choice) — the access token travels as a query
+    // param instead; the backend accepts that only as a fallback when no
+    // header is present (see api/deps.py get_current_user). No-op when
+    // auth is off (no token exists) or not required by the backend.
+    const token = getAccessToken();
+    const streamUrl = `${API_BASE}/stream/${symbol}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const es = new EventSource(streamUrl);
     const paint = setInterval(() => {
       const bar = pendingBar.current;
       if (bar && candleRef.current) {
