@@ -1,0 +1,10 @@
+# robots.txt — FlyDeal Israel (דוגמה)
+User-agent: *
+Allow: /
+
+# חסימת נתיבי מערכת עתידיים
+Disallow: /api/
+Disallow: /admin/
+Disallow: /*?*sort=
+
+Sitemap: https://www.flydeal-israel.example/sitemap.xml

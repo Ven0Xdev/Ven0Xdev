@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>FlyDeal Israel — טיסות ומלונות במחירים הזולים ביותר</title>
+
+  <!-- SEO -->
+  <meta name="description" content="FlyDeal Israel — השוואת טיסות ומלונות לישראלים. מצאו את המחיר הסופי האמיתי, השוו עסקאות ובחרו את המשתלמת ביותר. יציאה מנתב״ג, מחירים בשקלים." />
+  <meta name="keywords" content="טיסות זולות, מלונות, השוואת מחירים, נתבג, אל על, ארקיע, ישראייר, חבילות נופש, טיסות מישראל" />
+  <meta name="author" content="FlyDeal Israel" />
+  <meta name="theme-color" content="#0b63f6" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FlyDeal Israel" />
+  <meta property="og:title" content="FlyDeal Israel — טיסות ומלונות במחירים הזולים ביותר" />
+  <meta property="og:description" content="השוואת טיסות ומלונות לישראלים, עם המחיר הסופי האמיתי והעסקה המשתלמת ביותר." />
+  <meta property="og:locale" content="he_IL" />
+  <meta property="og:url" content="https://www.flydeal-israel.example" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="FlyDeal Israel — טיסות ומלונות במחירים הזולים ביותר" />
+  <meta name="twitter:description" content="השוואת טיסות ומלונות לישראלים, עם המחיר הסופי האמיתי." />
+
+  <!--
+    ══════════════════════════════════════════════════════════════════
+    Content Security Policy — דוגמה לפרודקשן.
+    יש להפעיל CSP באמצעות כותרות HTTP בצד השרת (לא כ-meta), למשל:
+
+    Content-Security-Policy:
+      default-src 'self';
+      script-src 'self';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data:;
+      connect-src 'self' https://your-backend.example.com;
+      frame-ancestors 'none'; base-uri 'self'; form-action 'self';
+
+    הערה: לא הופעל כאן כ-meta מגביל כדי לא לשבור פתיחה מקומית (file://).
+    ══════════════════════════════════════════════════════════════════
+  -->
+
+  <!-- Google Fonts: Heebo + Assistant (עם fallback מערכת ב-CSS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=Assistant:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- Schema.org — אתר תיירות + חיפוש -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TravelAgency",
+    "name": "FlyDeal Israel",
+    "description": "השוואת טיסות ומלונות לישראלים במחירים הזולים ביותר.",
+    "areaServed": "IL",
+    "url": "https://www.flydeal-israel.example",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://www.flydeal-israel.example/?dest={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+</head>
+<body>
+  <a href="#fd-search-mount" class="fd-skip">דילוג לתוכן הראשי</a>
+
+  <!-- ============ Header ============ -->
+  <header class="fd-header">
+    <div class="fd-container fd-header-inner">
+      <a href="#" class="fd-logo" aria-label="FlyDeal Israel — לעמוד הבית">
+        <span class="fd-logo-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+        </span>
+        <span>Fly<b>Deal</b> Israel</span>
+      </a>
+      <nav class="fd-nav" aria-label="ניווט ראשי">
+        <a href="#fd-results-section">תוצאות</a>
+        <a href="#fd-destinations">יעדים</a>
+        <a href="#fd-features">למה אנחנו</a>
+      </nav>
+      <div class="fd-header-actions">
+        <button id="fd-theme-toggle" class="fd-icon-btn" aria-label="החלפת מצב תצוגה"></button>
+        <button id="fd-settings-btn" class="fd-icon-btn" aria-label="הגדרות">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6H10.9l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4L4.6 11a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.4 2.6h4.2l.4-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+        </button>
+        <button id="fd-fav-btn" class="fd-icon-btn fd-fav-wrap" aria-label="המועדפים שלי">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <span id="fd-fav-count" class="fd-fav-badge" hidden>0</span>
+        </button>
+        <button id="fd-login-btn" class="fd-btn fd-btn--ghost fd-btn--sm">התחברות</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ Hero + Search ============ -->
+  <section class="fd-hero">
+    <div class="fd-container">
+      <div class="fd-hero-content">
+        <h1>מוצאים את הטיסה והמלון <span>במחיר הכי משתלם</span></h1>
+        <p class="fd-hero-sub">משווים בין עשרות אפשרויות, רואים את המחיר הסופי האמיתי — ובוחרים בביטחון. יציאה מנתב״ג, מחירים בשקלים.</p>
+        <div id="fd-demo-banner" class="fd-demo-banner" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          מצב הדגמה — כל הנתונים באתר הם נתוני הדגמה בלבד ואינם מחירים אמיתיים.
+        </div>
+      </div>
+
+      <div class="fd-tabs-wrap">
+        <div class="fd-tabs" role="tablist" aria-label="בחירת סוג חיפוש">
+          <button class="fd-tab is-active" role="tab" aria-selected="true" data-tab="flights" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+            טיסות
+          </button>
+          <button class="fd-tab" role="tab" aria-selected="false" data-tab="hotels" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm5-2h9v2h-9zM3 6v13h2v-3h16v3h2V10a3 3 0 0 0-3-3h-7v5H3V6z"/></svg>
+            מלונות
+          </button>
+          <button class="fd-tab" role="tab" aria-selected="false" data-tab="packages" tabindex="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 3 6.5V17L12 22l9-4.5v-11L12 2zm0 2.2 5.5 2.8L12 9.8 6.5 7 12 4.2zM5 8.6l6 3v7.4l-6-3V8.6zm14 0v7.4l-6 3v-7.4l6-3z"/></svg>
+            חבילות
+          </button>
+        </div>
+      </div>
+
+      <div class="fd-search-card">
+        <div id="fd-search-mount"></div>
+      </div>
+
+      <div id="fd-history" class="fd-history" hidden></div>
+    </div>
+  </section>
+
+  <!-- ============ Results ============ -->
+  <section class="fd-results-section" id="fd-results-section">
+    <div class="fd-container">
+      <div id="fd-results" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ============ Destinations ============ -->
+  <section class="fd-section fd-section-alt" id="fd-destinations">
+    <div class="fd-container">
+      <div class="fd-section-head">
+        <h2>יעדים פופולריים לישראלים</h2>
+        <p>לחצו על יעד כדי לחפש טיסות אליו. המחירים הם נתוני הדגמה בלבד.</p>
+      </div>
+      <div class="fd-dest-grid" id="fd-dest-grid"></div>
+    </div>
+  </section>
+
+  <!-- ============ Features ============ -->
+  <section class="fd-section" id="fd-features">
+    <div class="fd-container">
+      <div class="fd-section-head">
+        <h2>למה FlyDeal Israel?</h2>
+        <p>שקיפות מלאה, מחיר סופי אמיתי, והתאמה ללקוח הישראלי.</p>
+      </div>
+      <div class="fd-features">
+        <div class="fd-feature">
+          <div class="fd-feature-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg></div>
+          <h3>המחיר הסופי, תמיד</h3>
+          <p>מציגים את המחיר הכולל — כולל מיסים, היטלים ועמלות חובה. בלי הפתעות בקופה.</p>
+        </div>
+        <div class="fd-feature">
+          <div class="fd-feature-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>
+          <h3>ציון תמורה חכם</h3>
+          <p>אלגוריתם שמשקלל מחיר, משך, עצירות, כבודה וגמישות — כדי למצוא את העסקה הכי שווה.</p>
+        </div>
+        <div class="fd-feature">
+          <div class="fd-feature-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+          <h3>מותאם לישראלים</h3>
+          <p>עברית ו-RTL, שקלים, יציאה מנתב״ג, וסינון לחברות ישראליות: אל על, ארקיע, ישראייר ו-Air Haifa.</p>
+        </div>
+        <div class="fd-feature">
+          <div class="fd-feature-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
+          <h3>שקיפות מלאה</h3>
+          <p>זמן עדכון מחיר, מקור הנתונים וספק ההזמנה — גלויים בכל תוצאה. בלי לחצי דחיפות מזויפים.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Footer ============ -->
+  <footer class="fd-footer">
+    <div class="fd-container">
+      <div class="fd-footer-disclaimer">
+        ⚠️ FlyDeal Israel מוצג כאן במצב הדגמה. הנתונים אינם מחירים אמיתיים. המחיר הקובע הוא זה שיוצג באתר ספק ההזמנה בעת ההזמנה.
+      </div>
+      <div class="fd-footer-grid">
+        <div class="fd-footer-col fd-footer-about">
+          <a href="#" class="fd-logo" style="margin-bottom:12px;">
+            <span class="fd-logo-mark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg></span>
+            <span>Fly<b>Deal</b> Israel</span>
+          </a>
+          <p>מנוע השוואת טיסות ומלונות לישראלים. מוצאים את המחיר הסופי האמיתי ואת העסקה המשתלמת ביותר.</p>
+        </div>
+        <div class="fd-footer-col">
+          <h4>חיפוש</h4>
+          <ul>
+            <li><a href="#fd-results-section">טיסות</a></li>
+            <li><a href="#fd-results-section">מלונות</a></li>
+            <li><a href="#fd-results-section">חבילות</a></li>
+          </ul>
+        </div>
+        <div class="fd-footer-col">
+          <h4>יעדים</h4>
+          <ul>
+            <li><a href="#fd-destinations">אתונה</a></li>
+            <li><a href="#fd-destinations">רומא</a></li>
+            <li><a href="#fd-destinations">דובאי</a></li>
+          </ul>
+        </div>
+        <div class="fd-footer-col">
+          <h4>מידע</h4>
+          <ul>
+            <li><a href="#fd-features">אודות</a></li>
+            <li><a href="#fd-features">תנאי שימוש</a></li>
+            <li><a href="#fd-features">מדיניות פרטיות</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="fd-footer-bottom">
+        <span>© <span id="fd-year"></span> FlyDeal Israel · נבנה כפרויקט הדגמה</span>
+        <span>מחירים בשקלים (₪) · יציאה מנתב״ג (TLV)</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- כלים צפים -->
+  <button id="fd-to-top" class="fd-icon-btn fd-to-top" aria-label="חזרה לראש העמוד">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>
+  </button>
+  <div id="fd-mobile-search" class="fd-mobile-search">
+    <button class="fd-btn fd-btn--primary fd-btn--lg">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+      חיפוש
+    </button>
+  </div>
+
+  <!-- ============ Scripts (בסדר תלות, ללא ES Modules — עובד ב-file://) ============ -->
+  <script src="config.example.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/mock-data.js"></script>
+  <script src="js/services/currency-service.js"></script>
+  <script src="js/services/flights-service.js"></script>
+  <script src="js/services/hotels-service.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/components/modal.js"></script>
+  <script src="js/components/search-form.js"></script>
+  <script src="js/components/flight-card.js"></script>
+  <script src="js/components/hotel-card.js"></script>
+  <script src="js/components/filters.js"></script>
+  <script src="js/components/comparison.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- אתחול תוכן סטטי (שנה, יעדים) -->
+  <script>
+    document.getElementById("fd-year").textContent = new Date().getFullYear();
+    (function () {
+      var dests = [
+        { code: "ATH", city: "אתונה", country: "יוון", g: "linear-gradient(135deg,#1e3a8a,#0ea5e9)" },
+        { code: "FCO", city: "רומא", country: "איטליה", g: "linear-gradient(135deg,#7c2d12,#f59e0b)" },
+        { code: "BUD", city: "בודפשט", country: "הונגריה", g: "linear-gradient(135deg,#134e4a,#10b981)" },
+        { code: "PRG", city: "פראג", country: "צ׳כיה", g: "linear-gradient(135deg,#4c1d95,#a855f7)" },
+        { code: "LCA", city: "לרנקה", country: "קפריסין", g: "linear-gradient(135deg,#0c4a6e,#38bdf8)" },
+        { code: "PFO", city: "פאפוס", country: "קפריסין", g: "linear-gradient(135deg,#831843,#ec4899)" },
+        { code: "BUS", city: "בטומי", country: "גאורגיה", g: "linear-gradient(135deg,#064e3b,#34d399)" },
+        { code: "TBS", city: "טביליסי", country: "גאורגיה", g: "linear-gradient(135deg,#3f2d63,#8b5cf6)" },
+        { code: "DXB", city: "דובאי", country: "איחוד האמירויות", g: "linear-gradient(135deg,#78350f,#fbbf24)" },
+        { code: "BCN", city: "ברצלונה", country: "ספרד", g: "linear-gradient(135deg,#7f1d1d,#f97316)" }
+      ];
+      var grid = document.getElementById("fd-dest-grid");
+      dests.forEach(function (d) {
+        var btn = document.createElement("button");
+        btn.className = "fd-dest-card";
+        btn.style.background = d.g;
+        btn.setAttribute("aria-label", "חיפוש טיסות ל" + d.city);
+        var info = document.createElement("div");
+        info.className = "fd-dest-info";
+        var city = document.createElement("span");
+        city.className = "fd-dest-city";
+        city.textContent = d.city;
+        var meta = document.createElement("span");
+        meta.className = "fd-dest-price";
+        meta.textContent = d.country + " · נתוני הדגמה";
+        info.appendChild(city); info.appendChild(meta);
+        btn.appendChild(info);
+        btn.addEventListener("click", function () {
+          // מעבר לטאב טיסות והרצת חיפוש ליעד
+          var flightsTab = document.querySelector('.fd-tab[data-tab="flights"]');
+          if (flightsTab) flightsTab.click();
+          setTimeout(function () {
+            var destSel = document.getElementById("fl-dest");
+            if (destSel) destSel.value = d.code;
+            var form = document.querySelector(".fd-search-form");
+            if (form) form.dispatchEvent(new Event("submit", { cancelable: true }));
+          }, 60);
+        });
+        grid.appendChild(btn);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+
+# FlyDeal Israel — local config with real keys must never be committed
+flydeal-israel/config.js
