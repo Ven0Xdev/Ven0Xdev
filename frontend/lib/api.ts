@@ -78,6 +78,23 @@ export function classifyResponse(status: number, body: string): { code: ApiError
   return { code: "request_failed", detail: text };
 }
 
+export interface FetchMeta {
+  /** true when this response came from the service worker's offline cache
+   * (X-Nexora-Cache: offline-fallback), not a live network round-trip. */
+  offline: boolean;
+  /** when the cached copy was originally fetched, if offline is true. */
+  cachedAt: string | null;
+}
+
+// Side-channel, keyed by request path: lets callers ask "was my last fetch
+// of this path served from cache?" without changing request<T>()'s return
+// type or touching the ~20 existing call sites below.
+const _fetchMeta = new Map<string, FetchMeta>();
+
+export function getFetchMeta(path: string): FetchMeta | null {
+  return _fetchMeta.get(path) ?? null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -94,6 +111,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const { code, detail } = classifyResponse(res.status, body);
     throw new ApiError(code, res.status, detail, path);
   }
+  // Only GET requests are ever served from the service worker cache (see
+  // public/sw.js) — a marked response here always means "stale, not live".
+  const servedFromCache = res.headers.get("X-Nexora-Cache") === "offline-fallback";
+  _fetchMeta.set(path, {
+    offline: servedFromCache,
+    cachedAt: res.headers.get("X-Nexora-Cached-At"),
+  });
   return res.json() as Promise<T>;
 }
 

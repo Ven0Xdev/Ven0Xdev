@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, getFetchMeta } from "@/lib/api";
+import { useResyncListener } from "@/lib/pwa";
 import type { Deliberation, NewsArticle, OhlcvBar, StockAnalysis } from "@/lib/types";
 import { ScoreMeter } from "@/components/ui/ScoreMeter";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
@@ -13,6 +14,7 @@ import { ProbabilityMatrix } from "@/components/dashboard/ProbabilityMatrix";
 import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
 import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import { CacheBadge } from "@/components/pwa/CacheBadge";
 
 export default function StockDetailPage() {
   const params = useParams<{ ticker: string }>();
@@ -23,13 +25,18 @@ export default function StockDetailPage() {
   const [deliberation, setDeliberation] = useState<Deliberation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [analysisCachedAt, setAnalysisCachedAt] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let cancelled = false;
     api
       .analysis(ticker)
       .then((data) => {
-        if (!cancelled) setAnalysis(data);
+        if (cancelled) return;
+        setAnalysis(data);
+        setError(null);
+        const meta = getFetchMeta(`/stocks/${ticker}/analysis`);
+        setAnalysisCachedAt(meta?.offline ? meta.cachedAt : null);
       })
       .catch((e) => {
         if (!cancelled) setError(String(e));
@@ -41,6 +48,9 @@ export default function StockDetailPage() {
       cancelled = true;
     };
   }, [ticker]);
+
+  useEffect(load, [load]);
+  useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
 
   const addToWatchlist = async () => {
     setBusy(true);
@@ -89,8 +99,9 @@ export default function StockDetailPage() {
           <p className="mt-4 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {a.explanation}
           </p>
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <DataBadge mode={a.data_mode} source={a.data_source} asOf={a.as_of} priceAsOf={a.price_as_of} />
+            {analysisCachedAt !== null && <CacheBadge cachedAt={analysisCachedAt} />}
           </div>
         </div>
 

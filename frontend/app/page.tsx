@@ -1,28 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { api, classifyApiError } from "@/lib/api";
+import { api, classifyApiError, getFetchMeta } from "@/lib/api";
+import { useResyncListener } from "@/lib/pwa";
 import type { DashboardSummary, SectorHeatmapEntry } from "@/lib/types";
 import { StatTile } from "@/components/ui/StatTile";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
 import { SectorHeatmap } from "@/components/charts/SectorHeatmap";
+import { CacheBadge } from "@/components/pwa/CacheBadge";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [heatmap, setHeatmap] = useState<SectorHeatmapEntry[]>([]);
   const [dataProvider, setDataProvider] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     Promise.all([api.dashboardSummary(), api.heatmap()])
       .then(([s, h]) => {
         setSummary(s);
         setHeatmap(h);
+        setError(null);
+        // A verified reconnect fires a fresh network request, so a stale
+        // cache badge from a prior offline view is cleared here too.
+        setCachedAt(getFetchMeta("/dashboard/summary")?.offline ? getFetchMeta("/dashboard/summary")!.cachedAt : null);
       })
       .catch((e) => setError(e));
     api.health().then((h) => setDataProvider(h.data_provider)).catch(() => setDataProvider(null));
   }, []);
+
+  useEffect(load, [load]);
+  useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
 
   if (error) return <ErrorState error={error} />;
   if (!summary) return <LoadingState />;
@@ -35,6 +45,8 @@ export default function DashboardPage() {
           Continuous AI scan across the OTC universe. All scores are probability-based, never certainty.
         </p>
       </div>
+
+      {cachedAt !== null && <CacheBadge cachedAt={cachedAt} />}
 
       {dataProvider === "mock" && (
         <div

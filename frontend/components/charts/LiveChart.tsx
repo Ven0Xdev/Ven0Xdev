@@ -190,7 +190,17 @@ export function LiveChart({ symbol }: { symbol: string }) {
           className="rounded-md px-2 py-0.5 font-semibold tracking-wide"
           style={{ color: "var(--status-warning)", background: "color-mix(in srgb, var(--status-warning) 14%, transparent)" }}
         >
-          {streamMode === "live" ? "LIVE FEED" : streamMode === "delayed" ? "DELAYED FEED" : "SYNTHETIC FEED"}
+          {conn !== "live"
+            ? // Never claim LIVE/DELAYED once the stream has dropped — that
+              // would present a stale, possibly cached last-known price as
+              // if it were current. streamMode only reflects the *last*
+              // event received, not what's on screen right now.
+              "LAST KNOWN (not live)"
+            : streamMode === "live"
+              ? "LIVE FEED"
+              : streamMode === "delayed"
+                ? "DELAYED FEED"
+                : "SYNTHETIC FEED"}
         </span>
         {signal && signal.status !== "NO_SIGNAL_YET" && (
           <span
