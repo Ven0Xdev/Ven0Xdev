@@ -98,7 +98,9 @@
     });
 
     var origin = selectField("fl-origin", "מוצא", [{ value: "TLV", label: "תל אביב (TLV) · ישראל" }], "TLV", { disabled: true });
-    var dest = selectField("fl-dest", "יעד", [{ value: "", label: "בחרו יעד…" }].concat(destinationOptions()), "");
+    // יעד ברירת מחדל — כדי שלחיצה על "חיפוש" תניב תוצאות מיד ולא הודעת שגיאה.
+    // ה-Validation על יעד ריק נשאר פעיל (המשתמש יכול לבחור "בחרו יעד…").
+    var dest = selectField("fl-dest", "יעד", [{ value: "", label: "בחרו יעד…" }].concat(destinationOptions()), FD.DEFAULT_DEST);
 
     var swapBtn = Utils.el("button", { type: "button", class: "fd-swap-btn", "aria-label": "החלפת מוצא ויעד", html: Icons.svg("swap", 18) });
 
@@ -216,7 +218,7 @@
     var wrap = Utils.el("form", { class: "fd-search-form", novalidate: "novalidate", "aria-label": "חיפוש מלונות" });
     var errors = errorBox();
 
-    var dest = selectField("ht-dest", "יעד", [{ value: "", label: "בחרו יעד…" }].concat(destinationOptions()), "");
+    var dest = selectField("ht-dest", "יעד", [{ value: "", label: "בחרו יעד…" }].concat(destinationOptions()), FD.DEFAULT_DEST);
     var checkIn = inputField("ht-checkin", "תאריך כניסה", "date", MD.defaults.depart, { min: Utils.toInputDate(new Date()) });
     var checkOut = inputField("ht-checkout", "תאריך יציאה", "date", MD.defaults.ret, { min: Utils.toInputDate(new Date()) });
 

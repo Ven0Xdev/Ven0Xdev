@@ -506,6 +506,8 @@ select.fd-input { cursor: pointer; }
 .fd-state h3 { font-size: 1.3rem; }
 .fd-state p { color: var(--text-2); max-width: 440px; margin: 0 auto var(--sp-5); }
 .fd-state--error .fd-state-icon { color: var(--danger); }
+.fd-state--welcome { background: linear-gradient(180deg, var(--brand-050), var(--surface)); border-style: solid; border-color: var(--border); }
+.fd-state--welcome .fd-state-icon { color: var(--brand); }
 
 /* ============================================================
    Sections (destinations, features)

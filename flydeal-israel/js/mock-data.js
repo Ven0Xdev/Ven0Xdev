@@ -80,6 +80,73 @@
       provider: "SkyBooking", verified: true, seatsLeft: null, updatedAt: minutesAgo(22)
     },
     {
+      id: "FL-013", airlineCode: "IZ", flightNumber: "IZ151",
+      origin: "TLV", destination: "ATH", date: baseDepart,
+      departH: 14, departM: 25, durationMinutes: 135, stopsList: [],
+      returnFlight: { flightNumber: "IZ152", date: baseReturn, departH: 18, departM: 40, durationMinutes: 140, stopsList: [] },
+      cabin: "economy", handbag: true, carryOn: true,
+      checked: { included: true, count: 1, kg: 20 },
+      changePolicy: "paid", cancelPolicy: "paid",
+      pricing: { base: 410, taxes: 165, fees: 30 },
+      provider: "TravelHub", verified: true, seatsLeft: null, updatedAt: minutesAgo(15)
+    },
+    {
+      id: "FL-014", airlineCode: "6H", flightNumber: "6H501",
+      origin: "TLV", destination: "ATH", date: baseDepart,
+      departH: 20, departM: 10, durationMinutes: 130, stopsList: [],
+      returnFlight: { flightNumber: "6H502", date: baseReturn, departH: 23, departM: 15, durationMinutes: 135, stopsList: [] },
+      cabin: "economy", handbag: true, carryOn: true,
+      checked: { included: false, count: 0, kg: 0 },
+      changePolicy: "free", cancelPolicy: "paid",
+      pricing: { base: 295, taxes: 145, fees: 25 },
+      provider: "FlyDeal Direct", verified: true, seatsLeft: 5, updatedAt: minutesAgo(6)
+    },
+    {
+      id: "FL-015", airlineCode: "W6", flightNumber: "W64301",
+      origin: "TLV", destination: "ATH", date: baseDepart,
+      departH: 5, departM: 5, durationMinutes: 140, stopsList: [],
+      returnFlight: { flightNumber: "W64302", date: baseReturn, departH: 9, departM: 20, durationMinutes: 145, stopsList: [] },
+      cabin: "economy", handbag: true, carryOn: false,
+      checked: { included: false, count: 0, kg: 0 },
+      changePolicy: "paid", cancelPolicy: "none",
+      pricing: { base: 175, taxes: 110, fees: 30 },
+      provider: "GoFly", verified: false, seatsLeft: null, updatedAt: minutesAgo(37)
+    },
+    {
+      id: "FL-016", airlineCode: "FR", flightNumber: "FR8842",
+      origin: "TLV", destination: "ATH", date: baseDepart,
+      departH: 22, departM: 45, durationMinutes: 145, stopsList: [],
+      returnFlight: { flightNumber: "FR8843", date: baseReturn, departH: 6, departM: 15, durationMinutes: 150, stopsList: [] },
+      cabin: "economy", handbag: true, carryOn: false,
+      checked: { included: false, count: 0, kg: 0 },
+      changePolicy: "paid", cancelPolicy: "none",
+      pricing: { base: 155, taxes: 105, fees: 35 },
+      provider: "SkyBooking", verified: true, seatsLeft: null, updatedAt: minutesAgo(44)
+    },
+    {
+      id: "FL-017", airlineCode: "TK", flightNumber: "TK789",
+      origin: "TLV", destination: "ATH", date: baseDepart,
+      departH: 7, departM: 40, durationMinutes: 340,
+      stopsList: [{ airport: "IST", city: "איסטנבול", layoverMinutes: 85 }],
+      returnFlight: { flightNumber: "TK790", date: baseReturn, departH: 11, departM: 5, durationMinutes: 355, stopsList: [{ airport: "IST", city: "איסטנבול", layoverMinutes: 100 }] },
+      cabin: "economy", handbag: true, carryOn: true,
+      checked: { included: true, count: 1, kg: 23 },
+      changePolicy: "free", cancelPolicy: "free",
+      pricing: { base: 480, taxes: 195, fees: 35 },
+      provider: "TravelHub", verified: true, seatsLeft: null, updatedAt: minutesAgo(21)
+    },
+    {
+      id: "FL-018", airlineCode: "LY", flightNumber: "LY338",
+      origin: "TLV", destination: "ATH", date: baseDepart,
+      departH: 17, departM: 50, durationMinutes: 125, stopsList: [],
+      returnFlight: { flightNumber: "LY339", date: baseReturn, departH: 21, departM: 30, durationMinutes: 130, stopsList: [] },
+      cabin: "economy", handbag: true, carryOn: true,
+      checked: { included: true, count: 1, kg: 23 },
+      changePolicy: "free", cancelPolicy: "paid",
+      pricing: { base: 705, taxes: 200, fees: 40 },
+      provider: "FlyDeal Direct", verified: true, seatsLeft: null, updatedAt: minutesAgo(10)
+    },
+    {
       id: "FL-003", airlineCode: "6H", flightNumber: "6H621",
       origin: "TLV", destination: "FCO", date: baseDepart,
       departH: 7, departM: 30, durationMinutes: 200, stopsList: [],
@@ -206,6 +273,42 @@
       amenities: ["wifi", "gym", "spa", "accessible"],
       pricing: { perNight: 420, taxes: 60, fees: 25 },
       provider: "HotelsPro", verified: true, roomsLeft: null, updatedAt: minutesAgo(11)
+    },
+    {
+      id: "HT-010", name: "Acropolis View Luxury", city: "ATH", brand: "GrandLine",
+      gradient: 3, gallery: [3, 0, 4], stars: 5,
+      rating: { score: 9.5, count: 1874, source: "אורחי האתר", label: "יוצא מן הכלל" },
+      area: "מקריגיאני", distanceCenterKm: 1.1,
+      attractions: [{ name: "אקרופוליס", distanceKm: 0.3 }, { name: "מוזיאון האקרופוליס", distanceKm: 0.4 }],
+      room: { type: "סוויטה עם מרפסת נוף", sizeM2: 42, bedType: "מיטה זוגית קינג" },
+      breakfast: true, freeCancellation: true, payAtProperty: false,
+      amenities: ["wifi", "pool", "gym", "spa", "accessible"],
+      pricing: { perNight: 780, taxes: 120, fees: 45 },
+      provider: "TravelHub", verified: true, roomsLeft: null, updatedAt: minutesAgo(9)
+    },
+    {
+      id: "HT-011", name: "Athens Budget Rooms", city: "ATH", brand: "Independent",
+      gradient: 6, gallery: [6, 2], stars: 3,
+      rating: { score: 7.9, count: 642, source: "אורחי האתר", label: "טוב" },
+      area: "אומוניה", distanceCenterKm: 1.6,
+      attractions: [{ name: "כיכר אומוניה", distanceKm: 0.2 }, { name: "שוק ורוואקיו", distanceKm: 0.9 }],
+      room: { type: "חדר זוגי סטנדרט", sizeM2: 18, bedType: "מיטה זוגית" },
+      breakfast: false, freeCancellation: true, payAtProperty: true,
+      amenities: ["wifi", "accessible"],
+      pricing: { perNight: 195, taxes: 30, fees: 15 },
+      provider: "GoFly", verified: true, roomsLeft: null, updatedAt: minutesAgo(34)
+    },
+    {
+      id: "HT-012", name: "Syntagma Design Hotel", city: "ATH", brand: "CityStay",
+      gradient: 5, gallery: [5, 1, 3], stars: 4,
+      rating: { score: 8.8, count: 2103, source: "אורחי האתר", label: "מצוין" },
+      area: "סינטגמה", distanceCenterKm: 0.2,
+      attractions: [{ name: "כיכר סינטגמה", distanceKm: 0.1 }, { name: "הגנים הלאומיים", distanceKm: 0.5 }],
+      room: { type: "חדר עיצובי זוגי", sizeM2: 27, bedType: "מיטה זוגית" },
+      breakfast: true, freeCancellation: false, payAtProperty: false,
+      amenities: ["wifi", "gym", "parking"],
+      pricing: { perNight: 455, taxes: 65, fees: 25 },
+      provider: "HotelsPro", verified: true, roomsLeft: 2, updatedAt: minutesAgo(13)
     },
     {
       id: "HT-002", name: "Roma Trastevere Suites", city: "FCO", brand: "Independent",

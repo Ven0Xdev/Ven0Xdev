@@ -10,6 +10,31 @@
 
   var refs = {}; // הפניות לאלמנטים
 
+  // יעד ברירת מחדל לטפסים ולחיפוש הפתיחה
+  FD.DEFAULT_DEST = "ATH";
+
+  /* ================= רשת ביטחון לשגיאות =================
+   * אם משהו נשבר, המשתמש יראה הודעה ברורה במקום עמוד "מת" ללא תגובה.
+   */
+  window.addEventListener("error", function (e) {
+    if (!e.message) return;           // שגיאת טעינת משאב (פונט/תמונה) — לא קריטית
+    showFatal(e.message);
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    showFatal((e.reason && e.reason.message) ? e.reason.message : "שגיאה לא צפויה");
+  });
+
+  function showFatal(message) {
+    if (document.getElementById("fd-fatal")) return;   // פעם אחת בלבד
+    var bar = document.createElement("div");
+    bar.id = "fd-fatal";
+    bar.setAttribute("role", "alert");
+    bar.style.cssText = "position:fixed;inset-inline:0;top:0;z-index:9999;background:#dc2f3f;" +
+      "color:#fff;padding:12px 18px;font:600 14px/1.5 system-ui,sans-serif;direction:rtl;text-align:center";
+    bar.textContent = "אירעה שגיאה בטעינת האתר: " + message + " — נסו לרענן את העמוד (Ctrl+F5).";
+    (document.body || document.documentElement).appendChild(bar);
+  }
+
   /* ================= אתחול ================= */
   function init() {
     // מצב נתונים
@@ -32,6 +57,23 @@
       var banner = Utils.qs("#fd-demo-banner");
       if (banner) banner.hidden = false;
     }
+
+    // חיפוש פתיחה — כדי שהאתר יציג תוצאות אמיתיות מיד ולא אזור ריק.
+    // silent: ללא גלילה אוטומטית וללא רישום בהיסטוריה.
+    runSearch(defaultFlightParams(), { silent: true });
+  }
+
+  // פרמטרי ברירת מחדל לחיפוש הפתיחה
+  function defaultFlightParams() {
+    return {
+      type: "flight", origin: "TLV", destination: FD.DEFAULT_DEST,
+      depart: FD.MockData.defaults.depart, ret: FD.MockData.defaults.ret, oneway: false,
+      adults: 1, children: 0, infants: 0, passengers: 1,
+      cabin: "economy", flexibility: 0, departWindow: "any",
+      currency: Store.get().settings.currency,
+      directOnly: false, baggageIncluded: false,
+      airlinePolicy: Store.get().settings.airlinePolicy
+    };
   }
 
   function cacheRefs() {
@@ -94,8 +136,28 @@
       t.setAttribute("aria-selected", active ? "true" : "false");
     });
     renderSearchArea();
-    // איפוס אזור תוצאות בעת מעבר טאב
+    // מעבר טאב: מציגים מסך פתיחה מזמין במקום אזור ריק
+    var st = name === "hotels" ? Store.get().hotels : name === "packages" ? Store.get().packages : Store.get().flights;
+    if (st.status === "done" && st.raw.length) rerenderResults();
+    else renderWelcome(name);
+  }
+
+  /* ---------- מסך פתיחה (במקום אזור ריק) ---------- */
+  function renderWelcome(tab) {
+    var label = tab === "hotels" ? "מלונות" : tab === "packages" ? "חבילות" : "טיסות";
     Utils.clear(refs.results);
+    refs.results.appendChild(Utils.el("div", { class: "fd-state fd-state--welcome" }, [
+      Utils.el("div", { class: "fd-state-icon", html: Icons.svg(tab === "hotels" ? "hotel" : tab === "packages" ? "package" : "plane", 48) }),
+      Utils.el("h3", null, "מוכנים למצוא " + label + "?"),
+      Utils.el("p", null, "מלאו את פרטי החיפוש למעלה ולחצו על כפתור החיפוש — או התחילו מיד עם חיפוש לדוגמה."),
+      Utils.el("button", {
+        class: "fd-btn fd-btn--primary fd-btn--lg",
+        on: { click: function () {
+          var form = refs.searchMount.querySelector(".fd-search-form");
+          if (form) form.dispatchEvent(new Event("submit", { cancelable: true }));
+        } }
+      }, [Icons.node("search", 18), "חיפוש " + label])
+    ]));
   }
 
   /* ================= אזור חיפוש ================= */
@@ -107,12 +169,15 @@
   }
 
   /* ================= הרצת חיפוש ================= */
-  function runSearch(params) {
+  function runSearch(params, opts) {
+    opts = opts || {};
     var tab = Store.get().activeTab;
-    Store.addHistory(tab, params);
-    renderHistory();
+    if (!opts.silent) {
+      Store.addHistory(tab, params);
+      renderHistory();
+    }
 
-    if (tab === "packages") return runPackageSearch(params);
+    if (tab === "packages") return runPackageSearch(params, opts);
 
     var type = tab === "hotels" ? "hotels" : "flights";
     Store.get()[type].params = params;
@@ -123,7 +188,7 @@
     else { Store.get().hotelFilters = {}; Store.get().page.hotels = 1; }
 
     renderSkeletons(type);
-    scrollToResults();
+    if (!opts.silent) scrollToResults();
 
     var svc = type === "hotels" ? FD.HotelsService : FD.FlightsService;
     svc.search(params).then(function (results) {
@@ -298,11 +363,12 @@
   }
 
   /* ================= חבילות ================= */
-  function runPackageSearch(params) {
+  function runPackageSearch(params, opts) {
+    opts = opts || {};
     Store.get().packages.params = params;
     Store.get().packages.status = "loading";
     renderSkeletons("packages");
-    scrollToResults();
+    if (!opts.silent) scrollToResults();
 
     setTimeout(function () {
       var packages = FD.MockData.PACKAGES.map(function (p) {
