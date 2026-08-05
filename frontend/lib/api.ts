@@ -13,6 +13,7 @@ import type {
   UniverseTicker,
   WatchlistItem,
 } from "./types";
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -95,17 +96,67 @@ export function getFetchMeta(path: string): FetchMeta | null {
   return _fetchMeta.get(path) ?? null;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// Concurrent 401s (e.g. every widget on the dashboard firing at once) must
+// only trigger one refresh call, not one per request — every caller awaits
+// this same in-flight promise instead of racing the backend.
+let _refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  if (!_refreshInFlight) {
+    _refreshInFlight = (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+          cache: "no-store",
+        });
+        if (!res.ok) return false;
+        const data = (await res.json()) as { access_token: string; refresh_token: string };
+        setTokens(data.access_token, data.refresh_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        _refreshInFlight = null;
+      }
+    })();
+  }
+  return _refreshInFlight;
+}
+
+async function rawFetch(path: string, init?: RequestInit): Promise<Response> {
+  const token = getAccessToken();
+  return fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
+    cache: "no-store",
+  });
+}
+
+async function request<T>(path: string, init?: RequestInit, _retried = false): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
-      cache: "no-store",
-    });
+    res = await rawFetch(path, init);
   } catch (e) {
     throw new ApiError("backend_unreachable", 0, String(e), path);
   }
+
+  // A logged-in session whose access token just expired gets one silent
+  // retry via the refresh token before the caller ever sees an error —
+  // most 401s a real user hits are just "token aged out mid-session".
+  if (res.status === 401 && !_retried && getRefreshToken()) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return request<T>(path, init, true);
+    clearTokens();
+  }
+
   if (!res.ok) {
     const body = await res.text();
     const { code, detail } = classifyResponse(res.status, body);
@@ -121,7 +172,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+}
+
 export const api = {
+  login: (email: string, password: string) =>
+    request<AuthTokens>(`/auth/login`, { method: "POST", body: JSON.stringify({ email, password }) }),
+  register: (email: string, password: string) =>
+    request<AuthTokens>(`/auth/register`, { method: "POST", body: JSON.stringify({ email, password }) }),
+  me: () => request<{ id: number; email: string; role: string; created_at: string }>(`/auth/me`),
+
   universe: (limit = 100) => request<UniverseTicker[]>(`/stocks/universe?limit=${limit}`),
   search: (q: string) => request<SearchResponse>(`/stocks/search?q=${encodeURIComponent(q)}`),
   deliberation: (symbol: string) => request<Deliberation>(`/stocks/${symbol}/deliberation`),

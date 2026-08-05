@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { MobileNav } from "@/components/layout/MobileNav";
+import { AppShell } from "@/components/layout/AppShell";
 import { PwaProvider } from "@/components/pwa/PwaProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -45,13 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="min-h-full">
         <PwaProvider />
-        <div className="flex min-h-screen flex-col sm:flex-row">
-          <Sidebar />
-          <MobileNav />
-          <main className="flex-1 p-4 sm:p-8 lg:p-10">
-            <div className="mx-auto w-full max-w-7xl">{children}</div>
-          </main>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

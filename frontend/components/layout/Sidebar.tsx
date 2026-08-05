@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 function Icon({ d, viewBox = "0 0 24 24" }: { d: string; viewBox?: string }) {
   return (
@@ -172,7 +173,10 @@ export function Sidebar() {
           <NexoraMark />
           <span className="text-[15px] font-semibold tracking-tight">Nexora</span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <LogoutButton />
+          <ThemeToggle />
+        </div>
       </div>
       <SidebarBody />
       <SidebarFooter />

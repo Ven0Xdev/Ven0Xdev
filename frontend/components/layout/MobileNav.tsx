@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NexoraMark, SidebarBody, SidebarFooter } from "./Sidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 /** Top bar + slide-in drawer, visible only below the `sm` breakpoint where
  * the persistent Sidebar hides itself. Without this, phones had no way to
@@ -64,7 +65,10 @@ export function MobileNav() {
           <NexoraMark size={7} />
           <span className="text-[15px] font-semibold tracking-tight">Nexora</span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <LogoutButton />
+          <ThemeToggle />
+        </div>
       </div>
 
       {open && (

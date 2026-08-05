@@ -43,6 +43,7 @@ def _get_or_create_dev_user(db: Session) -> User:
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(db_session),
 ) -> User:
@@ -50,10 +51,15 @@ def get_current_user(
     if not settings.auth_required:
         return _get_or_create_dev_user(db)
 
-    if credentials is None:
+    # Browsers' EventSource API cannot set custom headers, so the SSE stream
+    # endpoint has no way to send Authorization — accept the access token as
+    # a query param as a fallback, but only when no header was sent, so
+    # every other endpoint's behavior is completely unchanged.
+    token = credentials.credentials if credentials else request.query_params.get("token")
+    if token is None:
         raise HTTPException(status_code=401, detail="Not authenticated", headers={"WWW-Authenticate": "Bearer"})
     try:
-        payload = decode_token(credentials.credentials, ACCESS_TOKEN_TYPE)
+        payload = decode_token(token, ACCESS_TOKEN_TYPE)
     except TokenError as exc:
         raise HTTPException(status_code=401, detail=str(exc), headers={"WWW-Authenticate": "Bearer"}) from exc
 

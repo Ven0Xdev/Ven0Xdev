@@ -118,6 +118,32 @@ def test_chat_session_hijack_blocked(client, auth_on):
     assert stolen.status_code == 403
 
 
+def test_sse_stream_accepts_token_as_query_param(client, auth_on):
+    """EventSource (used by the live chart) cannot set an Authorization
+    header at all — the query-param fallback in get_current_user exists
+    solely so that path still authenticates."""
+    tokens = _register(client, "sse@example.com").json()
+    r = client.get(f"/api/v1/stream/AXNT/health?token={tokens['access_token']}")
+    assert r.status_code == 200
+
+
+def test_sse_query_param_rejects_invalid_token(client, auth_on):
+    assert client.get("/api/v1/stream/AXNT/health?token=garbage").status_code == 401
+    assert client.get("/api/v1/stream/AXNT/health").status_code == 401  # neither header nor query param
+
+
+def test_header_takes_priority_over_query_param(client, auth_on):
+    """An Authorization header is never silently bypassed by also supplying
+    a valid query-param token — the header is checked and, if bad, the
+    request is rejected outright rather than falling back."""
+    tokens = _register(client, "priority@example.com").json()
+    r = client.get(
+        f"/api/v1/stream/AXNT/health?token={tokens['access_token']}",
+        headers={"Authorization": "Bearer garbage"},
+    )
+    assert r.status_code == 401
+
+
 def test_revocation_via_token_version(client, auth_on, test_engine):
     tokens = _register(client, "revoke@example.com").json()
 
