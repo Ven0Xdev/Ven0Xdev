@@ -141,12 +141,22 @@ class RateLimitedHttpClient:
         return response
 
     def get_json(self, path: str, params: dict | None = None, cache_key: tuple | None = None):
+        payload, _from_cache = self.get_json_cached(path, params, cache_key)
+        return payload
+
+    def get_json_cached(
+        self, path: str, params: dict | None = None, cache_key: tuple | None = None
+    ) -> tuple:
+        """Same as get_json but also reports whether the result was served
+        from the TTL cache — callers use this to surface an honest "cached"
+        vs "live/delayed" data_mode instead of always claiming a fresh call.
+        """
         from app.services.monitoring import counters
 
         if cache_key is not None:
             cached = self._cache.get(cache_key)
             if cached is not None:
-                return cached
+                return cached, True
 
         self._bucket.acquire()
         counters.increment("provider.calls")
@@ -190,4 +200,4 @@ class RateLimitedHttpClient:
         payload = response.json()
         if cache_key is not None:
             self._cache.put(cache_key, payload)
-        return payload
+        return payload, False

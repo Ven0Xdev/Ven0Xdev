@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     market_data_provider: str = "mock"
     polygon_api_key: str | None = None
     finnhub_api_key: str | None = None
+    # twelvedata = primary; alphavantage = automatic fallback when Twelve
+    # Data fails. Select the combined behavior with MARKET_DATA_PROVIDER=
+    # twelvedata (see services/data_providers/market_data_fallback.py); each
+    # vendor can also be selected alone (twelvedata_only / alphavantage).
+    twelve_data_api_key: str | None = None
+    alpha_vantage_api_key: str | None = None
     otc_markets_api_key: str | None = None
     alpaca_api_key: str | None = None
     alpaca_api_secret: str | None = None

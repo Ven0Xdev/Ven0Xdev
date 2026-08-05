@@ -25,7 +25,7 @@ export interface StockAnalysis {
   tier: string;
   sector: string;
   data_source: string;
-  data_mode: "synthetic" | "delayed" | "live" | "unspecified";
+  data_mode: "synthetic" | "delayed" | "live" | "cached" | "unspecified";
   as_of: string | null;
   price_as_of: string | null;
   liquidity_score: number;

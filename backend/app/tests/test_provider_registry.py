@@ -1,14 +1,30 @@
 import pytest
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.data_providers.registry import build_provider, registered_providers
 
 
 def test_all_expected_providers_registered():
     names = registered_providers()
-    for expected in ("mock", "finnhub", "polygon", "otc_markets", "alpaca"):
+    for expected in (
+        "mock", "finnhub", "polygon", "otc_markets", "alpaca",
+        "twelvedata", "twelvedata_only", "alphavantage",
+    ):
         assert expected in names
+
+
+def test_twelvedata_builds_with_fallback_when_no_keys_set():
+    # Explicit Settings with both keys forced off — must not depend on
+    # whatever happens to be in the local .env, and must never make a real
+    # network call in this suite. The composite must still *build* (never a
+    # hard failure at construction time) and report an honest offline error
+    # on first use rather than silently succeeding or fabricating data.
+    settings = Settings(twelve_data_api_key=None, alpha_vantage_api_key=None)
+    provider = build_provider("twelvedata", settings)
+    assert provider.name == "twelvedata"
+    with pytest.raises(ProviderDataUnavailable):
+        provider.get_quote("AAA")
 
 
 def test_unknown_provider_fails_with_registered_list():

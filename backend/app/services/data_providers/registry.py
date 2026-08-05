@@ -26,6 +26,9 @@ _ADAPTER_MODULES = [
     "app.services.data_providers.mock_provider",
     "app.services.data_providers.finnhub_provider",
     "app.services.data_providers.real_providers",  # polygon, otc_markets, alpaca
+    "app.services.data_providers.twelvedata_provider",  # registers "twelvedata_only"
+    "app.services.data_providers.alphavantage_provider",  # registers "alphavantage"
+    "app.services.data_providers.market_data_fallback",  # registers "twelvedata" (+ AV fallback)
 ]
 
 _loaded = False

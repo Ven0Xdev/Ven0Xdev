@@ -2,6 +2,7 @@ const MODE_STYLES: Record<string, { label: string; color: string }> = {
   synthetic: { label: "SYNTHETIC DATA", color: "var(--status-warning)" },
   delayed: { label: "DELAYED / EOD DATA", color: "var(--series-blue)" },
   live: { label: "LIVE DATA", color: "var(--status-good)" },
+  cached: { label: "CACHED DATA", color: "var(--status-warning)" },
   unspecified: { label: "DATA MODE UNKNOWN", color: "var(--text-muted)" },
 };
 
