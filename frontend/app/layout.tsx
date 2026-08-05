@@ -31,7 +31,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`h-full antialiased ${inter.variable}`}>
+    <html lang="en" className={`h-full antialiased ${inter.variable}`} suppressHydrationWarning>
+      {/* suppressHydrationWarning is scoped to this element's own attributes
+          only (not descendants) — it exists for exactly this case: the
+          blocking script below legitimately sets data-theme on the client
+          before React hydrates, since the server has no theme signal at
+          all. Without it, React logs a false-alarm mismatch warning on
+          every single page load. */}
       <head>
         {/* Blocking, pre-hydration: applies the stored/OS theme before first
             paint so there is never a flash of the wrong theme. */}
