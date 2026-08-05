@@ -11,12 +11,83 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 
 import pandas as pd
 
 
+class AssetType(str, Enum):
+    """The platform's unified asset taxonomy (multi-asset expansion,
+    see /OTC_TO_MULTI_ASSET_MIGRATION.md §1). OTC_STOCK is one member
+    among many now, not the implicit default for every symbol.
+    """
+
+    STOCK = "STOCK"
+    ETF = "ETF"
+    INDEX = "INDEX"                 # non-tradable (S&P 500, Nasdaq Composite, VIX)
+    COMMODITY = "COMMODITY"         # oil, natural gas
+    PRECIOUS_METAL = "PRECIOUS_METAL"  # gold/silver spot
+    FOREX = "FOREX"
+    CRYPTO = "CRYPTO"
+    OTC_STOCK = "OTC_STOCK"
+
+
+@dataclass
+class OTCProfile:
+    """OTC-only red-flag fields. Populated ONLY when asset_type ==
+    OTC_STOCK — a NASDAQ/NYSE stock's AssetMeta.otc is always None, so
+    no OTC warning can ever be computed or rendered for it.
+    """
+
+    tier: str  # Pink, PinkLimited, Expert, QX, QB
+    caveat_emptor: bool = False
+    shell_risk: bool = False
+    disclosure_status: str = "unknown"
+    reverse_split_count_3y: int = 0
+
+
+@dataclass
+class AssetMeta:
+    """Unified symbol record for every asset class the platform supports.
+    This is the multi-asset replacement for the OTC-only TickerMeta below
+    (kept as-is for backward compatibility — see its docstring)."""
+
+    symbol: str
+    asset_type: AssetType
+    name: str
+    exchange: str            # NASDAQ, NYSE, ARCA, CBOE, OTC, INDEX, SPOT
+    currency: str = "USD"
+    provider: str = "unknown"       # which adapter is authoritative for this symbol
+    is_active: bool = True
+    tradable: bool = True            # False for INDEX — no entry/stop/targets
+    trading_hours: str = "09:30-16:00 ET"
+    data_delay: str = "unspecified"  # "realtime" | "delayed_15m" | "eod" | "synthetic"
+    supported_timeframes: list[str] = field(default_factory=lambda: ["1d"])
+    otc: OTCProfile | None = None    # only set when asset_type == OTC_STOCK
+
+    def __post_init__(self) -> None:
+        if self.asset_type != AssetType.OTC_STOCK and self.otc is not None:
+            raise ValueError(
+                f"{self.symbol}: OTCProfile set on a non-OTC asset_type "
+                f"({self.asset_type}) — OTC fields must never attach to a "
+                f"standard NASDAQ/NYSE/ETF/index/commodity asset."
+            )
+        if self.asset_type == AssetType.INDEX and self.tradable:
+            raise ValueError(
+                f"{self.symbol}: INDEX assets are never tradable (no entry/stop/"
+                f"targets) — did you mean an ETF that tracks this index?"
+            )
+
+
 @dataclass
 class TickerMeta:
+    """The provider-facing OTC ticker record. Kept unchanged (existing
+    providers, scorer, and tests all depend on this exact shape) — this is
+    now the OTC_STOCK-specific view; AssetMeta above is the multi-asset
+    record. Fields here map onto AssetMeta.otc (OTCProfile) once a symbol
+    is asset-typed; see /OTC_TO_MULTI_ASSET_MIGRATION.md §1.
+    """
+
     symbol: str
     company_name: str
     tier: str  # Pink, PinkLimited, Expert, QX, QB

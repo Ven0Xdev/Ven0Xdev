@@ -1,3 +1,4 @@
+from app.db.models.asset import Asset
 from app.db.models.backtest import BacktestResult, BacktestTrade
 from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.edgar import EdgarCompanyFacts
@@ -12,6 +13,7 @@ from app.db.models.trade import Trade
 from app.db.models.user import User
 
 __all__ = [
+    "Asset",
     "EdgarCompanyFacts",
     "ScanCycle",
     "Signal",
