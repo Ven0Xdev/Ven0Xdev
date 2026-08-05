@@ -49,8 +49,18 @@ export function Sidebar() {
       style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
     >
       <div className="mb-4 flex items-center gap-2 px-2">
-        <div className="h-7 w-7 rounded-md" style={{ background: "var(--series-blue)" }} />
-        <span className="text-base font-semibold">Ven0X OTC</span>
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-md text-sm font-bold"
+          style={{ background: "#0d0d0d" }}
+          aria-hidden="true"
+        >
+          <svg width="16" height="16" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="16,18 32,18 32,82 16,82" fill="#ffffff" />
+            <polygon points="68,18 84,18 84,82 68,82" fill="#ffffff" />
+            <polygon points="16,18 32,18 84,82 68,82" fill="#0bb981" />
+          </svg>
+        </div>
+        <span className="text-base font-semibold">Nexora</span>
       </div>
 
       <form

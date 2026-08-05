@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # --- App ---
-    app_name: str = "Ven0X OTC Intelligence Platform"
+    app_name: str = "Nexora — AI Financial Intelligence"
     environment: Literal["development", "staging", "production", "test"] = "development"
     api_v1_prefix: str = "/api/v1"
     debug: bool = True
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     otc_markets_api_key: str | None = None
     alpaca_api_key: str | None = None
     alpaca_api_secret: str | None = None
-    sec_edgar_user_agent: str = "Ven0X OTC Intelligence Platform contact@ven0x.dev"
+    sec_edgar_user_agent: str = "Nexora contact@nexora.dev"
     # EDGAR enrichment overlays real dilution/filing facts onto fundamentals.
     # Meaningless for the synthetic provider (fake tickers), so it only
     # engages for real providers, and can be forced off here.

@@ -1,4 +1,4 @@
-# Database Design — Ven0X OTC Intelligence Platform
+# Database Design — Nexora AI Financial Intelligence Platform
 
 | Field | Value |
 |---|---|

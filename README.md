@@ -1,4 +1,4 @@
-# Ven0X — OTC AI Intelligence Platform
+# Nexora — AI Financial Intelligence Platform
 
 An AI-powered research platform for OTC (over-the-counter) stocks: continuous
 scanning, probability-based opportunity ranking, manipulation detection,

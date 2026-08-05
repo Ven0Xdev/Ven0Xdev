@@ -1,4 +1,4 @@
-# Ven0X — 50 Features to Beat TradingView, StockTitan, Finviz, Seeking Alpha & Koyfin
+# Nexora — 50 Features to Beat TradingView, StockTitan, Finviz, Seeking Alpha & Koyfin
 
 Version 1.0 · 2026-07-12 · Product-strategy document (no code in this change)
 

@@ -1,4 +1,4 @@
-# System Architecture — Ven0X OTC Intelligence Platform
+# System Architecture — Nexora AI Financial Intelligence Platform
 
 | Field | Value |
 |---|---|

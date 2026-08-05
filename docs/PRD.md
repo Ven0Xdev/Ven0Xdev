@@ -1,4 +1,4 @@
-# Product Requirements Document — Ven0X OTC Intelligence Platform
+# Product Requirements Document — Nexora AI Financial Intelligence Platform
 
 | Field | Value |
 |---|---|
