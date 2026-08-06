@@ -130,6 +130,27 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface MarketOverviewStock {
+  symbol: string;
+  status: "ok" | "unavailable";
+  company_name?: string;
+  current_price?: number;
+  change?: number | null;
+  change_percent?: number | null;
+  volume?: number | null;
+  market_status?: "open" | "closed" | "pre-market" | "after-hours";
+  chart_history?: number[];
+  data_source?: string;
+  data_mode?: string;
+  note?: string | null;
+}
+
+export interface MarketOverviewResponse {
+  stocks: MarketOverviewStock[];
+  as_of: string;
+  provider: string;
+}
+
 export interface DashboardSummary {
   universe_size: number;
   avg_model_confidence: number;

@@ -24,7 +24,28 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 14
     algorithm: str = "HS256"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # Deliberately a plain string field, not list[str]: pydantic-settings
+    # eagerly JSON-decodes any env value bound to a list-typed field before
+    # a validator ever sees it, so CORS_ORIGINS=http://a,http://b (the
+    # friendlier, non-JSON form most .env examples use) would hard-crash
+    # startup with a JSONDecodeError. Accepting either syntax here and
+    # parsing in the `cors_origins` property below avoids that trap while
+    # still supporting the JSON-array form for anyone already using it.
+    cors_origins_raw: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000",
+        alias="CORS_ORIGINS",
+        description='Comma-separated origins, e.g. "http://localhost:3000,http://127.0.0.1:3000". '
+        'A JSON array string ([\"http://a\"]) also still works.',
+    )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        raw = self.cors_origins_raw.strip()
+        if raw.startswith("["):
+            import json
+
+            return [str(o).strip() for o in json.loads(raw)]
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
     # AUTH_REQUIRED=false keeps localhost development friction-free (a
     # local "dev@local" operator principal is injected). Production MUST
     # run with true — main.py refuses production+default-secret outright.
@@ -72,6 +93,11 @@ class Settings(BaseSettings):
 
     # --- LLM / chat assistant ---
     anthropic_api_key: str | None = None
+    # Reserved for a future OpenAI-backed chat path — no code reads this yet
+    # (the "llm" chat_backend only routes to Anthropic today). Present here
+    # so it's a recognized, documented variable rather than a silent no-op
+    # if someone sets it expecting it to do something.
+    openai_api_key: str | None = None
     chat_model: str = "claude-sonnet-5"
     chat_backend: Literal["llm", "template"] = "template"
 

@@ -4,11 +4,15 @@ conversations survive process restarts and are auditable. A given session
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models.chat import ChatMessage, ChatSession
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -18,19 +22,42 @@ class ChatTurn:
 
 
 def get_or_create_session(db: Session, session_key: str) -> ChatSession:
+    """Never 500s on a missing session — creates it. `session_key` is
+    unique+indexed, so two concurrent first-requests for the same brand-new
+    key (e.g. a frontend double-effect firing twice) can both pass the
+    SELECT and race on INSERT; the loser's commit raises IntegrityError,
+    which is caught here, rolled back, and resolved by re-reading the
+    winner's row rather than propagating as an unhandled 500.
+    """
     session = db.query(ChatSession).filter_by(session_key=session_key).one_or_none()
-    if session is None:
-        session = ChatSession(session_key=session_key)
-        db.add(session)
+    if session is not None:
+        return session
+
+    session = ChatSession(session_key=session_key)
+    db.add(session)
+    try:
         db.commit()
-        db.refresh(session)
+    except IntegrityError:
+        logger.info("chat session %r was created concurrently — reusing the existing row", session_key)
+        db.rollback()
+        session = db.query(ChatSession).filter_by(session_key=session_key).one_or_none()
+        if session is None:
+            # Extremely unlikely (the row that caused the conflict should
+            # exist), but never fabricate a session — surface it clearly.
+            raise RuntimeError(f"Could not create or find chat session {session_key!r} after a commit conflict.")
+        return session
+    db.refresh(session)
     return session
 
 
 def append_message(db: Session, session: ChatSession, role: str, content: str) -> ChatMessage:
     message = ChatMessage(session_id=session.id, role=role, content=content)
     db.add(message)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(message)
     return message
 

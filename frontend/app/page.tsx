@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
 import { SectorHeatmap } from "@/components/charts/SectorHeatmap";
 import { CacheBadge } from "@/components/pwa/CacheBadge";
+import { MarketOverview } from "@/components/dashboard/MarketOverview";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -18,7 +19,12 @@ export default function DashboardPage() {
   const [dataProvider, setDataProvider] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
 
+  // Kept free of any synchronous setState call so it's safe to hand
+  // directly to useEffect below — every state update here happens inside
+  // a .then()/.catch() callback, i.e. asynchronously, never during the
+  // effect's own synchronous execution.
   const load = useCallback(() => {
     Promise.all([api.dashboardSummary(), api.heatmap()])
       .then(([s, h]) => {
@@ -36,9 +42,28 @@ export default function DashboardPage() {
   useEffect(load, [load]);
   useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
 
-  if (error) return <ErrorState error={error} />;
-  if (!summary) return <DashboardSkeleton />;
+  // lib/api.ts's request timeout guarantees `error` eventually gets set for
+  // an unreachable backend, but this is a second, independent ceiling so a
+  // skeleton never just sits there with no way out for the user.
+  useEffect(() => {
+    if (summary !== null || error !== null) return;
+    const t = setTimeout(() => setLoadingTooLong(true), 8000);
+    return () => clearTimeout(t);
+  }, [summary, error]);
 
+  // Event-handler-only: safe to setState synchronously here (this runs
+  // from a button click, never from inside an effect).
+  const retry = useCallback(() => {
+    setError(null);
+    setLoadingTooLong(false);
+    load();
+  }, [load]);
+
+  // The OTC summary/heatmap (a full universe ML scan, tens of seconds on a
+  // cache miss) and the large-cap market overview (a handful of cheap
+  // quote lookups) are unrelated data sources — one being slow must never
+  // block the other. PageHeader and MarketOverview always render; only the
+  // OTC-specific section below swaps between skeleton/error/content.
   return (
     <div className="flex flex-col gap-7">
       <PageHeader
@@ -62,78 +87,105 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="animate-in-stagger grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatTile label="Universe scanned" value={summary.universe_size.toString()} />
-        <StatTile label="Avg model confidence" value={`${summary.avg_model_confidence.toFixed(0)}%`} />
-        <StatTile label="Watchlist" value={summary.watchlist_count.toString()} />
-        <StatTile label="Open positions" value={summary.open_positions.toString()} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="card animate-in p-5">
-          <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-            Top opportunities
-          </h2>
-          {summary.top_opportunities.length === 0 ? (
-            <EmptyRow text="No opportunities scored yet." />
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {summary.top_opportunities.map((o) => (
-                <li key={o.ticker}>
-                  <Link
-                    href={`/stock/${o.ticker}`}
-                    className="flex items-center justify-between rounded-[10px] px-3 py-2.5 transition-colors"
-                    style={{ transition: "background-color var(--duration-fast) var(--ease-out)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <span className="font-semibold">{o.ticker}</span>
-                    <div className="flex items-center gap-2.5">
-                      <span className="tabular text-xs" style={{ color: "var(--text-muted)" }}>
-                        confidence {o.confidence_score.toFixed(0)}%
-                      </span>
-                      <Badge variant={scoreVariant(o.overall_ai_score)}>{o.overall_ai_score.toFixed(0)}</Badge>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="card animate-in p-5">
-          <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-            Risk monitor — elevated manipulation risk
-          </h2>
-          {summary.high_risk_watch.length === 0 ? (
-            <EmptyRow text="No tickers currently flagged above the risk threshold." good />
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {summary.high_risk_watch.map((r) => (
-                <li key={r.ticker}>
-                  <Link
-                    href={`/stock/${r.ticker}`}
-                    className="flex items-center justify-between rounded-[10px] px-3 py-2.5"
-                    style={{ transition: "background-color var(--duration-fast) var(--ease-out)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <span className="font-semibold">{r.ticker}</span>
-                    <Badge variant={riskVariant(r.manipulation_risk)}>{r.manipulation_risk.toFixed(0)}</Badge>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      <div className="card animate-in p-5">
-        <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-          Sector rotation — avg AI score by sector
+      <div className="flex flex-col gap-4">
+        <h2 className="text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+          Market overview
         </h2>
-        <SectorHeatmap data={heatmap} />
+        <MarketOverview />
       </div>
+
+      {error ? (
+        <ErrorState error={error} onRetry={retry} />
+      ) : !summary ? (
+        loadingTooLong ? (
+          <div className="card flex flex-col gap-2 p-5 text-sm">
+            <p className="font-semibold">Still waiting on the OTC scan.</p>
+            <p style={{ color: "var(--text-secondary)" }}>
+              A full universe scan can take a while on a cold cache — this is taking longer than expected.
+            </p>
+            <button onClick={retry} className="btn btn-secondary btn-sm mt-1 w-fit">
+              Retry
+            </button>
+          </div>
+        ) : (
+          <OtcSummarySkeleton />
+        )
+      ) : (
+        <>
+          <div className="animate-in-stagger grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatTile label="Universe scanned" value={summary.universe_size.toString()} />
+            <StatTile label="Avg model confidence" value={`${summary.avg_model_confidence.toFixed(0)}%`} />
+            <StatTile label="Watchlist" value={summary.watchlist_count.toString()} />
+            <StatTile label="Open positions" value={summary.open_positions.toString()} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="card animate-in p-5">
+              <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                Top opportunities
+              </h2>
+              {summary.top_opportunities.length === 0 ? (
+                <EmptyRow text="No opportunities scored yet." />
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {summary.top_opportunities.map((o) => (
+                    <li key={o.ticker}>
+                      <Link
+                        href={`/stock/${o.ticker}`}
+                        className="flex items-center justify-between rounded-[10px] px-3 py-2.5 transition-colors"
+                        style={{ transition: "background-color var(--duration-fast) var(--ease-out)" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <span className="font-semibold">{o.ticker}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span className="tabular text-xs" style={{ color: "var(--text-muted)" }}>
+                            confidence {o.confidence_score.toFixed(0)}%
+                          </span>
+                          <Badge variant={scoreVariant(o.overall_ai_score)}>{o.overall_ai_score.toFixed(0)}</Badge>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="card animate-in p-5">
+              <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                Risk monitor — elevated manipulation risk
+              </h2>
+              {summary.high_risk_watch.length === 0 ? (
+                <EmptyRow text="No tickers currently flagged above the risk threshold." good />
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {summary.high_risk_watch.map((r) => (
+                    <li key={r.ticker}>
+                      <Link
+                        href={`/stock/${r.ticker}`}
+                        className="flex items-center justify-between rounded-[10px] px-3 py-2.5"
+                        style={{ transition: "background-color var(--duration-fast) var(--ease-out)" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <span className="font-semibold">{r.ticker}</span>
+                        <Badge variant={riskVariant(r.manipulation_risk)}>{r.manipulation_risk.toFixed(0)}</Badge>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <div className="card animate-in p-5">
+            <h2 className="mb-4 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+              Sector rotation — avg AI score by sector
+            </h2>
+            <SectorHeatmap data={heatmap} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -158,13 +210,9 @@ function EmptyRow({ text, good }: { text: string; good?: boolean }) {
   );
 }
 
-function DashboardSkeleton() {
+function OtcSummarySkeleton() {
   return (
     <div className="flex flex-col gap-7">
-      <div>
-        <Skeleton className="h-7 w-40" />
-        <Skeleton className="mt-2 h-4 w-96" />
-      </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="card flex flex-col gap-2.5 p-5">
@@ -182,7 +230,7 @@ function DashboardSkeleton() {
   );
 }
 
-function ErrorState({ error }: { error: unknown }) {
+function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { title, hint } = classifyApiError(error);
   return (
     <div className="card animate-in p-5 text-sm" style={{ borderColor: "var(--status-critical-soft)" }}>
@@ -193,6 +241,11 @@ function ErrorState({ error }: { error: unknown }) {
       <pre className="mt-2 whitespace-pre-wrap text-xs" style={{ color: "var(--text-muted)" }}>
         {String(error)}
       </pre>
+      {onRetry && (
+        <button onClick={onRetry} className="btn btn-secondary btn-sm mt-3">
+          Retry
+        </button>
+      )}
     </div>
   );
 }

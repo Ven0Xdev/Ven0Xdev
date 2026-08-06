@@ -57,6 +57,7 @@ async def stream_symbol(symbol: str, _user=Depends(get_current_user)):
 @router.post("/{symbol}/evaluate-signal")
 def evaluate_signal_now(
     symbol: str,
+    timeframe: str = "1D",
     db: Session = Depends(db_session),
     provider: MarketDataProvider = Depends(data_provider),
     _user=Depends(get_current_user),
@@ -66,7 +67,7 @@ def evaluate_signal_now(
     service = get_stream_service()
     health = service.health(symbol)
     signal = evaluate_signal(
-        symbol, provider, db,
+        symbol, provider, db, timeframe=timeframe,
         indicators_warm=True,  # REST path uses full-history indicators (always warm ≥60 bars)
         provider_healthy=not health.get("stale", False),
     )
@@ -75,23 +76,23 @@ def evaluate_signal_now(
 
 
 @router.get("/{symbol}/signal")
-def current_signal(symbol: str, db: Session = Depends(db_session), _user=Depends(get_current_user)):
+def current_signal(symbol: str, timeframe: str = "1D", db: Session = Depends(db_session), _user=Depends(get_current_user)):
     signal = (
-        db.query(Signal).filter_by(ticker_symbol=symbol.upper())
+        db.query(Signal).filter_by(ticker_symbol=symbol.upper(), timeframe=timeframe)
         .order_by(Signal.created_at.desc(), Signal.id.desc()).first()
     )
     return _signal_payload(signal) if signal else {"status": "NO_SIGNAL_YET", "ticker": symbol.upper()}
 
 
 @router.get("/{symbol}/signal-history")
-def signal_history(symbol: str, limit: int = 20, db: Session = Depends(db_session), _user=Depends(get_current_user)):
+def signal_history(symbol: str, timeframe: str = "1D", limit: int = 20, db: Session = Depends(db_session), _user=Depends(get_current_user)):
     signals = (
-        db.query(Signal).filter_by(ticker_symbol=symbol.upper())
+        db.query(Signal).filter_by(ticker_symbol=symbol.upper(), timeframe=timeframe)
         .order_by(Signal.created_at.desc(), Signal.id.desc()).limit(limit).all()
     )
     events = (
         db.query(SignalEvent).join(Signal, Signal.id == SignalEvent.signal_id)
-        .filter(Signal.ticker_symbol == symbol.upper())
+        .filter(Signal.ticker_symbol == symbol.upper(), Signal.timeframe == timeframe)
         .order_by(SignalEvent.created_at.desc()).limit(50).all()
     )
     return {
@@ -107,7 +108,8 @@ def signal_history(symbol: str, limit: int = 20, db: Session = Depends(db_sessio
 def _signal_payload(s: Signal) -> dict:
     return {
         "signal_id": s.id, "ticker": s.ticker_symbol, "created_at": s.created_at.isoformat(),
-        "status": s.status, "ideal_entry": s.ideal_entry,
+        "timeframe": s.timeframe, "status": s.status, "signal_type": s.signal_type,
+        "ideal_entry": s.ideal_entry,
         "entry_zone": [s.entry_zone_low, s.entry_zone_high],
         "stop_loss": s.stop_loss, "targets": s.targets,
         "holding_period_days": s.holding_period_days, "risk_reward": s.risk_reward,
@@ -117,6 +119,9 @@ def _signal_payload(s: Signal) -> dict:
         "bullish_reasons": s.bullish_reasons, "bearish_reasons": s.bearish_reasons,
         "invalidation_conditions": s.invalidation_conditions,
         "rejection_reasons": s.rejection_reasons,
+        "explanation": s.explanation, "market_regime": s.market_regime,
+        "multi_timeframe_agreement": s.multi_timeframe_agreement,
+        "patterns_detected": s.patterns_detected,
         "data_source": s.data_source, "data_mode": s.data_mode,
         "model_version": s.model_version, "feature_version": s.feature_version,
     }

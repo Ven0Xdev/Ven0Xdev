@@ -42,6 +42,14 @@ class Signal(Base):
     model_version: Mapped[str] = mapped_column(String(48), default="cold-start")
     feature_version: Mapped[str] = mapped_column(String(48), default="fv-1")
 
+    # AI Signals indicator fields (chart marker color + detail panel).
+    timeframe: Mapped[str] = mapped_column(String(8), default="1D")
+    signal_type: Mapped[str | None] = mapped_column(String(24), nullable=True)  # BUY | SELL | HOLD | INSUFFICIENT_DATA
+    explanation: Mapped[str | None] = mapped_column(String, nullable=True)
+    market_regime: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    multi_timeframe_agreement: Mapped[bool | None] = mapped_column(nullable=True)
+    patterns_detected: Mapped[list] = mapped_column(JSON, default=list)
+
     events: Mapped[list["SignalEvent"]] = relationship(back_populates="signal", cascade="all, delete-orphan")
 
 

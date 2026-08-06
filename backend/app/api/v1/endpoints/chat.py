@@ -2,12 +2,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_session, get_current_user
+from app.core.config import get_settings
 from app.db.models.user import User
 from app.schemas.chat import ChatHistoryResponse, ChatHistoryTurn, ChatRequest, ChatResponse
 from app.services.chat import memory
 from app.services.chat.assistant import generate_reply
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+@router.get("/ai-status")
+def ai_status():
+    """Whether the LLM-enhanced chat backend is actually usable right now.
+    Never a crash if the key is missing — /chat/message and /chat/history
+    both keep working regardless (they fall back to the deterministic
+    "template" assistant, which needs no external key at all); this just
+    tells the frontend whether to advertise the LLM-grounded experience.
+    """
+    settings = get_settings()
+    if settings.chat_backend == "llm" and settings.anthropic_api_key:
+        return {"available": True, "message": "AI provider configured", "backend": "llm", "model": settings.chat_model}
+    return {"available": False, "message": "AI provider is not configured", "backend": "template"}
 
 
 def _owned_session(db: Session, session_key: str, user: User):

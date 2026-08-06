@@ -2,6 +2,7 @@ import type {
   BacktestResult,
   DashboardSummary,
   Deliberation,
+  MarketOverviewResponse,
   NewsArticle,
   OhlcvBar,
   PortfolioPosition,
@@ -16,9 +17,19 @@ import type {
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+// Browsers have no default fetch timeout (a hung/unreachable backend can
+// leave a request pending indefinitely), which is exactly what left the
+// dashboard stuck on its loading skeleton forever — every request gets an
+// AbortController-backed ceiling instead.
+const REQUEST_TIMEOUT_MS = 15_000;
+// dashboard/summary, scan/opportunities, scan/heatmap, scan/risk-monitor
+// analyze the entire universe server-side on a cache miss — a genuinely
+// slow (tens-of-seconds) cold start, not a hang. See their call sites below.
+const SLOW_SCAN_TIMEOUT_MS = 60_000;
 
 export type ApiErrorCode =
   | "backend_unreachable" // fetch itself failed — server down / wrong URL / CORS
+  | "timeout" // no response within REQUEST_TIMEOUT_MS
   | "provider_unavailable" // backend up, market-data vendor down/redirected/blocked
   | "unauthorized" // 401/403 — login or API key problem
   | "rate_limited" // 429
@@ -45,6 +56,8 @@ export function classifyApiError(e: unknown): { code: ApiErrorCode; title: strin
     switch (e.code) {
       case "backend_unreachable":
         return { code: e.code, title: "Could not reach the backend API.", hint: "Make sure it is running at NEXT_PUBLIC_API_URL." };
+      case "timeout":
+        return { code: e.code, title: "The backend took too long to respond.", hint: "It may be slow, restarting, or unreachable. Try again." };
       case "provider_unavailable":
         return { code: e.code, title: "Market data is currently unavailable.", hint: "The backend is running, but the market-data provider is unreachable, redirected, or unauthorized. No substitute data is shown. Check /api/v1/providers/health." };
       case "unauthorized":
@@ -127,24 +140,34 @@ async function refreshAccessToken(): Promise<boolean> {
   return _refreshInFlight;
 }
 
-async function rawFetch(path: string, init?: RequestInit): Promise<Response> {
+async function rawFetch(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
   const token = getAccessToken();
-  return fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-async function request<T>(path: string, init?: RequestInit, _retried = false): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, _retried = false, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   let res: Response;
   try {
-    res = await rawFetch(path, init);
+    res = await rawFetch(path, init, timeoutMs);
   } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new ApiError("timeout", 0, `No response within ${timeoutMs / 1000}s`, path);
+    }
     throw new ApiError("backend_unreachable", 0, String(e), path);
   }
 
@@ -153,7 +176,7 @@ async function request<T>(path: string, init?: RequestInit, _retried = false): P
   // most 401s a real user hits are just "token aged out mid-session".
   if (res.status === 401 && !_retried && getRefreshToken()) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) return request<T>(path, init, true);
+    if (refreshed) return request<T>(path, init, true, timeoutMs);
     clearTokens();
   }
 
@@ -198,12 +221,21 @@ export const api = {
     request<{ symbol: string; bars: OhlcvBar[] }>(`/stocks/${symbol}/ohlcv?lookback_days=${lookbackDays}`),
   news: (symbol: string, limit = 20) => request<NewsArticle[]>(`/stocks/${symbol}/news?limit=${limit}`),
 
-  opportunities: (limit = 20) => request<StockAnalysis[]>(`/scan/opportunities?limit=${limit}`),
-  heatmap: () => request<SectorHeatmapEntry[]>(`/scan/heatmap`),
+  // These three run a full ML pass (ensemble + SHAP + Monte Carlo) across
+  // the whole universe server-side on a cache miss — a legitimately slow
+  // cold-start (tens of seconds), not a hang. They get a longer timeout
+  // ceiling than everything else so a real-but-slow first load doesn't
+  // trip the retry card at the same threshold as an actually-hung request;
+  // subsequent loads hit the backend's 30s analysis cache and are fast.
+  opportunities: (limit = 20) => request<StockAnalysis[]>(`/scan/opportunities?limit=${limit}`, undefined, false, SLOW_SCAN_TIMEOUT_MS),
+  heatmap: () => request<SectorHeatmapEntry[]>(`/scan/heatmap`, undefined, false, SLOW_SCAN_TIMEOUT_MS),
   riskMonitor: () =>
-    request<{ ticker: string; manipulation_risk: number; top_flags: string[] }[]>(`/scan/risk-monitor`),
+    request<{ ticker: string; manipulation_risk: number; top_flags: string[] }[]>(`/scan/risk-monitor`, undefined, false, SLOW_SCAN_TIMEOUT_MS),
 
-  dashboardSummary: () => request<DashboardSummary>(`/dashboard/summary`),
+  dashboardSummary: () => request<DashboardSummary>(`/dashboard/summary`, undefined, false, SLOW_SCAN_TIMEOUT_MS),
+  marketOverview: (symbols?: string[]) =>
+    request<MarketOverviewResponse>(`/dashboard/market-overview${symbols ? `?symbols=${symbols.join(",")}` : ""}`),
+  aiStatus: () => request<{ available: boolean; message: string; backend: string }>(`/chat/ai-status`),
 
   watchlist: () => request<WatchlistItem[]>(`/watchlist`),
   addToWatchlist: (ticker_symbol: string, note?: string) =>

@@ -8,9 +8,34 @@ from app.db.models.portfolio import PortfolioPosition, WatchlistItem
 from app.db.models.prediction import Prediction
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
+from app.services.market_overview import DEFAULT_SYMBOLS, get_market_overview
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+@router.get("/market-overview")
+def market_overview(
+    symbols: str | None = None,
+    provider: MarketDataProvider = Depends(data_provider),
+):
+    """Quote-level snapshot for a fixed set of well-known large-cap
+    symbols — separate from the OTC scanner's universe (see
+    services/market_overview.py's module docstring). Always returns 200
+    with one entry per symbol; a symbol the real provider can't serve
+    still gets a clearly labeled synthetic fallback entry rather than
+    breaking the whole response — the dashboard should never be stuck on
+    a skeleton because one vendor call failed.
+    """
+    from datetime import datetime, timezone
+
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else DEFAULT_SYMBOLS
+    stocks = get_market_overview(provider, symbol_list)
+    return {
+        "stocks": stocks,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+        "provider": provider.name,
+    }
 
 
 @router.get("/summary")

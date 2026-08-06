@@ -25,13 +25,42 @@ docker-compose.yml   Full stack: TimescaleDB, Redis, API, scanner, web
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 uvicorn app.main:app --reload  # http://localhost:8000, docs at /docs
 
 # Frontend (separate shell)
 cd frontend
 npm install
+cp .env.example .env.local
 npm run dev  # http://localhost:3000
 ```
+
+### Windows (Git Bash)
+
+Same steps, two differences: the venv activation script lives under `Scripts/`
+(not `bin/`, which is the Linux/macOS layout), and `python3` is usually just
+`python` on Windows.
+
+```bash
+# Backend
+cd nexora/backend
+python -m venv .venv
+source .venv/Scripts/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload
+
+# Frontend (separate Git Bash window)
+cd nexora/frontend
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Open `http://localhost:3000`. No API keys are required — it runs on
+synthetic demo data out of the box (see "Data providers" below). If `python`
+isn't found, try `python3` or `py -3` instead, depending on how Python was
+installed.
 
 No API keys are required to run the full platform end to end — see
 "Data providers" below.

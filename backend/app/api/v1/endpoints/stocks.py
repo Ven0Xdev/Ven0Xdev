@@ -117,6 +117,75 @@ def get_stock_ohlcv(symbol: str, lookback_days: int = 250, provider: MarketDataP
     }
 
 
+_VALID_TIMEFRAMES = {"1m", "5m", "15m", "1H", "1D", "1W", "1M", "1Y", "ALL"}
+
+
+@router.get("/{symbol}/candles")
+async def get_stock_candles(
+    symbol: str,
+    timeframe: str = "1D",
+    limit: int = 500,
+    provider: MarketDataProvider = Depends(data_provider),
+):
+    """Timeframe-aware candles for the trading chart. Backs every button in
+    the chart's timeframe selector with the *real* data available for that
+    granularity — see services/signals/engine.py's module docstring for the
+    honesty rules this follows (intraday timeframes read the streaming
+    service's real accumulated bars, never fabricated history; 1W/1M are a
+    lossless resample of real daily bars).
+    """
+    from datetime import datetime, timezone
+
+    from app.services.signals.engine import _INTRADAY_TIMEFRAMES, bars_for_timeframe, candle_provenance
+
+    symbol = symbol.upper()
+    if timeframe not in _VALID_TIMEFRAMES:
+        raise HTTPException(status_code=400, detail=f"Unknown timeframe {timeframe!r}. Valid: {sorted(_VALID_TIMEFRAMES)}")
+
+    try:
+        provider.get_ticker_meta(symbol)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
+
+    if timeframe in _INTRADAY_TIMEFRAMES:
+        from app.services.streaming.service import get_stream_service
+
+        await get_stream_service().ensure_symbol(symbol)
+
+    df = bars_for_timeframe(symbol, provider, timeframe)
+    data_source, data_mode = candle_provenance(symbol, provider, timeframe)
+
+    bars = [
+        {
+            "ts": ts.isoformat(),
+            "open": round(float(row.open), 6),
+            "high": round(float(row.high), 6),
+            "low": round(float(row.low), 6),
+            "close": round(float(row.close), 6),
+            "volume": float(row.volume),
+        }
+        for ts, row in df.tail(limit).iterrows()
+    ]
+
+    note = None
+    if timeframe in _INTRADAY_TIMEFRAMES and len(bars) < 30:
+        note = (
+            f"Only {len(bars)} bars of real live history accumulated on {symbol} so far this session — "
+            "intraday history is not backfilled, only what has actually streamed."
+        )
+
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "bars": bars,
+        "bar_count": len(bars),
+        "data_source": data_source,
+        "data_mode": data_mode,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+        "note": note,
+    }
+
+
 @router.get("/{symbol}/news")
 def get_stock_news(symbol: str, limit: int = 20, provider: MarketDataProvider = Depends(data_provider)):
     news = provider.get_news(symbol, limit=limit)
