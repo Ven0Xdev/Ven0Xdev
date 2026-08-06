@@ -3,14 +3,60 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import data_provider, db_session, require_operator
+from app.api.deps import data_provider, db_session, expensive_rate_limit, require_operator
 from app.db.models.scan import ScanCycle, ScanDecision
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
+from app.services.scanner.multi_asset import DEFAULT_SHORTLIST_SIZE, run_multi_asset_prescan
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/scan", tags=["scan"])
+
+
+@router.get("/multi-asset/prescan")
+def multi_asset_prescan(
+    shortlist_size: int = Query(DEFAULT_SHORTLIST_SIZE, ge=1, le=20),
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    _user=Depends(expensive_rate_limit),
+):
+    """Stage 1+2 of the deterministic multi-asset scanner (spec: "two-stage
+    scanning pipeline"): every active asset in the Asset Universe Manager
+    (`GET /api/v1/universe`) is scored and passed through the quality gates
+    + deterministic risk engine, then the top-scoring survivors become the
+    shortlist. Distinct from `/scan/opportunities` above, which scans the
+    OTC-only provider universe unchanged.
+
+    The shortlist is the handoff point for a future AI agent committee to
+    take over for deeper analysis (not yet built) — today it is the
+    scanner's final deterministic output.
+    """
+    result = run_multi_asset_prescan(db, provider, shortlist_size=shortlist_size)
+    return {
+        "universe_size": result.universe_size,
+        "analyzed": result.analyzed,
+        "shortlist": [
+            {
+                "symbol": c.symbol,
+                "asset_type": c.asset_type,
+                "overall_ai_score": c.overall_ai_score,
+                "confidence_score": c.confidence_score,
+            }
+            for c in result.shortlist
+        ],
+        "candidates": [
+            {
+                "symbol": c.symbol,
+                "asset_type": c.asset_type,
+                "decision": c.decision,
+                "overall_ai_score": c.overall_ai_score,
+                "confidence_score": c.confidence_score,
+                "reasons": c.reasons,
+            }
+            for c in result.all_candidates
+        ],
+    }
 
 
 @router.post("/run-cycle")

@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     scan_interval_seconds: int = 900
     universe_max_tickers: int = 2000
 
+    # --- Deterministic Risk Engine ---
+    # Thresholds a candidate/trade must clear regardless of what any AI
+    # agent recommends — configurable per deployment, never hardcoded deep
+    # in scoring logic. Defaults match the platform spec's stated minimums.
+    risk_min_confidence_pct: float = 65.0
+    risk_min_reward_risk_ratio: float = 2.0
+    risk_max_portfolio_risk_per_trade_pct: float = 1.0
+
     # --- ML ---
     model_artifact_dir: str = "./model_artifacts"
     random_seed: int = 42
