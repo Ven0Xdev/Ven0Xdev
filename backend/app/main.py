@@ -52,6 +52,14 @@ async def lifespan(app: FastAPI):
         raise
     init_timescale_hypertables()
 
+    from app.db.session import SessionLocal
+    from app.services.universe.manager import seed_default_universe
+
+    with SessionLocal() as seed_db:
+        inserted = seed_default_universe(seed_db)
+        if inserted:
+            logger.info("Asset Universe Manager: seeded %d default assets.", inserted)
+
     logger.info("Market data provider: %s", settings.market_data_provider)
     if settings.market_data_provider == "mock":
         logger.info("Running on synthetic demo data — set MARKET_DATA_PROVIDER for real market data.")

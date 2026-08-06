@@ -8,7 +8,7 @@ from app.db.models.portfolio import PortfolioPosition, WatchlistItem
 from app.db.models.prediction import Prediction
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
-from app.services.market_overview import DEFAULT_SYMBOLS, get_market_overview
+from app.services.market_overview import get_market_overview
 from app.services.scoring.scorer import analyze_ticker
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -17,10 +17,11 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("/market-overview")
 def market_overview(
     symbols: str | None = None,
+    db: Session = Depends(db_session),
     provider: MarketDataProvider = Depends(data_provider),
 ):
-    """Quote-level snapshot for a fixed set of well-known large-cap
-    symbols — separate from the OTC scanner's universe (see
+    """Quote-level snapshot for the Asset Universe Manager's active assets
+    (`GET /api/v1/universe`) — separate from the OTC scanner's universe (see
     services/market_overview.py's module docstring). Always returns 200
     with one entry per symbol; a symbol the real provider can't serve
     still gets a clearly labeled synthetic fallback entry rather than
@@ -29,8 +30,8 @@ def market_overview(
     """
     from datetime import datetime, timezone
 
-    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else DEFAULT_SYMBOLS
-    stocks = get_market_overview(provider, symbol_list)
+    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else None
+    stocks = get_market_overview(provider, db, symbol_list)
     return {
         "stocks": stocks,
         "as_of": datetime.now(timezone.utc).isoformat(),

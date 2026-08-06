@@ -1,25 +1,22 @@
-"""Dashboard market overview: default large-cap symbols always return a
-usable entry (real provider or clearly labeled demo fallback), never
-random prices and never a crash for one bad symbol."""
+"""Dashboard market overview: every active asset in the Asset Universe
+Manager returns a usable entry (real provider or clearly labeled demo
+fallback), never random prices and never a crash for one bad symbol."""
 from app.services.data_providers.mock_provider import MockOTCProvider
 from app.services.market_overview import (
-    DEFAULT_SYMBOLS,
     _classify_failure,
     get_market_overview,
     market_status,
 )
+from app.services.universe.manager import SEED_UNIVERSE, seed_default_universe
 
 
-def test_default_symbols_are_the_requested_ten():
-    assert DEFAULT_SYMBOLS == ["AAPL", "NVDA", "TSLA", "MSFT", "AMZN", "META", "GOOGL", "AMD", "PLTR", "NFLX"]
-
-
-def test_mock_provider_falls_back_to_labeled_synthetic_for_large_caps():
+def test_mock_provider_falls_back_to_labeled_synthetic_for_large_caps(db_session):
     # MockOTCProvider's universe is OTC-only synthetic tickers — none of
-    # the large caps are in it, so every one of these must hit the demo
+    # the seeded assets are in it, so every one of these must hit the demo
     # fallback path, clearly labeled, never silently blank.
+    seed_default_universe(db_session)
     provider = MockOTCProvider()
-    results = get_market_overview(provider, ["AAPL", "NVDA"])
+    results = get_market_overview(provider, db_session, ["AAPL", "NVDA"])
     assert len(results) == 2
     for r in results:
         assert r["status"] == "ok"
@@ -29,25 +26,49 @@ def test_mock_provider_falls_back_to_labeled_synthetic_for_large_caps():
         assert r["current_price"] > 0
 
 
-def test_synthetic_fallback_is_deterministic_not_random():
+def test_synthetic_fallback_is_deterministic_not_random(db_session):
+    seed_default_universe(db_session)
     provider = MockOTCProvider()
-    first = get_market_overview(provider, ["TSLA"])[0]
-    second = get_market_overview(provider, ["TSLA"])[0]
+    first = get_market_overview(provider, db_session, ["TSLA"])[0]
+    second = get_market_overview(provider, db_session, ["TSLA"])[0]
     assert first["current_price"] == second["current_price"]
     assert first["chart_history"] == second["chart_history"]
 
 
-def test_every_symbol_has_a_result_even_if_one_fails():
+def test_every_active_asset_has_a_result_even_if_one_fails(db_session):
+    seed_default_universe(db_session)
     provider = MockOTCProvider()
-    results = get_market_overview(provider, DEFAULT_SYMBOLS)
-    assert len(results) == len(DEFAULT_SYMBOLS)
-    assert {r["symbol"] for r in results} == set(DEFAULT_SYMBOLS)
+    results = get_market_overview(provider, db_session)
+    expected_symbols = {e["symbol"] for e in SEED_UNIVERSE}
+    assert len(results) == len(expected_symbols)
+    assert {r["symbol"] for r in results} == expected_symbols
 
 
-def test_company_names_are_real_not_placeholder():
+def test_deactivated_asset_is_excluded_from_overview(db_session):
+    seed_default_universe(db_session)
+    from app.db.models.asset import Asset
+
+    row = db_session.query(Asset).filter_by(symbol="AVGO").one()
+    row.is_active = False
+    db_session.commit()
+
     provider = MockOTCProvider()
-    results = get_market_overview(provider, ["AAPL"])
+    results = get_market_overview(provider, db_session)
+    assert "AVGO" not in {r["symbol"] for r in results}
+
+
+def test_company_names_come_from_the_universe_manager_not_invented(db_session):
+    seed_default_universe(db_session)
+    provider = MockOTCProvider()
+    results = get_market_overview(provider, db_session, ["AAPL"])
     assert results[0]["company_name"] == "Apple Inc."
+
+
+def test_symbols_not_in_the_universe_are_simply_excluded(db_session):
+    seed_default_universe(db_session)
+    provider = MockOTCProvider()
+    results = get_market_overview(provider, db_session, ["AAPL", "NOT_IN_UNIVERSE"])
+    assert {r["symbol"] for r in results} == {"AAPL"}
 
 
 def test_market_status_is_one_of_the_known_states():

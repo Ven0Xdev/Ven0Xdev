@@ -1,7 +1,11 @@
-"""Lightweight quote-level market overview for a fixed set of well-known
-large-cap symbols (dashboard's "Market overview" section) — deliberately
+"""Lightweight quote-level market overview for the Asset Universe Manager's
+active assets (dashboard's "Market overview" section) — deliberately
 separate from the OTC scanner's universe/`MarketDataProvider.get_universe()`,
 which is a different, unrelated list of synthetic micro-cap tickers.
+
+The universe (which symbols, their display names/asset types) comes from
+`services/universe/manager.py` — the single source of truth added in the
+multi-asset migration. This module only adds live-quote logic on top.
 
 Provider chain per symbol, cheapest and most honest first:
 1. The app's configured real provider (Twelve Data with Alpha Vantage
@@ -11,9 +15,10 @@ Provider chain per symbol, cheapest and most honest first:
    down/rate-limited, or — the common local-dev case — the mock provider,
    whose OTC-only universe doesn't include large caps) a clearly labeled,
    deterministic (seeded, never random) synthetic quote for *that symbol
-   only*. It is always tagged data_mode="synthetic" and a `note` field
-   flags it as demo data — never presented as live, matching the
-   platform's no-fabricated-market-data rule everywhere else.
+   only*, using the real display name from the Asset Universe Manager. It
+   is always tagged data_mode="synthetic" and a `note` field flags it as
+   demo data — never presented as live, matching the platform's
+   no-fabricated-market-data rule everywhere else.
 
 Change/percent-change are computed from real OHLCV history (last close vs.
 prior close), never invented outright.
@@ -22,31 +27,18 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from dataclasses import dataclass
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 import numpy as np
+from sqlalchemy.orm import Session
 
+from app.db.models.asset import Asset
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
+from app.services.universe.manager import get_active_universe
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_SYMBOLS = ["AAPL", "NVDA", "TSLA", "MSFT", "AMZN", "META", "GOOGL", "AMD", "PLTR", "NFLX"]
-
-_COMPANY_NAMES = {
-    "AAPL": "Apple Inc.",
-    "NVDA": "NVIDIA Corporation",
-    "TSLA": "Tesla, Inc.",
-    "MSFT": "Microsoft Corporation",
-    "AMZN": "Amazon.com, Inc.",
-    "META": "Meta Platforms, Inc.",
-    "GOOGL": "Alphabet Inc.",
-    "AMD": "Advanced Micro Devices, Inc.",
-    "PLTR": "Palantir Technologies Inc.",
-    "NFLX": "Netflix, Inc.",
-}
 
 _NY = ZoneInfo("America/New_York")
 
@@ -94,10 +86,11 @@ def _classify_failure(exc: Exception | None) -> str:
     return "Data unavailable"
 
 
-def _synthetic_quote(symbol: str, reason: str) -> dict:
+def _synthetic_quote(symbol: str, company_name: str, reason: str) -> dict:
     """Deterministic, seeded-on-symbol demo values — same value every call,
     never random per the platform's honesty rule. Used only when no real
-    provider can serve this symbol."""
+    provider can serve this symbol. `company_name` comes from the Asset
+    Universe Manager's real record, never invented here."""
     rng = np.random.default_rng(_seed_for(symbol))
     base_price = float(rng.uniform(20, 500))
     n = 30
@@ -108,7 +101,7 @@ def _synthetic_quote(symbol: str, reason: str) -> dict:
     volume = float(rng.uniform(5_000_000, 80_000_000))
     return {
         "symbol": symbol,
-        "company_name": _COMPANY_NAMES.get(symbol, symbol),
+        "company_name": company_name,
         "current_price": round(last, 2),
         "change": round(last - prev_close, 2),
         "change_percent": round((last / prev_close - 1) * 100, 2) if prev_close else 0.0,
@@ -148,9 +141,22 @@ def _real_quote(provider: MarketDataProvider, symbol: str) -> dict:
     }
 
 
-def get_market_overview(provider: MarketDataProvider, symbols: list[str] | None = None) -> list[dict]:
+def get_market_overview(
+    provider: MarketDataProvider, db: Session, symbols: list[str] | None = None
+) -> list[dict]:
+    """Assets come from the Asset Universe Manager, not a hardcoded list.
+    `symbols`, when given, filters to that subset of the *active universe*
+    (a symbol not in the universe is simply not returned — add it via
+    POST /api/v1/universe first, never by editing source here)."""
+    if symbols:
+        wanted = {s.upper() for s in symbols}
+        assets = [a for a in get_active_universe(db) if a.symbol in wanted]
+    else:
+        assets = get_active_universe(db)
+
     results = []
-    for symbol in symbols or DEFAULT_SYMBOLS:
+    for asset in assets:
+        symbol = asset.symbol
         failure: Exception | None = None
         try:
             results.append(_real_quote(provider, symbol))
@@ -163,7 +169,7 @@ def get_market_overview(provider: MarketDataProvider, symbols: list[str] | None 
             logger.warning("market_overview: unexpected error for %s: %s", symbol, exc)
 
         try:
-            results.append(_synthetic_quote(symbol, _classify_failure(failure)))
+            results.append(_synthetic_quote(symbol, asset.name, _classify_failure(failure)))
         except Exception as exc:  # noqa: BLE001
             logger.error("market_overview: demo fallback also failed for %s: %s", symbol, exc)
             results.append({
