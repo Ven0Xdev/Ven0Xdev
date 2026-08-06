@@ -113,10 +113,10 @@ export default function DashboardPage() {
       ) : (
         <>
           <div className="animate-in-stagger grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatTile label="Universe scanned" value={summary.universe_size.toString()} />
-            <StatTile label="Avg model confidence" value={`${summary.avg_model_confidence.toFixed(0)}%`} />
-            <StatTile label="Watchlist" value={summary.watchlist_count.toString()} />
-            <StatTile label="Open positions" value={summary.open_positions.toString()} />
+            <StatTile label="Universe scanned" value={summary.universe_size} />
+            <StatTile label="Avg model confidence" value={summary.avg_model_confidence} format={(n) => `${n.toFixed(0)}%`} />
+            <StatTile label="Watchlist" value={summary.watchlist_count} />
+            <StatTile label="Open positions" value={summary.open_positions} />
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

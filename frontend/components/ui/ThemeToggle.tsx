@@ -27,8 +27,21 @@ export function ThemeToggle() {
 
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
-    setThemeState(next);
-    applyTheme(next);
+    const apply = () => {
+      setThemeState(next);
+      applyTheme(next);
+    };
+    // document.startViewTransition (native browser API, distinct from
+    // React's <ViewTransition> component used for route crossfades) turns
+    // the instant CSS-variable swap into a smooth crossfade — the browser
+    // snapshots before/after and animates automatically. Unsupported
+    // browsers (feature-detected, not UA-sniffed) just apply instantly,
+    // identical to the previous behavior.
+    if (typeof document.startViewTransition === "function") {
+      document.startViewTransition(apply);
+    } else {
+      apply();
+    }
   };
 
   return (

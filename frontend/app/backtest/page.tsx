@@ -75,14 +75,14 @@ export default function BacktestPage() {
       {result && (
         <>
           <div className="animate-in-stagger grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatTile label="Sharpe ratio" value={result.sharpe_ratio.toFixed(2)} />
-            <StatTile label="Sortino ratio" value={result.sortino_ratio.toFixed(2)} />
-            <StatTile label="Max drawdown" value={`${result.max_drawdown_pct.toFixed(1)}%`} />
-            <StatTile label="Profit factor" value={result.profit_factor.toFixed(2)} />
-            <StatTile label="Win rate" value={`${result.win_rate_pct.toFixed(0)}%`} />
-            <StatTile label="Expectancy / trade" value={`${result.expectancy_pct.toFixed(2)}%`} />
-            <StatTile label="Avg hold time" value={`${result.avg_hold_time_days.toFixed(1)}d`} />
-            <StatTile label="Total return" value={`${result.total_return_pct.toFixed(1)}%`} />
+            <StatTile label="Sharpe ratio" value={result.sharpe_ratio} format={(n) => n.toFixed(2)} />
+            <StatTile label="Sortino ratio" value={result.sortino_ratio} format={(n) => n.toFixed(2)} />
+            <StatTile label="Max drawdown" value={result.max_drawdown_pct} format={(n) => `${n.toFixed(1)}%`} />
+            <StatTile label="Profit factor" value={result.profit_factor} format={(n) => n.toFixed(2)} />
+            <StatTile label="Win rate" value={result.win_rate_pct} format={(n) => `${n.toFixed(0)}%`} />
+            <StatTile label="Expectancy / trade" value={result.expectancy_pct} format={(n) => `${n.toFixed(2)}%`} />
+            <StatTile label="Avg hold time" value={result.avg_hold_time_days} format={(n) => `${n.toFixed(1)}d`} />
+            <StatTile label="Total return" value={result.total_return_pct} format={(n) => `${n.toFixed(1)}%`} />
           </div>
 
           <div className="card animate-in p-5">

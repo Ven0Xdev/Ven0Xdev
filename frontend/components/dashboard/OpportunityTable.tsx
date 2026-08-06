@@ -27,7 +27,7 @@ export function OpportunityTable({ rows }: { rows: StockAnalysis[] }) {
             <th className="px-4 py-3 font-semibold">Hold</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="animate-in-stagger">
           {rows.map((r) => {
             const primary = r.probability_matrix.find((p) => p.horizon_days === r.estimated_holding_period_days) ?? r.probability_matrix[0];
             return (

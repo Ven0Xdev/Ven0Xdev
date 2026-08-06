@@ -4,16 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getFetchMeta } from "@/lib/api";
 import { useResyncListener } from "@/lib/pwa";
-import type { Deliberation, NewsArticle, OhlcvBar, StockAnalysis } from "@/lib/types";
+import type { Deliberation, NewsArticle, OhlcvBar, SignalPayload, StockAnalysis } from "@/lib/types";
 import { ScoreMeter } from "@/components/ui/ScoreMeter";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
 import { DataBadge } from "@/components/ui/DataBadge";
 import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
+import { SignalReveal } from "@/components/ui/SignalReveal";
 import { PriceChart } from "@/components/charts/PriceChart";
 import { LiveChart } from "@/components/charts/LiveChart";
 import { ProbabilityMatrix } from "@/components/dashboard/ProbabilityMatrix";
 import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
 import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
+import { AgentDeliberationSequence } from "@/components/dashboard/AgentDeliberationSequence";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { CacheBadge } from "@/components/pwa/CacheBadge";
 
@@ -28,6 +30,7 @@ export default function StockDetailPage() {
   const [busy, setBusy] = useState(false);
   const [watchlisted, setWatchlisted] = useState(false);
   const [analysisCachedAt, setAnalysisCachedAt] = useState<string | null>(null);
+  const [liveSignal, setLiveSignal] = useState<SignalPayload | null>(null);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -121,9 +124,13 @@ export default function StockDetailPage() {
           </div>
         </div>
 
+        {liveSignal && liveSignal.status !== "NO_SIGNAL_YET" && (
+          <SignalReveal key={liveSignal.status} signal={liveSignal} />
+        )}
+
         <div className="card animate-in p-5 sm:p-6">
           <SectionLabel>Live intraday (1m) — streamed from backend, with Signal Engine levels</SectionLabel>
-          <LiveChart symbol={a.ticker} />
+          <LiveChart symbol={a.ticker} onSignal={setLiveSignal} />
         </div>
 
         <div className="card animate-in p-5 sm:p-6">
@@ -131,16 +138,18 @@ export default function StockDetailPage() {
           {bars === null ? (
             <Skeleton className="h-64 w-full" />
           ) : (
-            <PriceChart
-              bars={bars}
-              markers={[
-                { label: "Entry", price: a.ideal_entry_price, color: "var(--series-blue)" },
-                { label: "Stop", price: a.stop_loss, color: "var(--status-critical)" },
-                { label: "TP1", price: a.take_profit_1, color: "var(--status-good)" },
-                { label: "TP2", price: a.take_profit_2, color: "var(--status-good)" },
-                { label: "TP3", price: a.take_profit_3, color: "var(--status-good)" },
-              ]}
-            />
+            <div className="content-reveal">
+              <PriceChart
+                bars={bars}
+                markers={[
+                  { label: "Entry", price: a.ideal_entry_price, color: "var(--series-blue)" },
+                  { label: "Stop", price: a.stop_loss, color: "var(--status-critical)" },
+                  { label: "TP1", price: a.take_profit_1, color: "var(--status-good)" },
+                  { label: "TP2", price: a.take_profit_2, color: "var(--status-good)" },
+                  { label: "TP3", price: a.take_profit_3, color: "var(--status-good)" },
+                ]}
+              />
+            </div>
           )}
         </div>
 
@@ -194,27 +203,7 @@ export default function StockDetailPage() {
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>Deliberation unavailable.</p>
           ) : (
             <div className="flex flex-col gap-4 text-sm">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <Badge variant={deliberation.verdict.stance === "favorable" || deliberation.verdict.stance === "constructive" ? "good" : deliberation.verdict.stance === "neutral" ? "warning" : "critical"}>
-                  {deliberation.verdict.stance}
-                </Badge>
-                <span className="tabular text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-                  conviction {(deliberation.verdict.conviction * 100).toFixed(0)}%
-                </span>
-              </div>
-              <p style={{ color: "var(--text-secondary)" }}>{deliberation.verdict.narrative}</p>
-              <div>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-                  Contrarian findings
-                </h3>
-                <ul className="flex flex-col gap-1.5">
-                  {(deliberation.stages.find((s) => s.stage === "contradiction")?.evidence ?? []).map((e, i) => (
-                    <li key={i} className="rounded-[10px] px-3.5 py-2.5" style={{ background: "var(--surface-2)", color: "var(--text-secondary)" }}>
-                      {e.claim}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <AgentDeliberationSequence deliberation={deliberation} />
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                   Invalidation conditions

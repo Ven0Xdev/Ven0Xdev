@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, classifyApiError } from "@/lib/api";
+import { classifyApiError } from "@/lib/api";
+import { useMarketOverview } from "@/lib/marketOverviewStore";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import type { MarketOverviewStock } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -25,7 +27,7 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true" className="content-reveal">
       <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
@@ -49,7 +51,7 @@ function StockTile({ stock }: { stock: MarketOverviewStock }) {
   return (
     <Link
       href={`/stock/${stock.symbol}`}
-      className="card flex flex-col gap-2 p-4 transition-colors"
+      className="card card-interactive card-glow flex flex-col gap-2 p-4 transition-colors"
       style={{ transition: "background-color var(--duration-fast) var(--ease-out)" }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "")}
@@ -66,7 +68,7 @@ function StockTile({ stock }: { stock: MarketOverviewStock }) {
         )}
       </div>
       <div className="flex items-end justify-between">
-        <div className="tabular text-lg font-semibold">${stock.current_price.toFixed(2)}</div>
+        <AnimatedNumber value={stock.current_price} format={(n) => `$${n.toFixed(2)}`} className="text-lg font-semibold" />
         <div className="tabular text-xs font-medium" style={{ color: changeColor }}>
           {up ? "+" : ""}
           {stock.change?.toFixed(2)} ({up ? "+" : ""}
@@ -101,20 +103,14 @@ function OverviewSkeleton() {
 }
 
 export function MarketOverview() {
-  const [stocks, setStocks] = useState<MarketOverviewStock[] | null>(null);
-  const [error, setError] = useState<unknown>(null);
+  // Shared with TickerTape (mounted app-wide) via lib/marketOverviewStore —
+  // one real fetch/poll of /dashboard/market-overview fans out to both,
+  // instead of each independently re-running the same slow synthetic-
+  // fallback scan (this endpoint runs a full pass over every active asset;
+  // polling it twice in parallel on every dashboard load was doubling
+  // backend load for no reason and could trip the client's own timeout).
+  const { stocks, error, refresh } = useMarketOverview();
   const [loadingTooLong, setLoadingTooLong] = useState(false);
-
-  // Kept free of synchronous setState so it's safe to hand directly to
-  // useEffect — every update happens inside a .then()/.catch() callback.
-  const load = useCallback(() => {
-    api
-      .marketOverview()
-      .then((r) => setStocks(r.stocks))
-      .catch((e) => setError(e));
-  }, []);
-
-  useEffect(load, [load]);
 
   // Belt-and-suspenders: even though lib/api.ts now enforces a request
   // timeout (so `error` should always eventually be set), never let this
@@ -126,14 +122,6 @@ export function MarketOverview() {
     return () => clearTimeout(t);
   }, [stocks, error]);
 
-  // Event-handler-only: safe to setState synchronously here.
-  const retry = useCallback(() => {
-    setError(null);
-    setStocks(null);
-    setLoadingTooLong(false);
-    load();
-  }, [load]);
-
   if (error) {
     const { title, hint } = classifyApiError(error);
     return (
@@ -142,7 +130,13 @@ export function MarketOverview() {
           {title}
         </p>
         <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{hint}</p>
-        <button onClick={retry} className="btn btn-secondary btn-sm mt-1 w-fit">
+        <button
+          onClick={() => {
+            setLoadingTooLong(false);
+            refresh();
+          }}
+          className="btn btn-secondary btn-sm mt-1 w-fit"
+        >
           Retry
         </button>
       </div>
@@ -154,7 +148,13 @@ export function MarketOverview() {
       return (
         <div className="card flex flex-col gap-2 p-5 text-sm">
           <p style={{ color: "var(--text-muted)" }}>Still waiting on the backend for market data.</p>
-          <button onClick={retry} className="btn btn-secondary btn-sm w-fit">
+          <button
+            onClick={() => {
+              setLoadingTooLong(false);
+              refresh();
+            }}
+            className="btn btn-secondary btn-sm w-fit"
+          >
             Retry
           </button>
         </div>

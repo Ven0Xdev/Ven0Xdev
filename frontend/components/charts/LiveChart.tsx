@@ -32,7 +32,7 @@ function toTime(iso: string): UTCTimestamp {
   return (Date.parse(iso) / 1000) as UTCTimestamp;
 }
 
-export function LiveChart({ symbol }: { symbol: string }) {
+export function LiveChart({ symbol, onSignal }: { symbol: string; onSignal?: (signal: SignalPayload | null) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -167,6 +167,13 @@ export function LiveChart({ symbol }: { symbol: string }) {
     };
   }, [symbol]);
 
+  // Let a parent (e.g. the stock detail page's SignalReveal) observe the
+  // same real signal this chart already fetches/streams, without a second
+  // fetch — reported whenever it changes, including back to null on unmount.
+  useEffect(() => {
+    onSignal?.(signal);
+  }, [signal, onSignal]);
+
   // Redraw Signal Engine level lines whenever the signal changes.
   useEffect(() => {
     const candles = candleRef.current;
@@ -255,7 +262,7 @@ export function LiveChart({ symbol }: { symbol: string }) {
           {lastUpdate ? `last update ${new Date(lastUpdate).toLocaleTimeString()}` : "waiting for first tick…"} · live bar: 1m
         </span>
       </div>
-      <div ref={containerRef} className="w-full" />
+      <div ref={containerRef} className="content-reveal w-full" />
       {signal && signal.rejection_reasons.length > 0 && (
         <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
           No entry levels shown — Signal Engine rejections: {signal.rejection_reasons.join("; ")}

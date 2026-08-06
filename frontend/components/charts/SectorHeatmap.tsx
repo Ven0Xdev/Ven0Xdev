@@ -21,12 +21,20 @@ export function SectorHeatmap({ data }: { data: SectorHeatmapEntry[] }) {
         {data.map((entry) => (
           <div
             key={entry.sector}
-            className="flex flex-col justify-between rounded-[10px] p-3.5"
+            className="flex cursor-default flex-col justify-between rounded-[10px] p-3.5"
             style={{
               background: seqColor(entry.avg_score),
               color: textColorFor(entry.avg_score),
               minHeight: 88,
-              transition: "transform var(--duration-fast) var(--ease-out)",
+              transition: "transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px) scale(1.015)";
+              e.currentTarget.style.boxShadow = "var(--shadow-md)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "";
+              e.currentTarget.style.boxShadow = "";
             }}
           >
             <span className="text-xs font-medium opacity-90">{entry.sector}</span>

@@ -1,22 +1,29 @@
+import { AnimatedNumber } from "./AnimatedNumber";
+
 export function StatTile({
   label,
   value,
+  format = (n) => n.toFixed(0),
   delta,
   deltaGood,
 }: {
   label: string;
-  value: string;
+  value: number;
+  format?: (n: number) => string;
   delta?: string;
   deltaGood?: boolean;
 }) {
   return (
-    <div className="card flex flex-col gap-2.5 p-5">
+    <div className="card card-interactive card-glow flex flex-col gap-2.5 p-5">
       <span className="text-[13px] font-medium" style={{ color: "var(--text-secondary)" }}>
         {label}
       </span>
-      <span className="tabular text-[28px] font-semibold leading-none tracking-tight" style={{ color: "var(--text-primary)" }}>
-        {value}
-      </span>
+      <AnimatedNumber
+        value={value}
+        format={format}
+        className="text-[28px] font-semibold leading-none tracking-tight"
+        durationMs={600}
+      />
       {delta && (
         <span
           className="tabular inline-flex w-fit items-center gap-1 text-[13px] font-semibold"

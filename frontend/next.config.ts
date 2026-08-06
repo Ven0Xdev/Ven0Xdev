@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // React's native <ViewTransition> (app/layout.tsx / AppShell.tsx) drives
+    // route/panel crossfades via the browser's View Transitions API —
+    // unsupported browsers simply render without animating (see Next's own
+    // guide: node_modules/next/dist/docs/01-app/02-guides/view-transitions.md).
+    viewTransition: true,
+  },
   async headers() {
     return [
       {
