@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AmbientBackground />
       <Sidebar />
       <MobileNav />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <TickerTape />
         <main className="flex-1 p-4 sm:p-8 lg:p-10">
           <div className="mx-auto w-full max-w-7xl">

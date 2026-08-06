@@ -18,7 +18,7 @@ export function TickerTape() {
   if (stocks === null) {
     return (
       <div
-        className="skeleton h-9 w-full shrink-0"
+        className="skeleton h-9 w-full min-w-0 shrink-0"
         style={{ borderRadius: 0 }}
         aria-hidden="true"
       />
@@ -28,7 +28,14 @@ export function TickerTape() {
 
   return (
     <div
-      className="ticker-tape group relative h-9 shrink-0 overflow-hidden border-b"
+      // min-w-0 is load-bearing, not decorative: this is a flex item inside
+      // AppShell's column flex container, and flex items default to
+      // min-width:auto — which lets a child (the marquee track, sized to
+      // fit all tickers via w-max) force this box wider than the viewport
+      // even with overflow-hidden set, pushing the whole page into
+      // horizontal scroll. min-w-0 is what actually lets overflow-hidden
+      // clip it.
+      className="ticker-tape group relative h-9 w-full min-w-0 shrink-0 overflow-hidden border-b"
       style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
       role="marquee"
       aria-label="Live market ticker"
