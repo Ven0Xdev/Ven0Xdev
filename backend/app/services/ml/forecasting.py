@@ -2,8 +2,8 @@
 
 Uses an EWMA-volatility random-walk-with-drift model to project a return
 distribution over the requested horizon. This intentionally is not a
-transformer/deep model in this environment (no GPU, no historical OTC
-corpus to train on) — the interface (`forecast_horizon_distribution`) is
+transformer/deep model in this environment (no GPU, no historical training
+corpus at that scale) — the interface (`forecast_horizon_distribution`) is
 where a trained sequence model (temporal fusion transformer / N-BEATS,
 see `services/ml/text_model.py` for the analogous text-model plug point)
 would be swapped in for production, without touching callers.

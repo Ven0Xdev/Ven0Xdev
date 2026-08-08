@@ -1,4 +1,4 @@
-"""Rule-based manipulation risk scoring.
+"""Rule-based manipulation risk scoring — general-purpose, asset-class-agnostic.
 
 This is a transparent, explainable heuristic layer (each flag is individually
 inspectable and contributes an auditable weight) that is combined downstream
@@ -6,6 +6,11 @@ with the statistical anomaly-detection model in `services/ml/anomaly.py`.
 Relying on a single black-box "manipulation score" would be dangerous in a
 financial product — every flag here maps to a plain-English reason surfaced
 in the final explanation.
+
+OTC/micro-cap-specific flags (toxic dilution, repeated reverse splits,
+promotional-news campaigns) live separately in `services/otc/manipulation.py`,
+disabled by default — they're diagnostic for thinly-traded penny stocks but
+essentially always inactive noise for mainstream large-cap stocks/ETFs.
 """
 from __future__ import annotations
 
@@ -14,7 +19,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from app.services.data_providers.base import Fundamentals, NewsArticle, TickerMeta
+from app.services.data_providers.base import Fundamentals, TickerMeta
 
 
 @dataclass
@@ -99,38 +104,6 @@ def _spread_flag(spread_pct: float) -> ManipulationFlag | None:
     return None
 
 
-def _dilution_flag(fund: Fundamentals) -> ManipulationFlag | None:
-    if fund.dilution_12m_pct > 50:
-        return ManipulationFlag(
-            code="toxic_dilution",
-            severity=min(90, fund.dilution_12m_pct * 0.8),
-            reason=(
-                f"Share count grew {fund.dilution_12m_pct:.0f}% over the trailing 12 months — heavy dilution, "
-                "possibly toxic convertible financing."
-            ),
-        )
-    if fund.dilution_12m_pct > 20:
-        return ManipulationFlag(
-            code="elevated_dilution",
-            severity=min(50, fund.dilution_12m_pct),
-            reason=f"Share count grew {fund.dilution_12m_pct:.0f}% over the trailing 12 months.",
-        )
-    return None
-
-
-def _reverse_split_flag(meta: TickerMeta) -> ManipulationFlag | None:
-    if meta.reverse_split_count_3y >= 2:
-        return ManipulationFlag(
-            code="repeated_reverse_splits",
-            severity=min(85, 30 + meta.reverse_split_count_3y * 20),
-            reason=(
-                f"{meta.reverse_split_count_3y} reverse splits in the last 3 years — a recurring pattern often "
-                "used to reset share price ahead of further dilution."
-            ),
-        )
-    return None
-
-
 def _filing_quality_flag(fund: Fundamentals) -> ManipulationFlag | None:
     if fund.filing_delinquent:
         return ManipulationFlag(
@@ -143,23 +116,6 @@ def _filing_quality_flag(fund: Fundamentals) -> ManipulationFlag | None:
             code="going_concern",
             severity=45,
             reason="Auditor has issued a going-concern doubt — elevated risk of insolvency or forced dilution.",
-        )
-    return None
-
-
-def _promotional_news_flag(news: list[NewsArticle]) -> ManipulationFlag | None:
-    if not news:
-        return None
-    promo = [n for n in news if n.is_promotional]
-    ratio = len(promo) / len(news)
-    if ratio >= 0.4:
-        return ManipulationFlag(
-            code="promotional_campaign",
-            severity=min(75, ratio * 100),
-            reason=(
-                f"{len(promo)} of {len(news)} recent articles look like paid stock-promotion content rather "
-                "than independent reporting."
-            ),
         )
     return None
 
@@ -181,18 +137,21 @@ def assess_manipulation_risk(
     df: pd.DataFrame,
     meta: TickerMeta,
     fundamentals: Fundamentals,
-    news: list[NewsArticle],
+    news: list,
     spread_pct: float,
     avg_dollar_volume: float,
 ) -> ManipulationAssessment:
+    """General-purpose manipulation flags, meaningful for any asset class.
+
+    `news` is accepted (unused here) to keep this function's call signature
+    stable for existing callers; OTC-specific news/dilution/split flags moved
+    to `services.otc.manipulation.assess_otc_specific_risk`.
+    """
     flags = [
         _pump_and_dump_flag(df),
         _wash_trading_flag(df),
         _spread_flag(spread_pct),
-        _dilution_flag(fundamentals),
-        _reverse_split_flag(meta),
         _filing_quality_flag(fundamentals),
-        _promotional_news_flag(news),
         _liquidity_trap_flag(meta, avg_dollar_volume),
     ]
     active = [f for f in flags if f is not None]

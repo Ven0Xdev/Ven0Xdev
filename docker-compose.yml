@@ -44,7 +44,12 @@ services:
     volumes:
       - model_artifacts:/app/model_artifacts
 
+  # Optional OTC/micro-cap continuous scanner — not part of the mainstream
+  # platform (see backend/app/services/otc/__init__.py). Opt-in only:
+  # `docker compose --profile otc up` (and set OTC_MODULE_ENABLED=true in
+  # backend/.env, or this worker exits immediately on start).
   scanner:
+    profiles: ["otc"]
     build:
       context: ./backend
     command: ["python", "-m", "app.workers.scan_scheduler"]

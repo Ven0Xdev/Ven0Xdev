@@ -1,15 +1,23 @@
-"""Continuous background scanner.
+"""Continuous background scanner — part of the optional OTC module.
 
-Runs forever, re-analyzing the full OTC universe on a fixed interval so the
-API always serves a warm, recently-computed `StockAnalysis` (see the TTL
-cache in `services/scoring/scorer.py`) instead of computing the full
-feature + ensemble + Monte-Carlo pipeline synchronously inside a request.
-Also logs a `Prediction` snapshot per ticker per cycle, which is what the
-prediction-history / model-performance dashboards and future outcome-based
-recalibration are built on.
+Runs forever, re-analyzing a provider's full `get_universe()` (for the
+synthetic `MockOTCProvider` this is its 30-symbol OTC universe) on a fixed
+interval so the API always serves a warm, recently-computed `StockAnalysis`
+(see the TTL cache in `services/scoring/scorer.py`) instead of computing the
+full feature + ensemble + Monte-Carlo pipeline synchronously inside a
+request. Also logs a `Prediction` snapshot per ticker per cycle, which is
+what the prediction-history / model-performance dashboards and future
+outcome-based recalibration are built on.
+
+Nexora's mainstream STOCK/ETF/INDEX/COMMODITY/PRECIOUS_METAL experience does
+not depend on this scanner — it serves the Asset Universe Manager's 20-symbol
+universe on demand instead (see `/dashboard/summary`, `/scan/opportunities`).
+This worker only loops when `Settings.otc_module_enabled` is true (see
+`services/otc/__init__.py`); disabled by default.
 
 Run via: `python -m app.workers.scan_scheduler`
-In docker-compose this runs as its own `scanner` service alongside `api`.
+In docker-compose this runs as its own `scanner` service, gated behind the
+"otc" Compose profile so it does not start by default.
 """
 from __future__ import annotations
 
@@ -129,6 +137,14 @@ def run_scan_cycle(
 def main() -> None:
     configure_logging("INFO")
     settings = get_settings()
+
+    if not settings.otc_module_enabled:
+        logger.info(
+            "OTC module disabled (OTC_MODULE_ENABLED=false) — continuous OTC scan loop will not start. "
+            "The mainstream platform does not require this worker; set OTC_MODULE_ENABLED=true to re-enable it."
+        )
+        return
+
     Base.metadata.create_all(bind=engine)
     init_timescale_hypertables()
 

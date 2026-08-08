@@ -74,6 +74,18 @@ def test_add_asset_rejects_unknown_asset_type(client):
     assert res.status_code == 422
 
 
+def test_add_asset_rejects_reserved_asset_type(client):
+    """FOREX/CRYPTO/OTC_STOCK are valid AssetType enum members but reserved
+    for future expansion — not yet creatable through the Asset Universe
+    Manager."""
+    res = client.post(
+        "/api/v1/universe",
+        json={"symbol": "ZTSTY", "asset_type": "CRYPTO", "name": "Ztest Y", "exchange": "NYSE"},
+    )
+    assert res.status_code == 422
+    assert "reserved" in res.text.lower()
+
+
 def test_add_duplicate_symbol_conflicts(client):
     _add(client, "ZTSTG")
     res = client.post(

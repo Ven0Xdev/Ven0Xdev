@@ -6,7 +6,8 @@ from app.services.data_providers.base import Fundamentals, TickerMeta
 
 
 def compute_fundamental_score(meta: TickerMeta, fund: Fundamentals) -> tuple[float, dict]:
-    """0-100 fundamental health score for an OTC micro/nano-cap.
+    """0-100 fundamental health score, generalized across asset classes
+    (mainstream large-caps and OTC micro/nano-caps alike).
 
     Components (weights): solvency/runway, profitability trend, dilution
     discipline, ownership alignment, filing quality.

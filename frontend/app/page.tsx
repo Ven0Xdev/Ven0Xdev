@@ -59,16 +59,16 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
-  // The OTC summary/heatmap (a full universe ML scan, tens of seconds on a
-  // cache miss) and the large-cap market overview (a handful of cheap
-  // quote lookups) are unrelated data sources — one being slow must never
-  // block the other. PageHeader and MarketOverview always render; only the
-  // OTC-specific section below swaps between skeleton/error/content.
+  // The AI summary/heatmap (a full universe scan, tens of seconds on a
+  // cache miss) and the market overview (a handful of cheap quote lookups)
+  // are unrelated data sources — one being slow must never block the other.
+  // PageHeader and MarketOverview always render; only the AI-analysis
+  // section below swaps between skeleton/error/content.
   return (
     <div className="flex flex-col gap-7">
       <PageHeader
         title="Dashboard"
-        description="Continuous AI scan across the OTC universe. All scores are probability-based, never certainty."
+        description="Continuous AI scan across the tracked asset universe. All scores are probability-based, never certainty."
       />
 
       {cachedAt !== null && <CacheBadge cachedAt={cachedAt} />}
@@ -99,7 +99,7 @@ export default function DashboardPage() {
       ) : !summary ? (
         loadingTooLong ? (
           <div className="card flex flex-col gap-2 p-5 text-sm">
-            <p className="font-semibold">Still waiting on the OTC scan.</p>
+            <p className="font-semibold">Still waiting on the AI scan.</p>
             <p style={{ color: "var(--text-secondary)" }}>
               A full universe scan can take a while on a cold cache — this is taking longer than expected.
             </p>
@@ -108,7 +108,7 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : (
-          <OtcSummarySkeleton />
+          <DashboardSummarySkeleton />
         )
       ) : (
         <>
@@ -210,7 +210,7 @@ function EmptyRow({ text, good }: { text: string; good?: boolean }) {
   );
 }
 
-function OtcSummarySkeleton() {
+function DashboardSummarySkeleton() {
   return (
     <div className="flex flex-col gap-7">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

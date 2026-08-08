@@ -94,7 +94,7 @@ class FundamentalAnalyst:
         elif dilution > 20:
             out.append(Evidence(self.name, f"Share count grew {dilution:.0f}% in 12 months — meaningful dilution headwind", BEARISH, 0.6, "fundamental.dilution_12m_pct", dilution))
         elif dilution < 0:
-            out.append(Evidence(self.name, f"Share count shrank {abs(dilution):.0f}% — rare capital discipline for OTC", BULLISH, 0.5, "fundamental.dilution_12m_pct", dilution))
+            out.append(Evidence(self.name, f"Share count shrank {abs(dilution):.0f}% — rare capital discipline", BULLISH, 0.5, "fundamental.dilution_12m_pct", dilution))
 
         if fund.filing_delinquent:
             out.append(Evidence(self.name, "Issuer is delinquent on required SEC filings — information risk is elevated", BEARISH, 0.8, "fundamental.filing_delinquent"))

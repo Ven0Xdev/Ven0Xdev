@@ -10,6 +10,7 @@ from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.market_overview import get_market_overview
 from app.services.scoring.scorer import analyze_ticker
+from app.services.universe.manager import get_active_universe
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -44,7 +45,14 @@ def dashboard_summary(
     db: Session = Depends(db_session),
     provider: MarketDataProvider = Depends(data_provider),
 ):
-    tickers = provider.get_universe()
+    """AI-analysis summary for the Asset Universe Manager's active assets
+    (same universe as `/dashboard/market-overview` and `GET /api/v1/universe`).
+    Deep per-ticker analysis requires the configured provider to actually
+    recognize each symbol — with the default `mock` provider (a synthetic
+    OTC demo dataset) that will legitimately be empty for mainstream tickers
+    like AAPL; configure a real provider (Twelve Data / Alpha Vantage) to see
+    populated results."""
+    tickers = get_active_universe(db)
     analyses = []
     provider_error: ProviderDataUnavailable | None = None
     with ThreadPoolExecutor(max_workers=8) as pool:

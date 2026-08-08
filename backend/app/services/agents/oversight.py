@@ -108,7 +108,7 @@ class ContrarianAnalyst:
                 ))
 
         if not out:
-            out.append(Evidence(self.name, "No material contradictory evidence found beyond baseline OTC risk — recorded as a finding, not assumed", NEUTRAL, 0.2, "contrarian.none_found"))
+            out.append(Evidence(self.name, "No material contradictory evidence found beyond baseline market risk — recorded as a finding, not assumed", NEUTRAL, 0.2, "contrarian.none_found"))
         return out
 
 

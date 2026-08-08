@@ -1,10 +1,15 @@
 # Nexora — AI Financial Intelligence Platform
 
-An AI-powered research platform for OTC (over-the-counter) stocks: continuous
-scanning, probability-based opportunity ranking, manipulation detection,
-explainable ML, realistic backtesting, and a conversational research
-assistant. Every output is probabilistic — the platform never claims
-certainty about future price movement.
+An AI-powered multi-asset market research platform covering stocks, ETFs,
+indices, commodities, and precious metals: continuous scanning,
+probability-based opportunity ranking, manipulation detection, explainable
+ML, realistic backtesting, and a conversational research assistant. Every
+output is probabilistic — the platform never claims certainty about future
+price movement.
+
+An optional, disabled-by-default OTC/micro-cap module (see "Optional: OTC
+module" below) preserves the platform's original OTC penny-stock research
+tooling for future re-activation.
 
 This is not a signal service. It's a decision-support tool: it scores,
 explains, and estimates risk; it never promises an outcome.
@@ -72,30 +77,59 @@ cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
-This starts TimescaleDB, Redis, the API (`:8000`), a continuous background
-scanner worker, and the web dashboard (`:3000`).
+This starts TimescaleDB, Redis, the API (`:8000`), and the web dashboard
+(`:3000`). The optional OTC-module scanner worker does **not** start by
+default — see "Optional: OTC module" below.
+
+## Asset universe
+
+The mainstream platform tracks a configurable universe of symbols managed
+through the **Asset Universe Manager** (`GET/POST/PATCH/DELETE
+/api/v1/universe`, backed by `services/universe/manager.py` and the `assets`
+DB table), seeded by default with:
+
+`AAPL, MSFT, NVDA, AMZN, META, GOOGL, TSLA, AMD, NFLX, AVGO, SPY, VOO, QQQ,
+DIA, IWM, GLD, IAU, SLV, XLK, XLE`
+
+Supported asset types today: `STOCK`, `ETF`, `INDEX`, `COMMODITY`,
+`PRECIOUS_METAL`. `FOREX`, `CRYPTO`, and `OTC_STOCK` are recognized taxonomy
+members reserved for future expansion — the universe API rejects creating
+entries with those types for now. The universe is never hardcoded into
+individual endpoints; every mainstream surface (`/dashboard/summary`,
+`/scan/opportunities`, `/scan/heatmap`, `/scan/risk-monitor`,
+`/scan/multi-asset/prescan`) reads it from the database at request time.
 
 ## Data providers — mock vs. real
 
-OTC market data (Level II, SEC EDGAR filings, OTC Markets disclosures,
-licensed news/sentiment) requires paid vendor API keys this environment
-doesn't have. The platform ships with `MockOTCProvider`
-(`backend/app/services/data_providers/mock_provider.py`): a deterministic
-synthetic data generator that produces statistically realistic penny-stock
-behavior — clean uptrends/downtrends, accumulation breakouts, pump-and-dump
-patterns, and illiquid chop — seeded per symbol so results are reproducible.
+Real market data (quotes, OHLCV history, fundamentals, news) requires paid
+vendor API keys this environment doesn't have. The platform ships with
+`MockOTCProvider` (`backend/app/services/data_providers/mock_provider.py`):
+a deterministic synthetic data generator that produces statistically
+realistic penny-stock behavior — clean uptrends/downtrends, accumulation
+breakouts, pump-and-dump patterns, and illiquid chop — seeded per symbol so
+results are reproducible. It only recognizes its own ~30 fictional demo
+tickers, not mainstream symbols like AAPL — the platform never fabricates
+data for a real-market ticker it can't actually price.
 
 Every other service (feature engineering, ML scoring, manipulation
 detection, backtesting, the chat assistant) talks only to the
-`MarketDataProvider` interface in `base.py`. To go live:
+`MarketDataProvider` interface in `base.py`. To go live on the mainstream
+asset universe:
 
-1. Get an API key from Polygon.io, Finnhub, or OTC Markets Group.
-2. Implement the corresponding class in `services/data_providers/real_providers.py`
-   (stubs are already wired into the factory).
-3. Set `MARKET_DATA_PROVIDER` and the matching `*_API_KEY` in `.env`.
+1. Get a free API key from [Twelve Data](https://twelvedata.com/pricing)
+   (primary) and, optionally, [Alpha Vantage](https://www.alphavantage.co/support/#api-key)
+   (automatic fallback on any Twelve Data failure).
+2. Set `TWELVE_DATA_API_KEY` and `ALPHA_VANTAGE_API_KEY`, and
+   `MARKET_DATA_PROVIDER=twelvedata`, in `.env`. Keys are backend-only —
+   never sent to or read by the frontend.
+3. Every response is labeled with its `data_mode`: `live`/`delayed` (fresh
+   vendor call), `cached` (served from the local TTL cache), or the
+   endpoint returns a structured 503 (`provider_unavailable`) if every
+   configured vendor fails — never fabricated data.
 
 No other code changes are required — scoring, backtesting, and the API
-contract are provider-agnostic.
+contract are provider-agnostic. `services/data_providers/real_providers.py`
+also has unimplemented Polygon/OTC Markets stubs for future providers.
 
 ## AI output contract
 
@@ -130,12 +164,15 @@ See `backend/app/schemas/stock.py` for the exact contract and
   point-in-time features + forward-return labels from the data provider's
   history and trains/persists a versioned ensemble artifact.
 
-Manipulation detection is deliberately **not** a single black-box score: rule-based
-flags (pump-and-dump pattern, wash-trading heuristic, abnormal spread, toxic
-dilution, repeated reverse splits, delinquent filings, promotional news
-ratio, low-liquidity traps — `services/features/manipulation.py`) are
-combined with the statistical anomaly score, and every flag carries a
-plain-English reason.
+Manipulation detection is deliberately **not** a single black-box score:
+rule-based flags — pump-and-dump pattern, wash-trading heuristic, abnormal
+spread, delinquent filings/going-concern, low-liquidity traps
+(`services/features/manipulation.py`) — are combined with the statistical
+anomaly score, and every flag carries a plain-English reason. OTC-specific
+flags (toxic dilution, repeated reverse splits, promotional-news campaigns)
+live separately in `services/otc/manipulation.py`, part of the optional OTC
+module below — diagnostic for thinly-traded penny stocks, but essentially
+always-inactive noise for mainstream large-cap stocks/ETFs.
 
 ## Backtest engine
 
@@ -165,16 +202,41 @@ scores, never invents numbers. Two backends:
 
 Session history persists via `ChatSession`/`ChatMessage` in the database.
 
-## Continuous scanning
+## Scanning
 
-`app/workers/scan_scheduler.py` runs a loop (`SCAN_INTERVAL_SECONDS`,
-default 900s) that re-analyzes the full OTC universe and logs a `Prediction`
-snapshot per ticker per cycle — this is what prediction-history and
-model-performance tracking (`GET /api/v1/predictions/model-performance`) are
-built on, and what future outcome-based recalibration will consume. The API
-also keeps a short in-process TTL cache (30s) on `analyze_ticker` so
-dashboard/scan endpoints hitting the same universe don't redundantly rerun
-the full feature + ensemble + Monte Carlo pipeline.
+The mainstream platform scans the Asset Universe Manager's active assets
+on demand: `GET /scan/opportunities`, `/scan/heatmap`, `/scan/risk-monitor`,
+and `/scan/multi-asset/prescan` (the deterministic two-stage scanner +
+quality gates) all read live. The API also keeps a short in-process TTL
+cache (30s) on `analyze_ticker` so requests hitting the same universe don't
+redundantly rerun the full feature + ensemble + Monte Carlo pipeline.
+
+The original **continuous background scanner** (`app/workers/scan_scheduler.py`,
+a loop on `SCAN_INTERVAL_SECONDS`, default 900s, that logs a `Prediction`
+snapshot per ticker per cycle) is part of the optional OTC module — see
+below.
+
+## Optional: OTC module
+
+Nexora's original product surface was an OTC/micro-cap penny-stock scanner.
+That tooling still exists, isolated and **disabled by default**, so it can
+be re-activated for a future OTC product surface without being part of the
+mainstream experience:
+
+- `services/otc/manipulation.py` — toxic-dilution, repeated-reverse-split,
+  and promotional-news-campaign detection.
+- `app/workers/scan_scheduler.py` — the continuous scanner loop, gated
+  behind `OTC_MODULE_ENABLED` (exits immediately on start if unset/false).
+- The docker-compose `scanner` service, gated behind the `otc` Compose
+  profile (`docker compose --profile otc up`).
+- `MockOTCProvider`, the `Ticker`/`OHLCVBar` DB tables, and the
+  `/scan/run-cycle` · `/scan/cycles` · `/scan/cycles/{id}/decisions`
+  endpoints (still reachable, but only meaningful once the module is
+  enabled and driven by the scanner above).
+
+Set `OTC_MODULE_ENABLED=true` in `backend/.env` to re-enable the worker.
+No data or endpoints were deleted in the move to a mainstream-first
+platform — everything above remains fully functional, just off by default.
 
 ## Database
 
@@ -209,5 +271,7 @@ contract, the backtest engine's execution mechanics, and the API surface.
 ## Disclaimer
 
 This platform produces probabilistic research output, not investment advice.
-OTC micro-caps carry elevated manipulation, dilution, and liquidity risk.
-Nothing here should be treated as a guarantee of any outcome.
+All securities carry manipulation, liquidity, and market risk — OTC/
+micro-cap names (when the optional OTC module is enabled) carry
+elevated versions of all three. Nothing here should be treated as a
+guarantee of any outcome.

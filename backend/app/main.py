@@ -74,9 +74,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description=(
-        "AI-powered research platform for OTC stocks: continuous scanning, probability-based "
-        "opportunity ranking, manipulation detection, explainable ML, backtesting, and a "
-        "conversational trading research assistant. All outputs are probabilistic, never certain."
+        "AI-powered multi-asset market research platform (stocks, ETFs, indices, commodities, "
+        "precious metals): continuous scanning, probability-based opportunity ranking, "
+        "manipulation detection, explainable ML, backtesting, and a conversational research "
+        "assistant. All outputs are probabilistic, never certain. An optional, disabled-by-default "
+        "OTC/micro-cap module remains available for future expansion (see "
+        "services/otc/__init__.py)."
     ),
     version="0.1.0",
     lifespan=lifespan,

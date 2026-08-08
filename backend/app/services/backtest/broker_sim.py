@@ -1,7 +1,7 @@
-"""Realistic OTC execution simulation: spread cost, slippage, partial fills,
-and trading halts. OTC micro-caps regularly gap 30-100%+ intraday and are
-frequently halted for "additional information requested" — a backtest that
-ignores this wildly overstates strategy performance.
+"""Realistic execution simulation: spread cost, slippage, partial fills,
+and trading halts. Illiquid names (OTC micro-caps most of all, when the
+optional OTC module is enabled) regularly gap intraday and get halted — a
+backtest that ignores this wildly overstates strategy performance.
 """
 from __future__ import annotations
 

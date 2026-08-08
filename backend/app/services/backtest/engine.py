@@ -1,4 +1,4 @@
-"""Event-driven backtest engine with realistic OTC execution assumptions.
+"""Event-driven backtest engine with realistic execution assumptions.
 
 Walks bar-by-bar (no lookahead: every signal is computed only on data up to
 and including the current bar), simulates tiered take-profit exits (40% at

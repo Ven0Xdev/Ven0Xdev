@@ -1,3 +1,5 @@
+# Dilution and reverse-split flag tests live in test_otc_manipulation.py —
+# those flags moved to services/otc/manipulation.py (OTC-only module).
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -86,24 +88,6 @@ def test_pump_and_dump_pattern_detected():
     codes = {f.code for f in assessment.flags}
     assert "pump_and_dump_pattern" in codes or "volume_spike_no_catalyst" in codes
     assert assessment.score > 30
-
-
-def test_heavy_dilution_flag():
-    df = _clean_df()
-    assessment = assess_manipulation_risk(
-        df, _meta(), _fundamentals(dilution=80.0), news=[], spread_pct=1.0, avg_dollar_volume=1_000_000
-    )
-    codes = {f.code for f in assessment.flags}
-    assert "toxic_dilution" in codes
-
-
-def test_repeated_reverse_splits_flag():
-    df = _clean_df()
-    assessment = assess_manipulation_risk(
-        df, _meta(reverse_splits=3), _fundamentals(), news=[], spread_pct=1.0, avg_dollar_volume=1_000_000
-    )
-    codes = {f.code for f in assessment.flags}
-    assert "repeated_reverse_splits" in codes
 
 
 def test_wide_spread_flag():

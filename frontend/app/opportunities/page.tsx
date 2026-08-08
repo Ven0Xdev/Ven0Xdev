@@ -40,7 +40,7 @@ export default function OpportunitiesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Opportunities"
-        description="Full OTC universe, ranked by overall AI score. Filter by minimum score and maximum manipulation risk."
+        description="Full tracked asset universe, ranked by overall AI score. Filter by minimum score and maximum manipulation risk."
       />
 
       <div className="card animate-in flex flex-wrap items-center gap-x-8 gap-y-4 p-5">

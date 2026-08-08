@@ -30,7 +30,7 @@ export default function BacktestPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Backtest Engine"
-        description="Realistic execution simulation: spread, slippage, partial fills, and trading halts on the OTC universe."
+        description="Realistic execution simulation: spread, slippage, partial fills, and trading halts across the tracked asset universe."
       />
 
       <form

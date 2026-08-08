@@ -61,7 +61,7 @@ def build_recommendation_dossier(
         "stance": verdict.stance,
         "why_buy": verdict.key_reasons_for or ["No affirmative case was found by any analyst — absence recorded, not assumed."],
         "why_not_buy": verdict.key_reasons_against or ["No opposing case survived deliberation — see contrarian findings for what was checked."],
-        "biggest_risks": [e.claim for e in risk_stage.evidence] or [verdict.key_reasons_against[0] if verdict.key_reasons_against else "Baseline OTC risk."],
+        "biggest_risks": [e.claim for e in risk_stage.evidence] or [verdict.key_reasons_against[0] if verdict.key_reasons_against else "Baseline market risk."],
         "confidence_calculation": {
             "conviction": verdict.conviction,
             "formula": "conviction = |net evidence| × agreement × (model confidence / 100) × calibration damping, capped at 0.97",

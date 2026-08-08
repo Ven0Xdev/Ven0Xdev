@@ -105,6 +105,15 @@ class Settings(BaseSettings):
     scan_interval_seconds: int = 900
     universe_max_tickers: int = 2000
 
+    # --- Optional OTC/micro-cap module (disabled by default) ---
+    # Nexora's mainstream experience runs on the Asset Universe Manager's
+    # STOCK/ETF/INDEX/COMMODITY/PRECIOUS_METAL universe (services/universe/
+    # manager.py). The original OTC penny-stock continuous scanner
+    # (app/workers/scan_scheduler.py) and OTC-specific manipulation checks
+    # (services/otc/manipulation.py) still exist but only run when this is
+    # explicitly enabled — see services/otc/__init__.py.
+    otc_module_enabled: bool = False
+
     # --- Deterministic Risk Engine ---
     # Thresholds a candidate/trade must clear regardless of what any AI
     # agent recommends — configurable per deployment, never hardcoded deep

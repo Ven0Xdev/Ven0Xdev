@@ -3,8 +3,8 @@
 Complements the rule-based manipulation flags in `services/features/manipulation.py`
 with an unsupervised IsolationForest over a rolling window of return/volume
 statistics, catching manipulation patterns that don't match a hand-written
-rule but still look statistically abnormal versus the stock's own history
-and versus the broader OTC universe.
+rule but still look statistically abnormal versus the security's own history
+and versus the broader tracked asset universe.
 """
 from __future__ import annotations
 

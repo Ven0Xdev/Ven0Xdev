@@ -101,6 +101,13 @@ class _DownProvider:
     def get_universe(self, limit=None):
         raise ProviderDataUnavailable("Finnhub /stock/symbol failed: HTTP 302")
 
+    def get_ticker_meta(self, symbol):
+        # First call analyze_ticker makes — the Asset Universe Manager path
+        # (dashboard/summary, scan/heatmap, scan/opportunities, scan/risk-monitor)
+        # sources its symbol list from the DB, not get_universe(), so a down
+        # vendor is only observed here.
+        raise ProviderDataUnavailable("Finnhub /stock/symbol failed: HTTP 302")
+
 
 @pytest.fixture()
 def degraded_client():

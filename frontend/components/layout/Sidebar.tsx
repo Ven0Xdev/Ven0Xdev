@@ -155,7 +155,7 @@ export function SidebarFooter() {
       className="mt-auto rounded-[10px] px-3 py-3 text-xs leading-relaxed"
       style={{ color: "var(--text-muted)", background: "var(--surface-2)" }}
     >
-      Probabilistic research only — not financial advice. OTC micro-caps carry high manipulation and liquidity risk.
+      Probabilistic research only — not financial advice. Markets carry manipulation and liquidity risk; size and manage accordingly.
     </div>
   );
 }

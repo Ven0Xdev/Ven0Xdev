@@ -10,6 +10,7 @@ from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.scanner.multi_asset import DEFAULT_SHORTLIST_SIZE, run_multi_asset_prescan
 from app.services.scoring.scorer import analyze_ticker
+from app.services.universe.manager import get_active_universe
 
 router = APIRouter(prefix="/scan", tags=["scan"])
 
@@ -25,8 +26,10 @@ def multi_asset_prescan(
     scanning pipeline"): every active asset in the Asset Universe Manager
     (`GET /api/v1/universe`) is scored and passed through the quality gates
     + deterministic risk engine, then the top-scoring survivors become the
-    shortlist. Distinct from `/scan/opportunities` above, which scans the
-    OTC-only provider universe unchanged.
+    shortlist. `/scan/opportunities` below now scans this same Asset
+    Universe Manager universe too; the OTC-only continuous scanner behind
+    `/scan/run-cycle`/`/scan/cycles` is a separate, disabled-by-default
+    module (see services/otc/__init__.py).
 
     The shortlist is the handoff point for a future AI agent committee to
     take over for deeper analysis (not yet built) — today it is the
@@ -65,8 +68,12 @@ def run_cycle_now(
     db: Session = Depends(db_session),
     _operator=Depends(require_operator),
 ):
-    """Trigger one full scanner cycle on demand (normally the background
-    worker runs these continuously)."""
+    """OTC-module-only: triggers one full cycle of the legacy continuous OTC
+    scanner (`app/workers/scan_scheduler.py`) against the configured
+    provider's own `get_universe()` — disabled by default
+    (`Settings.otc_module_enabled`), unrelated to the Asset Universe
+    Manager's mainstream universe used by `/scan/opportunities`,
+    `/scan/heatmap`, and `/scan/risk-monitor`."""
     from app.workers.scan_scheduler import run_scan_cycle
 
     analyzed = run_scan_cycle(provider=provider, db=db)
@@ -82,7 +89,9 @@ def run_cycle_now(
 
 @router.get("/cycles")
 def scan_history(limit: int = Query(20, le=100), db: Session = Depends(db_session)):
-    """Scanner history: every completed cycle with its accept/reject split."""
+    """OTC-module-only: history of `/scan/run-cycle` runs against the legacy
+    continuous OTC scanner. Every completed cycle with its accept/reject
+    split."""
     cycles = db.query(ScanCycle).order_by(ScanCycle.started_at.desc()).limit(limit).all()
     return [
         {
@@ -105,7 +114,8 @@ def cycle_decisions(
     decision: str | None = Query(None, pattern="^(accepted|rejected|failed)$"),
     db: Session = Depends(db_session),
 ):
-    """Why every stock was selected or rejected in a specific cycle."""
+    """OTC-module-only: why every stock was selected or rejected in a
+    specific `/scan/run-cycle` cycle."""
     if db.query(ScanCycle).filter_by(id=cycle_id).one_or_none() is None:
         raise HTTPException(status_code=404, detail=f"Scan cycle {cycle_id} not found")
     query = db.query(ScanDecision).filter_by(cycle_id=cycle_id)
@@ -131,12 +141,14 @@ def top_opportunities(
     limit: int = Query(20, le=100),
     min_score: float = Query(0, ge=0, le=100),
     max_manipulation_risk: float = Query(100, ge=0, le=100),
+    db: Session = Depends(db_session),
     provider: MarketDataProvider = Depends(data_provider),
 ):
-    """Scan the full OTC universe, score every ticker, and return the
-    top-ranked opportunities by overall AI score, filtered by risk gates.
+    """Scan the Asset Universe Manager's active assets (`GET /api/v1/universe`),
+    score every one, and return the top-ranked opportunities by overall AI
+    score, filtered by risk gates.
     """
-    tickers = provider.get_universe()
+    tickers = get_active_universe(db)
     results: list[StockAnalysis] = []
 
     provider_error: ProviderDataUnavailable | None = None
@@ -162,15 +174,18 @@ def top_opportunities(
 
 
 @router.get("/heatmap")
-def sector_heatmap(provider: MarketDataProvider = Depends(data_provider)):
-    tickers = provider.get_universe()
+def sector_heatmap(db: Session = Depends(db_session), provider: MarketDataProvider = Depends(data_provider)):
+    """Average AI score by sector across the Asset Universe Manager's active
+    assets. Sector comes from each analysis's own resolved fundamentals
+    (`StockAnalysis.sector`), not from the Asset row (which does not carry
+    a sector field)."""
+    tickers = get_active_universe(db)
     sector_scores: dict[str, list[float]] = {}
 
     provider_error: ProviderDataUnavailable | None = None
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {pool.submit(analyze_ticker, t.symbol, provider): t for t in tickers}
         for future in as_completed(futures):
-            ticker = futures[future]
             try:
                 analysis = future.result()
             except ProviderDataUnavailable as exc:
@@ -178,7 +193,7 @@ def sector_heatmap(provider: MarketDataProvider = Depends(data_provider)):
                 continue
             except Exception:
                 continue
-            sector_scores.setdefault(ticker.sector, []).append(analysis.overall_ai_score)
+            sector_scores.setdefault(analysis.sector, []).append(analysis.overall_ai_score)
     if tickers and not sector_scores and provider_error is not None:
         raise provider_error
 
@@ -189,8 +204,10 @@ def sector_heatmap(provider: MarketDataProvider = Depends(data_provider)):
 
 
 @router.get("/risk-monitor")
-def risk_monitor(provider: MarketDataProvider = Depends(data_provider)):
-    tickers = provider.get_universe()
+def risk_monitor(db: Session = Depends(db_session), provider: MarketDataProvider = Depends(data_provider)):
+    """Flags active assets (Asset Universe Manager) whose manipulation risk
+    score is elevated."""
+    tickers = get_active_universe(db)
     flagged = []
 
     with ThreadPoolExecutor(max_workers=8) as pool:

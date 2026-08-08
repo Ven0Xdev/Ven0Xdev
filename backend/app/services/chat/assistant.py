@@ -23,14 +23,15 @@ from app.services.chat.memory import ChatTurn
 from app.services.data_providers.factory import get_data_provider
 from app.services.scoring.scorer import analyze_ticker
 
-SYSTEM_PROMPT = """You are Nexora, an OTC micro-cap research assistant embedded in a trading \
-platform. You help users evaluate OTC/penny stock setups the platform's AI has already scored.
+SYSTEM_PROMPT = """You are Nexora, an AI financial research assistant embedded in a multi-asset \
+market intelligence platform. You help users evaluate stock/ETF/index/commodity setups the \
+platform's AI has already scored.
 
 Hard rules, never break these:
 1. NEVER claim certainty about future price movement. Always speak in probabilities \
 ("there's roughly a 30% modeled probability...", not "this will go up").
 2. NEVER answer from memory when live data is required. Any quantitative claim about a \
-stock (price, score, probability, risk flag, news) MUST come from calling a tool in this \
+security (price, score, probability, risk flag, news) MUST come from calling a tool in this \
 conversation. If you did not call a tool for it, you may not state it as fact.
 3. Always mention at least one concrete risk or invalidation condition when discussing a \
 potential trade.
@@ -38,8 +39,8 @@ potential trade.
 decline and explain that you provide probabilistic research only, not financial advice.
 5. Keep answers concise unless the user asks for depth, and always explain the reasoning \
 behind the answer, not just the conclusion.
-6. OTC micro-caps are high risk: manipulation, dilution, and illiquidity are common. \
-Surface these risks proactively when relevant, even if not asked.
+6. Manipulation, illiquidity, and abrupt regime shifts can affect any security — surface \
+these risks proactively when relevant, even if not asked.
 7. End every substantive answer by explicitly separating what you said into:
    - Facts: values retrieved from tools (computed by the platform from market data)
    - Predictions: model probability estimates — statistical, calibrated, never guaranteed
@@ -59,9 +60,18 @@ def _detect_ticker(message: str, known_symbols: list[str], fallback: str | None)
     return fallback
 
 
-def resolve_ticker(message: str, current_ticker: str | None) -> str | None:
-    provider = get_data_provider()
-    known = [t.symbol for t in provider.get_universe()]
+def resolve_ticker(message: str, current_ticker: str | None, db=None) -> str | None:
+    """Known symbols come from the Asset Universe Manager (the mainstream
+    platform's source of truth) when a DB session is available; falls back
+    to the configured provider's own universe (needed for OTC-module/demo
+    callers that don't have a DB session, e.g. tool-registry unit tests)."""
+    if db is not None:
+        from app.services.universe.manager import get_active_universe
+
+        known = [a.symbol for a in get_active_universe(db)]
+    else:
+        provider = get_data_provider()
+        known = [t.symbol for t in provider.get_universe()]
     return _detect_ticker(message, known, current_ticker)
 
 
@@ -72,7 +82,7 @@ def generate_reply(
     db=None,
 ) -> tuple[str, str | None]:
     """Returns (reply_text, resolved_ticker)."""
-    resolved_ticker = resolve_ticker(message, ticker)
+    resolved_ticker = resolve_ticker(message, ticker, db)
     analysis = None
     if resolved_ticker:
         try:
@@ -156,7 +166,7 @@ def _epistemic_footer(a: StockAnalysis) -> str:
     return (
         f"\n\n— Facts: scores/prices computed from '{a.data_source}' data ({a.data_mode}) at {as_of} for {a.ticker}. "
         f"Predictions: all probabilities are calibrated model estimates, not guarantees. "
-        f"Assumptions: OTC execution costs (spread/slippage) match recent history; horizons are trading days. "
+        f"Assumptions: execution costs (spread/slippage) match recent history; horizons are trading days. "
         f"Missing: {missing_text}."
     )
 
@@ -164,7 +174,7 @@ def _epistemic_footer(a: StockAnalysis) -> str:
 def _template_reply(message: str, analysis: StockAnalysis | None) -> str:
     if analysis is None:
         return (
-            "I don't have a ticker in context yet. Mention a symbol (e.g. \"$AXNT\" or \"what about AXNT\") "
+            "I don't have a ticker in context yet. Mention a symbol (e.g. \"$AAPL\" or \"what about AAPL\") "
             "and I'll pull up its current AI analysis — scores, risks, and probability-based outlook."
         )
     return _template_reply_core(message, analysis) + _epistemic_footer(analysis)
@@ -226,7 +236,7 @@ def _template_reply_core(message: str, analysis: StockAnalysis) -> str:
         return (
             f"Suggested maximum allocation for {a.ticker} is {a.max_allocation_pct:.2f}% of portfolio, scaled down "
             f"for manipulation risk ({a.manipulation_risk:.0f}/100) and liquidity ({a.liquidity_score:.0f}/100). "
-            f"This is a ceiling, not a target — many traders should size smaller, especially on OTC illiquid names."
+            f"This is a ceiling, not a target — many traders should size smaller, especially on illiquid names."
         )
 
     if any(k in q for k in ["probability of success", "chance", "odds"]):

@@ -12,8 +12,8 @@ holding. Three jobs:
    the numbers that justify it.
 3. Risk optimization is *subtractive*: the engine recommends reducing
    oversized or risk-flagged exposure toward each position's ceiling; it
-   never recommends leveraging up to fill "unused" risk budget. In OTC,
-   the cheapest risk optimization is the position you don't oversize.
+   never recommends leveraging up to fill "unused" risk budget. The
+   cheapest risk optimization is the position you don't oversize.
 
 All portfolio marks come from the live provider; positions the provider
 cannot price are reported as unpriced (excluded from weights, flagged) —
@@ -188,7 +188,7 @@ def assess_portfolio(
             {
                 "severity": "critical",
                 "code": "excessive_single_position",
-                "message": f"{worst.ticker} is {worst.weight_pct:.1f}% of the portfolio (limit {MAX_SINGLE_POSITION_PCT:.0f}%). A single OTC halt or dump dominates the whole book.",
+                "message": f"{worst.ticker} is {worst.weight_pct:.1f}% of the portfolio (limit {MAX_SINGLE_POSITION_PCT:.0f}%). A single sharp drop in this name dominates the whole book.",
             }
         )
     for sector, weight in sector_weights.items():
