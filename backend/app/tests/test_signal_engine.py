@@ -26,6 +26,7 @@ def test_every_universe_symbol_gets_a_valid_status(db_session, provider):
         assert signal.status in VALID
         assert signal.data_mode == "synthetic"      # provenance carried
         assert signal.model_version and signal.feature_version
+        assert signal.risk_policy_version  # which shared RiskPolicy evaluated this signal
 
 
 def test_no_trade_carries_rejection_reasons(db_session, provider):

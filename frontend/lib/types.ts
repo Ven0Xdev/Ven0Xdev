@@ -269,4 +269,5 @@ export interface SignalPayload {
   data_mode: string;
   model_version: string;
   feature_version: string;
+  risk_policy_version: string;
 }

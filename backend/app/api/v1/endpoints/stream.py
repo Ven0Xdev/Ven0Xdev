@@ -124,4 +124,5 @@ def _signal_payload(s: Signal) -> dict:
         "patterns_detected": s.patterns_detected,
         "data_source": s.data_source, "data_mode": s.data_mode,
         "model_version": s.model_version, "feature_version": s.feature_version,
+        "risk_policy_version": s.risk_policy_version,
     }

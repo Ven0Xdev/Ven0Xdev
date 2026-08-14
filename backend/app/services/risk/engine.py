@@ -42,6 +42,14 @@ def evaluate_risk(
     settings = settings or get_settings()
     reasons: list[str] = []
 
+    if settings.safe_mode_enabled:
+        # Absolute kill switch — short-circuits before any other check, and
+        # applies regardless of how strong the setup otherwise looks.
+        return RiskVerdict(
+            passed=False,
+            reasons=["Safe Mode is active platform-wide — no new actionable signals or trades are permitted."],
+        )
+
     if confidence_pct < settings.risk_min_confidence_pct:
         reasons.append(
             f"Confidence {confidence_pct:.1f}% below the {settings.risk_min_confidence_pct:.1f}% minimum."

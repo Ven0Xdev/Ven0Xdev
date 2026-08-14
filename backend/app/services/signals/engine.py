@@ -28,17 +28,18 @@ from sqlalchemy.orm import Session
 from app.db.models.signal import Signal, SignalEvent
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
+from app.services.risk.engine import evaluate_risk
+from app.services.risk.policy import RiskPolicy
 from app.services.scoring.scorer import analyze_ticker
 
 FEATURE_VERSION = "fv-1"
 
-MAX_SPREAD_PCT = 12.0
-MIN_LIQUIDITY = 25.0
-MIN_DOLLAR_VOLUME = 10_000.0
-MAX_MANIPULATION = 60.0
-MIN_CONFIDENCE = 30.0
+# The spread/liquidity/dollar-volume/manipulation/confidence/min-bars
+# thresholds this module used to hardcode locally now live in RiskPolicy
+# (services/risk/policy.py), shared with the scanner
+# (services/scanner/multi_asset.py) — apply_safety_rules() and
+# evaluate_signal() always read the live policy, never a local constant.
 MIN_DATA_QUALITY = 40.0
-MIN_BARS_FOR_SIGNAL = 20  # below this, report INSUFFICIENT_DATA rather than guess
 
 _INTRADAY_TIMEFRAMES = {"1m", "5m", "15m", "1H"}
 _RESAMPLE_RULE = {"5m": "5min", "15m": "15min", "1H": "1h", "1W": "1W", "1M": "1MS"}
@@ -183,9 +184,20 @@ class SafetyVerdict:
     reasons: list[str]
 
 
-def apply_safety_rules(a: StockAnalysis, tech: dict, indicators_warm: bool, provider_healthy: bool) -> SafetyVerdict:
+def apply_safety_rules(
+    a: StockAnalysis,
+    tech: dict,
+    indicators_warm: bool,
+    provider_healthy: bool,
+    policy: RiskPolicy | None = None,
+) -> SafetyVerdict:
     """Every rule cites its threshold AND the observed value (spec: the
-    engine must explain every rejection)."""
+    engine must explain every rejection). Thresholds come from the shared
+    RiskPolicy (defaults to the live one), not locally hardcoded — this is
+    the same policy the scanner (services/scanner/multi_asset.py) applies,
+    so a ticker can no longer look tradeable here while the scanner would
+    reject it, or vice versa."""
+    policy = policy or RiskPolicy.from_settings()
     reasons: list[str] = []
     if a.data_mode == "unspecified":
         reasons.append("Data provenance is unspecified — refusing to signal on unlabeled data.")
@@ -193,35 +205,51 @@ def apply_safety_rules(a: StockAnalysis, tech: dict, indicators_warm: bool, prov
         reasons.append("Provider connection unhealthy/stale — no entry signals on stale data.")
     if not indicators_warm:
         reasons.append("Indicators not warmed up — insufficient lookback for a reliable read.")
-    if tech["spread_pct"] > MAX_SPREAD_PCT:
-        reasons.append(f"Spread {tech['spread_pct']:.1f}% exceeds the {MAX_SPREAD_PCT:.0f}% safety limit.")
-    if a.liquidity_score < MIN_LIQUIDITY:
-        reasons.append(f"Liquidity {a.liquidity_score:.0f}/100 below the {MIN_LIQUIDITY:.0f} threshold.")
-    if tech["avg_dollar_volume_20d"] < MIN_DOLLAR_VOLUME:
-        reasons.append(f"Avg dollar volume ${tech['avg_dollar_volume_20d']:,.0f}/day below ${MIN_DOLLAR_VOLUME:,.0f}.")
-    if a.manipulation_risk > MAX_MANIPULATION:
-        reasons.append(f"Manipulation risk {a.manipulation_risk:.0f}/100 exceeds the {MAX_MANIPULATION:.0f} limit.")
-    if a.confidence_score < MIN_CONFIDENCE:
-        reasons.append(f"Model confidence {a.confidence_score:.0f}/100 below the {MIN_CONFIDENCE:.0f} floor.")
+    if tech["spread_pct"] > policy.max_spread_pct:
+        reasons.append(f"Spread {tech['spread_pct']:.1f}% exceeds the {policy.max_spread_pct:.0f}% safety limit.")
+    if a.liquidity_score < policy.min_liquidity_score:
+        reasons.append(f"Liquidity {a.liquidity_score:.0f}/100 below the {policy.min_liquidity_score:.0f} threshold.")
+    if tech["avg_dollar_volume_20d"] < policy.min_dollar_volume:
+        reasons.append(f"Avg dollar volume ${tech['avg_dollar_volume_20d']:,.0f}/day below ${policy.min_dollar_volume:,.0f}.")
+    if a.manipulation_risk > policy.max_manipulation_risk:
+        reasons.append(f"Manipulation risk {a.manipulation_risk:.0f}/100 exceeds the {policy.max_manipulation_risk:.0f} limit.")
+    if a.confidence_score < policy.min_signal_confidence_pct:
+        reasons.append(f"Model confidence {a.confidence_score:.0f}/100 below the {policy.min_signal_confidence_pct:.0f} floor.")
     return SafetyVerdict(passed=not reasons, reasons=reasons)
 
 
-def _status_for(a: StockAnalysis, safety: SafetyVerdict) -> str:
+def _status_for(a: StockAnalysis, safety: SafetyVerdict, policy: RiskPolicy) -> tuple[str, list[str]]:
+    """Returns (status, extra_reasons) — extra_reasons carries the
+    deterministic Risk Engine's own rejection text on the one path where it
+    actually changes the outcome (a setup strong enough by score/probability
+    to reach POSSIBLE_ENTRY, but rejected by evaluate_risk()'s confidence/
+    reward:risk floor — the SAME check + SAME thresholds
+    services/scanner/multi_asset.py applies), so the explanation stays
+    honest about why a strong-looking setup didn't reach the top tier."""
     if a.manipulation_risk >= 75:
-        return "AVOID"
+        return "AVOID", []
     if not safety.passed:
-        return "NO_TRADE"
+        return "NO_TRADE", []
     primary_p10 = next(
         (p.prob_up_10 for p in a.probability_matrix if p.horizon_days == a.estimated_holding_period_days),
         a.probability_matrix[0].prob_up_10,
     )
-    if a.overall_ai_score >= 55 and primary_p10 >= 0.35 and a.expected_risk_reward >= 1.5:
-        return "POSSIBLE_ENTRY"
+    if a.overall_ai_score >= 55 and primary_p10 >= 0.35:
+        # Score/probability alone would reach the top tier — but POSSIBLE_ENTRY
+        # additionally requires clearing the same deterministic Risk Engine
+        # gate (confidence + reward:risk) the scanner enforces, replacing
+        # this engine's own former, looser ad-hoc reward:risk check.
+        risk_verdict = evaluate_risk(a.confidence_score, a.expected_risk_reward)
+        if risk_verdict.passed:
+            return "POSSIBLE_ENTRY", []
+        if a.overall_ai_score >= 45 and primary_p10 >= 0.25:
+            return "SETUP_FORMING", risk_verdict.reasons
+        return "WATCH", risk_verdict.reasons
     if a.overall_ai_score >= 45 and primary_p10 >= 0.25:
-        return "SETUP_FORMING"
+        return "SETUP_FORMING", []
     if a.overall_ai_score >= 30:
-        return "WATCH"
-    return "NO_TRADE"
+        return "WATCH", []
+    return "NO_TRADE", []
 
 
 def _latest_for(db: Session, ticker: str, timeframe: str) -> Signal | None:
@@ -274,27 +302,30 @@ def evaluate_signal(
     """
     from app.services.features import levels, patterns, regime, technical
 
+    policy = RiskPolicy.from_settings()
     a = analyze_ticker(symbol, provider=provider)
     ticker = a.ticker
     df = bars_for_timeframe(ticker, provider, timeframe)
     tf_label = timeframe if timeframe in _INTRADAY_TIMEFRAMES else timeframe.upper()
 
-    if len(df) < MIN_BARS_FOR_SIGNAL:
+    if len(df) < policy.min_bars_for_signal:
         latest = _latest_for(db, ticker, tf_label)
         insufficient = Signal(
             ticker_symbol=ticker, status="NO_TRADE", timeframe=tf_label, signal_type="INSUFFICIENT_DATA",
             confidence=0.0, data_quality_score=0.0,
             bullish_reasons=[], bearish_reasons=[], invalidation_conditions=[],
-            rejection_reasons=[f"Only {len(df)} bars available on {tf_label} — need at least {MIN_BARS_FOR_SIGNAL}."],
+            rejection_reasons=[f"Only {len(df)} bars available on {tf_label} — need at least {policy.min_bars_for_signal}."],
             explanation=_compose_explanation("INSUFFICIENT_DATA", "NO_TRADE", [], [], [], None, None, []),
             data_source=a.data_source, data_mode=a.data_mode,
-            model_version="champion-latest", feature_version=FEATURE_VERSION,
+            model_version="champion-latest", feature_version=FEATURE_VERSION, risk_policy_version=policy.version,
         )
         return _persist(db, latest, insufficient, "NO_TRADE", "Insufficient bars for this timeframe")
 
     tech = technical.compute_all_technical_features(df)
-    safety = apply_safety_rules(a, tech, indicators_warm, provider_healthy)
-    status = _status_for(a, safety)
+    safety = apply_safety_rules(a, tech, indicators_warm, provider_healthy, policy)
+    status, risk_gate_reasons = _status_for(a, safety, policy)
+    if risk_gate_reasons:
+        safety = SafetyVerdict(passed=safety.passed, reasons=[*safety.reasons, *risk_gate_reasons])
     signal_type = _SIGNAL_TYPE_FOR_STATUS.get(status, "HOLD")
 
     pattern_matches = patterns.detect_patterns(df, lookback=5)
@@ -359,7 +390,7 @@ def evaluate_signal(
         multi_timeframe_agreement=mtf_agree,
         patterns_detected=pattern_names,
         data_source=a.data_source, data_mode=a.data_mode,
-        model_version="champion-latest", feature_version=FEATURE_VERSION,
+        model_version="champion-latest", feature_version=FEATURE_VERSION, risk_policy_version=policy.version,
     )
 
     latest = _latest_for(db, ticker, tf_label)

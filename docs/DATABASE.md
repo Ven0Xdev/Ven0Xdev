@@ -206,7 +206,8 @@ General disciplines: append-only tables never UPDATE (HOT-bloat-free, vacuum-fri
 | `7842891a0067` | `signals`/`signal_events` tables |
 | `cf153aaf7ad5` | `assets` table (unified multi-asset registry, additive alongside legacy `tickers`) |
 | `aceab66d1590` | AI-indicator columns on `signals` (timeframe, signal_type, explanation, market_regime, ...) |
-| `c7debfca52a5` (head) | Data-only: idempotent seed of the 20-symbol default asset universe |
+| `c7debfca52a5` | Data-only: idempotent seed of the 20-symbol default asset universe |
+| `5b5ab8be5d21` (head) | Adds `signals.risk_policy_version` (RiskPolicy, `services/risk/policy.py`) — backfill-safe via `server_default='unversioned'` |
 
 **Operational rules — implemented, not just planned (as of the beta-hardening
 effort, `docs/IMPLEMENTATION_PROGRESS.md`):**

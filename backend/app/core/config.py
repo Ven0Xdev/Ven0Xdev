@@ -127,13 +127,34 @@ class Settings(BaseSettings):
     # explicitly enabled — see services/otc/__init__.py.
     otc_module_enabled: bool = False
 
-    # --- Deterministic Risk Engine ---
-    # Thresholds a candidate/trade must clear regardless of what any AI
-    # agent recommends — configurable per deployment, never hardcoded deep
+    # --- Deterministic Risk Engine (services/risk/engine.py + policy.py) ---
+    # The single source of truth for every threshold that gates whether a
+    # setup is safe/strong enough to act on — read identically by the
+    # scanner (services/scanner/multi_asset.py) and the per-ticker Signal
+    # Engine (services/signals/engine.py), which previously kept its own
+    # separate hardcoded copies of several of these (a real inconsistency:
+    # a ticker could show POSSIBLE_ENTRY on its own page while the same
+    # ticker would be rejected by the scanner's stricter confidence/
+    # reward:risk floor). Configurable per deployment, never hardcoded deep
     # in scoring logic. Defaults match the platform spec's stated minimums.
     risk_min_confidence_pct: float = 65.0
     risk_min_reward_risk_ratio: float = 2.0
     risk_max_portfolio_risk_per_trade_pct: float = 1.0
+    # Data-quality/tradability floor — deliberately looser than the
+    # confidence bar above: this only asks "is there enough signal here to
+    # trust ANY status at all," not "is this setup worth entering."
+    risk_min_signal_confidence_pct: float = 30.0
+    risk_max_spread_pct: float = 12.0
+    risk_min_liquidity_score: float = 25.0
+    risk_min_dollar_volume: float = 10_000.0
+    risk_max_manipulation_risk: float = 60.0
+    risk_min_bars_for_signal: int = 20
+    # Platform-wide kill switch: when true, evaluate_risk() rejects
+    # unconditionally, so neither the scanner nor the Signal Engine can
+    # produce a new actionable/tradeable outcome anywhere, regardless of
+    # any other threshold. Off by default; intended to be flipped by an
+    # operator (Phase 11's Admin UI) during a live incident.
+    safe_mode_enabled: bool = False
 
     # --- ML ---
     model_artifact_dir: str = "./model_artifacts"

@@ -41,6 +41,11 @@ class Signal(Base):
     data_mode: Mapped[str] = mapped_column(String(16), default="unspecified")
     model_version: Mapped[str] = mapped_column(String(48), default="cold-start")
     feature_version: Mapped[str] = mapped_column(String(48), default="fv-1")
+    # Which RiskPolicy (services/risk/policy.py) version's thresholds
+    # produced this signal's status — lets a historical signal stay
+    # attributable to the exact policy that evaluated it even after the
+    # policy's definition changes later.
+    risk_policy_version: Mapped[str] = mapped_column(String(48), default="unversioned")
 
     # AI Signals indicator fields (chart marker color + detail panel).
     timeframe: Mapped[str] = mapped_column(String(8), default="1D")
