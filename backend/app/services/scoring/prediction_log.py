@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from app.db.models.prediction import Prediction
 from app.schemas.stock import StockAnalysis
+from app.services.risk.policy import RiskPolicy
 
 
 def build_prediction_row(analysis: StockAnalysis) -> Prediction:
@@ -14,6 +15,9 @@ def build_prediction_row(analysis: StockAnalysis) -> Prediction:
     )
     return Prediction(
         ticker_symbol=analysis.ticker,
+        engine_mode=analysis.engine_mode,
+        model_version=analysis.model_version,
+        risk_policy_version=RiskPolicy.from_settings().version,
         current_price=analysis.current_price,
         liquidity_score=analysis.liquidity_score,
         manipulation_risk=analysis.manipulation_risk,

@@ -9,12 +9,14 @@ anything.
 
 ## Current phase
 
-**Phase 6 — Paper Trading system** — complete, see below. Ready to start
-**Phase 7 — prediction ledger + performance proof** next.
+**Phase 7 — prediction ledger + performance proof** — complete, see below.
+Ready to start **Phase 8 — ML dataset + training + Champion/Challenger**
+next.
 
 Phases 1 (1.1/1.3 implemented, 1.2 honestly blocked), 2 (2.1, 2.2), 3
-(3.1, 3.2, 3.3), 4 (unified risk/signal policy engine), and 5 (frontend
-reliability) — all done. See their entries further down for full detail.
+(3.1, 3.2, 3.3), 4 (unified risk/signal policy engine), 5 (frontend
+reliability), and 6 (Paper Trading) — all done. See their entries further
+down for full detail.
 
 ## Baseline (Phase 0 — completed 2026-08-14)
 
@@ -293,6 +295,87 @@ This is the baseline every subsequent phase's verification is measured against �
     (open→list→account→close, a risk-gate refusal via the API returning
     400 with the exact reason, and an invalid status-filter 400).
 
+- [x] Phase 7 — prediction ledger + performance proof. **Major discovery
+  before writing any code**: this phase's core scaffolding — `Prediction`/
+  `Outcome` models with DB-enforced honesty CHECK constraints,
+  `build_prediction_row()`, `services/evaluation/outcome_evaluator.py`
+  (`evaluate_due_predictions`, `build_calibration_report`), and
+  `/predictions/*` endpoints — **already existed**, not flagged in the
+  original audit. It was a smaller, more targeted job than a from-scratch
+  build: audit what exists, find and close the real gaps, wire it into the
+  mainstream product.
+  - **The critical gap**: the only code path that ever called
+    `build_prediction_row()` was `app/workers/scan_scheduler.py`, which is
+    gated behind `otc_module_enabled` (false by default) — meaning in the
+    actual running mainstream platform (real 20-asset universe), **nothing
+    was ever logged into the prediction ledger automatically**. The
+    calibration report and any future Champion/Challenger comparison would
+    have had zero data to work with in a real deployment. Fixed with a new
+    **`app/workers/prediction_scheduler.py`** — a periodic worker for the
+    mainstream multi-asset universe specifically (not OTC-gated, runs by
+    default), snapshotting every active asset's analysis into the ledger
+    on a `prediction_log_interval_seconds` interval (default 3600s —
+    hourly, deliberately slow: a prediction logged every few minutes
+    against slow-moving fundamentals is noise, not signal) and then
+    calling the existing `evaluate_due_predictions()`. Wired into
+    `docker-compose.yml` as `prediction-logger` (unlike the OTC `scanner`
+    service, **not** profile-gated) and documented in `DEPLOYMENT.md`.
+  - **Missing provenance, closed**: `Prediction` had no `engine_mode`/
+    `model_version`/`risk_policy_version` columns — meaning even once
+    predictions started being logged, there'd be no way to ever compare
+    "how did HEURISTIC do vs. TRAINED_ML historically," the exact
+    capability Phase 8's Champion/Challenger gate needs. Added all three
+    (`build_prediction_row()` now stamps them from `StockAnalysis.
+    engine_mode`/`.model_version`, Phase 1's fields, and
+    `RiskPolicy.from_settings().version`, Phase 4's).
+  - **Missing a real Brier score**: the existing calibration report had
+    bucket-level "calibration gap" but no single honest reliability
+    number. Added `_brier_score()` (mean squared error between predicted
+    probability and the realized binary outcome) to
+    `build_calibration_report()`'s output, computed both overall and
+    **broken down by `engine_mode`** — the direct, load-bearing input to
+    Phase 8's promotion rule ("a trained model may only be promoted if it
+    beats the heuristic's Brier score here, out-of-sample").
+  - New frontend route `frontend/app/performance/page.tsx` (added to the
+    sidebar nav, using Phase 5's `ErrorState`/loading pattern) — stat
+    tiles (predictions scored, Brier score, stop rate, avg realized
+    return), a predicted-vs-realized calibration bar per probability
+    bucket, and a per-`engine_mode` comparison section. No such page or
+    API integration existed before this phase (verified: `grep`ping
+    `frontend/lib/api.ts` for "prediction"/"calibration" before this
+    phase returned nothing).
+  - **Explicitly out of scope, documented, not silently deferred**: wiring
+    Phase 6 Paper Trading's planned automatic stop/target-triggered
+    closing into this same periodic cycle. The hook point (this worker
+    now runs regularly and already touches every active asset's fresh
+    analysis) is real, but adding it now would have expanded this phase's
+    surface into Paper Trading's again; left as a clearly-named follow-up
+    rather than rushed in.
+  - New Alembic migration (`predictions` table's 3 new provenance
+    columns, `server_default`s for the two NOT NULL ones since the table
+    may be non-empty). New tests: `test_prediction_log.py` (2),
+    `test_prediction_scheduler.py` (4, including a test-isolation fix
+    identical in spirit to `test_multi_asset_scanner.py`'s — scoped
+    assertions to the 20 seed symbols specifically, not raw
+    active-universe counts, after the full suite surfaced a shared-DB
+    flake other test files' uncommitted-rollback client fixtures cause),
+    and 3 new assertions in `test_outcome_evaluator.py` (Brier score
+    rewards confident-correct predictions, per-engine-mode breakdown is a
+    real split not a shared number, and the empty-report shape always
+    carries the `by_engine_mode` key so the frontend never has to guard
+    against its absence).
+  - Verified live: `GET /predictions/calibration` returns the correct
+    honest empty shape on a fresh deployment (never fabricates a
+    number to fill the gap); `POST /predictions/log/{symbol}` correctly
+    stamps `engine_mode: "HEURISTIC"`, `model_version: null`,
+    `risk_policy_version: "risk-policy-v1"` on a real logged row; the new
+    `/performance` page renders the empty state correctly with no crash.
+    Populating and visually verifying the *matured*-outcome rendering
+    path wasn't practical live (the mock provider's synthetic history
+    treats "now" as the last bar, so nothing matures without manipulating
+    system time) — covered instead by the 10 backend tests that construct
+    exact scripted price paths and assert the graded result precisely.
+
 ## Files changed (this effort, cumulative)
 
 Phase 1:
@@ -503,6 +586,34 @@ Phase 6:
 - `frontend/app/paper-trading/page.tsx` (new route).
 - `frontend/components/layout/Sidebar.tsx` — nav entry for the new route.
 
+Phase 7:
+- `backend/app/db/models/prediction.py` — `Prediction` gains
+  `engine_mode`, `model_version`, `risk_policy_version`.
+- `backend/app/services/scoring/prediction_log.py` — `build_prediction_row()`
+  stamps the three new provenance fields.
+- `backend/app/services/evaluation/outcome_evaluator.py` — `_brier_score()`,
+  `_bucket_report()` (extracted, reused per-mode), `build_calibration_report()`
+  now returns `brier_score` and `by_engine_mode`.
+- `backend/app/workers/prediction_scheduler.py` (new) — mainstream (non-OTC)
+  periodic prediction logger + outcome evaluator; `run_prediction_cycle()`.
+- `backend/app/core/config.py` — `prediction_log_interval_seconds` (3600).
+- `backend/app/schemas/prediction.py`,
+  `backend/app/api/v1/endpoints/predictions.py` — `PredictionOut` and its
+  two construction sites carry the new provenance fields.
+- `backend/alembic/versions/2f065e542a7c_prediction_provenance_fields.py`
+  (new) — see migrations section below.
+- `backend/app/tests/test_prediction_log.py` (new, 2 tests),
+  `backend/app/tests/test_prediction_scheduler.py` (new, 4 tests),
+  `backend/app/tests/test_outcome_evaluator.py` (+3 tests).
+- `docker-compose.yml` — new `prediction-logger` service (default-on, not
+  profile-gated).
+- `DEPLOYMENT.md`, `backend/.env.example` — document the new worker/setting.
+- `frontend/lib/types.ts` — `CalibrationBucket`, `CalibrationBucketReport`,
+  `CalibrationReport`.
+- `frontend/lib/api.ts` — `calibrationReport()`.
+- `frontend/app/performance/page.tsx` (new route).
+- `frontend/components/layout/Sidebar.tsx` — nav entry.
+
 ## Database migrations created (this effort)
 
 - `5b5ab8be5d21_add_risk_policy_version_to_signals.py` (Phase 4) — additive,
@@ -521,23 +632,31 @@ Phase 6:
   name") — matches the existing `fk_<table>_<column>` convention from
   `9b1a60567a48`. Verified: fresh-DB upgrade, upgrade-from-prior-head
   (`5b5ab8be5d21`), downgrade back one revision, and a follow-up
-  autogenerate confirming zero remaining model/migration drift. Phase 7's
-  prediction ledger is where the next migration appears.
+  autogenerate confirming zero remaining model/migration drift.
+- `2f065e542a7c_prediction_provenance_fields.py` (Phase 7) — adds
+  `engine_mode`/`model_version`/`risk_policy_version` to the existing
+  `predictions` table (`server_default='HEURISTIC'`/`'unversioned'` on the
+  two new NOT NULL columns). Verified: fresh-DB upgrade, upgrade-from-
+  prior-head (`6f1d3edac330`), downgrade back one revision, and a
+  follow-up autogenerate confirming zero remaining drift. Phase 8's model
+  training/registry is where the next migration is likely to appear.
 
-## Verification commands run (after Phase 6)
+## Verification commands run (after Phase 7)
 
 | Command | Result |
 |---|---|
-| `cd backend && python3 -m pytest app/tests -q` | **338 passed, 10 skipped** (up from 326+10 at the end of Phase 5; +12 new passing tests in `test_paper_trading.py`) |
-| `cd backend && python3 -m pytest app/tests/test_paper_trading.py -q` | 12/12 passed (isolated) |
-| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 9 migrations in order, exit 0 |
-| same, upgrading from prior head (`5b5ab8be5d21`) only | applies only the new migration, exit 0 |
+| `cd backend && python3 -m pytest app/tests -q` | **347 passed, 10 skipped** (up from 338+10 at the end of Phase 6; +9 new passing tests) |
+| `cd backend && python3 -m pytest app/tests/test_prediction_log.py app/tests/test_prediction_scheduler.py app/tests/test_outcome_evaluator.py -q` | 16/16 passed (isolated) |
+| Full-suite run surfaced a test-isolation flake in the new scheduler test (exact-count assertion collided with another file's uncommitted test-only asset on the shared in-memory test DB) | fixed by scoping assertions to the 20 seed symbols specifically (same discipline as `test_multi_asset_scanner.py`); re-ran full suite clean afterward |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 10 migrations in order, exit 0 |
+| same, upgrading from prior head (`6f1d3edac330`) only | applies only the new migration, exit 0 |
 | `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
 | `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
-| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 13 routes generated |
-| Live dev-server + Playwright: open BLKM (clears risk gate), attempt AXNT (fails it), close BLKM | open debits cash + shows live mark-to-market; refusal shows the exact risk-gate reason inline, account state unchanged; close moves position to history, credits cash, computes realized P/L correctly — all screenshotted and visually confirmed |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 14 routes generated |
+| Live dev-server check: `GET /predictions/calibration` (fresh DB), `POST /predictions/log/{symbol}` | correct honest empty shape; logged row carries `engine_mode: "HEURISTIC"`, `model_version: null`, `risk_policy_version: "risk-policy-v1"` |
+| Live dev-server + Playwright: `/performance` empty state | renders correctly, no crash, no fabricated numbers |
 | `git diff` scanned for secret-shaped strings | none found |
-| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | only the new worker's own comment explaining it is *not* OTC-gated — no regression |
 
 ## Remaining tasks (full 13-phase scope, not started unless marked)
 
@@ -547,7 +666,7 @@ Phase 6:
 - [x] Phase 4 — unified risk/signal policy engine (RiskPolicy, Safe Mode, POSSIBLE_ENTRY now gated by the same evaluate_risk() the scanner uses)
 - [x] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared `ErrorState` on 6 routes, a real backend 404-vs-503 bug found+fixed, mobile responsiveness verified via Playwright — no changes needed; component/page-level frontend tests explicitly deferred to Phase 12, no testing-library infra exists yet)
 - [x] Phase 6 — Paper Trading system (PaperTradingAccount/PaperPosition, execution gated by the same evaluate_risk() the scanner/Signal Engine use, cash-only realistic bid/ask fill pricing, /paper-trading UI, full lifecycle verified live; automatic stop/target-triggered closing explicitly deferred to Phase 7's outcome-evaluation job)
-- [ ] Phase 7 — prediction ledger + outcome evaluation/performance proof
+- [x] Phase 7 — prediction ledger + performance proof (existing Prediction/Outcome/evaluator scaffolding audited and found disconnected from the mainstream universe — fixed with a new non-OTC-gated prediction_scheduler worker; added engine_mode/model_version/risk_policy_version provenance and a real Brier score broken down by engine_mode; new /performance frontend page)
 - [ ] Phase 8 — ML dataset + training + Champion/Challenger promotion gate
 - [ ] Phase 9 — chart timeframes + technical indicators
 - [ ] Phase 10 — user alerts
@@ -562,40 +681,39 @@ Phase 6:
 
 ## Exact next action
 
-Start **Phase 7 — prediction ledger + outcome evaluation/performance
-proof**:
-1. There is already a `Prediction`/`Outcome` model pair
-   (`backend/app/db/models/prediction.py`, in `db/models/__init__.py`'s
-   `__all__` since before this effort) — inspect what it already captures
-   and whether anything currently writes to it before assuming a blank
-   slate; this phase very likely extends/wires up existing scaffolding
-   rather than starting from nothing, the same situation Phase 6 found
-   with the `Trade` model.
-2. Every prediction (`StockAnalysis`/`Signal` output) needs to be logged
-   *immutably* at generation time — ticker, horizon, predicted probability,
-   `engine_mode`/`model_version`/`risk_policy_version` provenance (Phase 1
-   and 4's fields), timestamp — before its outcome is known, so evaluation
-   can never be back-fit.
-3. An evaluation job (the periodic background mechanism Phase 6's paper
-   positions are already waiting on for automatic stop/target-triggered
-   closing — wire that in here too, once this job exists, rather than
-   building a second one) that checks each logged prediction's horizon
-   (1D/5D/20D) against real subsequent price action once it's actually
-   elapsed, and computes: hit/miss, Brier score, calibration (predicted
-   probability vs. realized frequency, bucketed).
-4. Performance views/endpoints: by symbol, by regime, by `engine_mode`
-   (HEURISTIC vs. TRAINED_ML — this is the proof point Phase 8's
-   Champion/Challenger promotion gate needs: a trained model may only be
-   promoted if it demonstrably beats the heuristic here, out-of-sample),
-   by confidence bucket.
-5. This phase will need a DB migration if the existing
-   `Prediction`/`Outcome` schema needs new columns — same
-   autogenerate-then-verify-empty-diff discipline as every prior phase's
-   migration.
-6. Never fabricate an outcome for a prediction whose horizon hasn't
-   elapsed yet, and never silently skip logging a prediction because the
-   engine was HEURISTIC rather than TRAINED_ML — the whole point of this
-   ledger is proving the heuristic's real track record too.
+Start **Phase 8 — ML dataset + training + Champion/Challenger promotion
+gate**:
+1. Check `backend/app/services/ml/` for existing scaffolding before
+   assuming a blank slate — Phases 6 and 7 both found substantial
+   pre-existing infrastructure (`ensemble.py`, `training_pipeline.py`,
+   `calibration.py`, `feature_vector.py`, `explainability.py` were all
+   referenced earlier in this effort) that just needed auditing and
+   wiring up, not rebuilding.
+2. Point-in-time-correct, leakage-resistant dataset construction: the
+   Phase 7 prediction ledger (`predictions`/`outcomes` tables, now with
+   `engine_mode` provenance) is the natural label source —
+   `outcome.max_runup_pct >= threshold` is literally documented as "the
+   label source for retraining" in `db/models/prediction.py`'s `Outcome`
+   docstring. Verify no future information leaks into a training row's
+   features (a feature computed from data that wouldn't have been
+   available at `prediction.created_at`).
+3. Baselines required before any trained model can be discussed
+   seriously: logistic regression, momentum, buy-and-hold. Walk-forward
+   (not k-fold — this is time series) validation.
+4. **The promotion gate itself, using Phase 7's new infrastructure
+   directly**: `build_calibration_report()`'s `by_engine_mode` breakdown
+   already gives HEURISTIC's real historical Brier score. A trained
+   model may only flip `EnsembleModel`'s trained-vs-heuristic behavior in
+   production once its own out-of-sample Brier score (computed the exact
+   same way, via the same ledger, once it's been running long enough to
+   accumulate matured predictions under `engine_mode="TRAINED_ML"`) is
+   demonstrably better — never promoted on training-set metrics alone.
+5. This phase will likely need a DB migration (model registry / training
+   run metadata) — same autogenerate-then-verify-empty-diff discipline as
+   every prior phase's migration.
+6. Do not activate a trained model in production regardless of any
+   internal metric until this out-of-sample, ledger-based comparison
+   exists and favors it — the standing non-negotiable rule.
 
-Then continue to Phase 8 (ML dataset + training + Champion/Challenger
-promotion gate) per the ledger order above.
+Then continue to Phase 9 (chart timeframes + technical indicators) per
+the ledger order above.

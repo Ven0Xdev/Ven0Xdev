@@ -66,6 +66,19 @@ Railway, add a second service from the same repo/root directory (`backend`), but
 and give it the same environment variables as the API service. This is optional — the API works
 fully without it; opportunities are just scored on demand instead of on a schedule.
 
+### Recommended: the prediction-logger worker
+
+Unlike the OTC-only `scanner` above, `docker-compose.yml`'s `prediction-logger` service runs by
+default (not profile-gated) — it periodically snapshots every active asset's current analysis into
+the immutable prediction ledger (`predictions` table) and grades whichever predictions have
+matured since the last cycle, which is what the `/predictions/calibration` report and Phase 8's
+Champion/Challenger promotion gate are built on. Without it, that ledger stays empty in a real
+deployment (a manual `POST /predictions/log/{symbol}` call is the only alternative). On Railway,
+add it the same way as the scan worker above, with **Start Command**
+`python -m app.workers.prediction_scheduler`. Interval is `PREDICTION_LOG_INTERVAL_SECONDS`
+(default 3600 — hourly; deliberately not fast, since a snapshot every few minutes against
+slow-moving fundamentals/technicals is redundant noise in the calibration dataset).
+
 ---
 
 ## 2. Frontend on Vercel

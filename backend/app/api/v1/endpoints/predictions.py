@@ -64,6 +64,9 @@ def log_prediction(symbol: str, db: Session = Depends(db_session)):
         manipulation_risk=prediction.manipulation_risk,
         prob_up_10=prediction.prob_up_10,
         explanation=prediction.explanation,
+        engine_mode=prediction.engine_mode,
+        model_version=prediction.model_version,
+        risk_policy_version=prediction.risk_policy_version,
     )
 
 
@@ -87,6 +90,9 @@ def prediction_history(symbol: str, limit: int = 50, db: Session = Depends(db_se
             manipulation_risk=r.manipulation_risk,
             prob_up_10=r.prob_up_10,
             explanation=r.explanation,
+            engine_mode=r.engine_mode,
+            model_version=r.model_version,
+            risk_policy_version=r.risk_policy_version,
         )
         for r in rows
     ]

@@ -77,6 +77,29 @@ services:
       retries: 10
       start_period: 30s
 
+  # Mainstream prediction ledger + outcome evaluator (Phase 7) — runs by
+  # default, not profile-gated like `scanner` above: logging the platform's
+  # own real predictions and proving out their track record over the
+  # 20-asset multi-asset universe is core product behavior, not an optional
+  # module. See backend/app/workers/prediction_scheduler.py.
+  prediction-logger:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.workers.prediction_scheduler"]
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://ven0x:ven0x@timescaledb:5432/ven0x_otc
+      USE_SQLITE_FALLBACK: "false"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - model_artifacts:/app/model_artifacts
+
   web:
     build:
       context: ./frontend

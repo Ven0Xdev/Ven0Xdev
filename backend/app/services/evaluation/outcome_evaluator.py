@@ -155,23 +155,18 @@ def _hit_before_stop(hits: pd.Series, first_stop: int | None) -> bool:
     return first_stop is None or first_hit < first_stop
 
 
-def build_calibration_report(db: Session, n_buckets: int = 5) -> dict:
-    """Reliability report: for each predicted-probability bucket, how often
-    did the +10% touch actually happen? A perfectly calibrated model has
-    realized frequency ~= predicted probability in every bucket.
+def _brier_score(rows: list[tuple[Prediction, Outcome]]) -> float:
+    """Mean squared error between predicted probability and the realized
+    binary outcome (did price touch +10%?) — 0 is perfect, 0.25 is what a
+    model that always predicts 50% scores against a 50/50 coin flip, 1.0 is
+    maximally, confidently wrong every time. The single honest number that
+    answers "do these probabilities mean anything," independent of any
+    bucket boundary choice.
     """
-    rows = (
-        db.query(Prediction, Outcome)
-        .join(Outcome, Outcome.prediction_id == Prediction.id)
-        .all()
-    )
-    if not rows:
-        return {
-            "total_scored": 0,
-            "buckets": [],
-            "note": "No matured predictions with outcomes yet. Calibration populates as the outcome evaluator runs over time.",
-        }
+    return sum((p.prob_up_10 - (1.0 if o.hit_take_profit_1 else 0.0)) ** 2 for p, o in rows) / len(rows)
 
+
+def _bucket_report(rows: list[tuple[Prediction, Outcome]], n_buckets: int) -> dict:
     buckets: list[dict] = []
     step = 1.0 / n_buckets
     for i in range(n_buckets):
@@ -203,4 +198,39 @@ def build_calibration_report(db: Session, n_buckets: int = 5) -> dict:
         "buckets": buckets,
         "overall_stop_rate": round(stop_rate, 3),
         "avg_realized_return_pct": round(avg_return, 2),
+        "brier_score": round(_brier_score(rows), 4),
     }
+
+
+def build_calibration_report(db: Session, n_buckets: int = 5) -> dict:
+    """Reliability report: for each predicted-probability bucket, how often
+    did the +10% touch actually happen? A perfectly calibrated model has
+    realized frequency ~= predicted probability in every bucket. Also
+    broken down by `engine_mode` (HEURISTIC vs. TRAINED_ML) — the exact
+    comparison Phase 8's Champion/Challenger promotion gate needs: a
+    trained model may only be promoted once its Brier score here is
+    demonstrably better than the heuristic's, on real out-of-sample
+    outcomes, not training-set metrics.
+    """
+    rows = (
+        db.query(Prediction, Outcome)
+        .join(Outcome, Outcome.prediction_id == Prediction.id)
+        .all()
+    )
+    if not rows:
+        return {
+            "total_scored": 0,
+            "buckets": [],
+            "by_engine_mode": {},
+            "note": "No matured predictions with outcomes yet. Calibration populates as the outcome evaluator runs over time.",
+        }
+
+    report = _bucket_report(rows, n_buckets)
+
+    by_engine_mode: dict[str, dict] = {}
+    for mode in sorted({p.engine_mode for p, _ in rows}):
+        mode_rows = [(p, o) for p, o in rows if p.engine_mode == mode]
+        by_engine_mode[mode] = _bucket_report(mode_rows, n_buckets)
+    report["by_engine_mode"] = by_engine_mode
+
+    return report

@@ -1,5 +1,6 @@
 import type {
   BacktestResult,
+  CalibrationReport,
   DashboardSummary,
   Deliberation,
   MarketOverviewResponse,
@@ -250,6 +251,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ticker_symbol, quantity, avg_entry_price }),
     }),
+
+  calibrationReport: () => request<CalibrationReport>(`/predictions/calibration`),
 
   paperAccount: () => request<PaperAccount>(`/paper-trading/account`),
   paperPositions: (status: "open" | "closed" = "open") =>

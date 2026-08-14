@@ -118,6 +118,14 @@ class Settings(BaseSettings):
     scan_interval_seconds: int = 900
     universe_max_tickers: int = 2000
 
+    # --- Prediction ledger (app/workers/prediction_scheduler.py) ---
+    # Hourly by default, deliberately much longer than scan_interval_seconds:
+    # a prediction snapshot logged every few minutes against slow-moving
+    # fundamentals/technicals is redundant noise in the calibration dataset,
+    # not more signal. Runs for the mainstream multi-asset universe
+    # unconditionally (not gated behind otc_module_enabled).
+    prediction_log_interval_seconds: int = 3600
+
     # --- Optional OTC/micro-cap module (disabled by default) ---
     # Nexora's mainstream experience runs on the Asset Universe Manager's
     # STOCK/ETF/INDEX/COMMODITY/PRECIOUS_METAL universe (services/universe/

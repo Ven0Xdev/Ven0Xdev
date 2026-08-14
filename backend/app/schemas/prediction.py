@@ -13,6 +13,9 @@ class PredictionOut(BaseModel):
     manipulation_risk: float
     prob_up_10: float
     explanation: str
+    engine_mode: str
+    model_version: str | None = None
+    risk_policy_version: str
 
     class Config:
         from_attributes = True

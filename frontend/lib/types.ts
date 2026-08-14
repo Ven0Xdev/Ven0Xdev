@@ -200,6 +200,29 @@ export interface SectorHeatmapEntry {
   count: number;
 }
 
+export interface CalibrationBucket {
+  range: [number, number];
+  count: number;
+  avg_predicted_prob?: number;
+  realized_frequency?: number;
+  calibration_gap?: number;
+}
+
+export interface CalibrationBucketReport {
+  total_scored: number;
+  buckets: CalibrationBucket[];
+  overall_stop_rate: number;
+  avg_realized_return_pct: number;
+  brier_score: number;
+}
+
+export interface CalibrationReport extends Partial<CalibrationBucketReport> {
+  total_scored: number;
+  buckets: CalibrationBucket[];
+  by_engine_mode: Record<string, CalibrationBucketReport>;
+  note?: string;
+}
+
 export interface SearchMatch {
   symbol: string;
   company_name: string;

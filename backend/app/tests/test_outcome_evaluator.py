@@ -189,3 +189,50 @@ def test_calibration_report_buckets(db_session, created_at):
     populated = [b for b in report["buckets"] if b["count"] > 0]
     assert len(populated) == 1
     assert populated[0]["realized_frequency"] == 1.0
+
+
+def test_calibration_report_brier_score_rewards_confident_correct_predictions(db_session, created_at):
+    # TP1 hits (realized outcome = 1). A confident, correct 0.9 prediction
+    # should score a much lower (better) Brier score than a hedgy 0.5 one:
+    # (1 - 0.9)^2 = 0.01 vs (1 - 0.5)^2 = 0.25.
+    df = _path_df(
+        closes=[1.02, 1.05, 1.12, 1.15, 1.13],
+        highs=[1.03, 1.07, 1.14, 1.16, 1.15],
+        lows=[1.00, 1.03, 1.08, 1.12, 1.11],
+        start=created_at + timedelta(days=1),
+    )
+    _, outcome = _evaluate(db_session, ScriptedProvider(df), _prediction(created_at, prob_up_10=0.9))
+    assert outcome.hit_take_profit_1 is True
+
+    report = build_calibration_report(db_session)
+    assert report["brier_score"] == pytest.approx(0.01, abs=1e-6)
+
+
+def test_calibration_report_breaks_down_by_engine_mode(db_session, created_at):
+    df = _path_df(
+        closes=[1.02, 1.05, 1.12, 1.15, 1.13],
+        highs=[1.03, 1.07, 1.14, 1.16, 1.15],
+        lows=[1.00, 1.03, 1.08, 1.12, 1.11],
+        start=created_at + timedelta(days=1),
+    )
+    provider = ScriptedProvider(df)
+    _evaluate(db_session, provider, _prediction(created_at, ticker_symbol="A", prob_up_10=0.9, engine_mode="HEURISTIC"))
+    _evaluate(db_session, provider, _prediction(created_at, ticker_symbol="B", prob_up_10=0.1, engine_mode="TRAINED_ML"))
+
+    report = build_calibration_report(db_session)
+    assert report["total_scored"] == 2
+    assert set(report["by_engine_mode"].keys()) == {"HEURISTIC", "TRAINED_ML"}
+    assert report["by_engine_mode"]["HEURISTIC"]["total_scored"] == 1
+    assert report["by_engine_mode"]["TRAINED_ML"]["total_scored"] == 1
+    # The confident-and-correct HEURISTIC prediction must score a much
+    # better (lower) Brier than the confident-and-wrong TRAINED_ML one —
+    # proving the breakdown is a real per-mode split, not a shared number.
+    assert report["by_engine_mode"]["HEURISTIC"]["brier_score"] < report["by_engine_mode"]["TRAINED_ML"]["brier_score"]
+
+
+def test_calibration_report_with_no_outcomes_still_reports_engine_mode_key(db_session):
+    # A fresh, empty-of-outcomes report must not KeyError on by_engine_mode —
+    # downstream consumers (frontend) can rely on the key always existing.
+    report = build_calibration_report(db_session)
+    assert report["total_scored"] == 0
+    assert report["by_engine_mode"] == {}

@@ -45,6 +45,15 @@ class Prediction(Base):
     model_version_id: Mapped[int | None] = mapped_column(ForeignKey("model_versions.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.utcnow)
 
+    # Provenance (matches StockAnalysis.engine_mode/.model_version from the
+    # Phase 1 audit fix, and Signal.risk_policy_version from Phase 4) — the
+    # single reason the Champion/Challenger promotion gate can ever compare
+    # "how did HEURISTIC do historically vs. TRAINED_ML," instead of every
+    # logged prediction being an anonymous, unattributable number.
+    engine_mode: Mapped[str] = mapped_column(String(16), default="HEURISTIC", index=True)
+    model_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    risk_policy_version: Mapped[str] = mapped_column(String(48), default="unversioned")
+
     current_price: Mapped[float] = mapped_column(Float)
     liquidity_score: Mapped[float] = mapped_column(Float)
     manipulation_risk: Mapped[float] = mapped_column(Float)
