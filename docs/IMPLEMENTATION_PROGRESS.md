@@ -9,14 +9,14 @@ anything.
 
 ## Current phase
 
-**Phase 7 — prediction ledger + performance proof** — complete, see below.
-Ready to start **Phase 8 — ML dataset + training + Champion/Challenger**
+**Phase 8 — ML dataset + training + Champion/Challenger** — complete, see
+below. Ready to start **Phase 9 — chart timeframes + technical indicators**
 next.
 
 Phases 1 (1.1/1.3 implemented, 1.2 honestly blocked), 2 (2.1, 2.2), 3
 (3.1, 3.2, 3.3), 4 (unified risk/signal policy engine), 5 (frontend
-reliability), and 6 (Paper Trading) — all done. See their entries further
-down for full detail.
+reliability), 6 (Paper Trading), and 7 (prediction ledger + performance
+proof) — all done. See their entries further down for full detail.
 
 ## Baseline (Phase 0 — completed 2026-08-14)
 
@@ -376,6 +376,94 @@ This is the baseline every subsequent phase's verification is measured against �
     system time) — covered instead by the 10 backend tests that construct
     exact scripted price paths and assert the graded result precisely.
 
+- [x] Phase 8 — ML dataset + training + Champion/Challenger promotion
+  gate. **Another major discovery before writing code, same pattern as
+  Phases 6-7**: `services/ml/champion_challenger.py` (leakage-resistant
+  dataset construction from frozen `feature_snapshot`s, temporal 25%
+  holdout, LightGBM/XGBoost/CatBoost training, human-approval-only
+  promotion, in-process model-cache invalidation) and
+  `services/backtest/walkforward.py` (expanding-window walk-forward
+  validation, wired to `/backtest/*` and already tested) **already
+  existed, fully working, already tested** — not flagged in the original
+  audit. Verified: `test_champion_challenger.py` (5 tests) and
+  `test_walkforward.py` (2 tests) both passed before any change here.
+  - **The real gap**: the existing comparison only ever checked "does the
+    challenger beat the *previous ML champion*" — and since no trained
+    artifact exists in this repo, that comparison was always vacuous
+    (`{"note": "no champion artifact exists yet"}`). There was no check
+    against the HEURISTIC engine actually running in production today, or
+    against any simple statistical baseline — meaning a first promotion
+    could technically happen having only ever been compared to nothing.
+    This is precisely the standing non-negotiable rule ("do NOT activate a
+    trained ML model unless it beats the existing heuristic and baseline
+    in valid out-of-sample testing") not yet enforced.
+  - **Fix — heuristic comparison, reusing real production code**: a
+    fresh, never-`.fit()`-called `EnsembleModel()` transparently falls
+    back to the exact production `_heuristic_prior()` formula for every
+    prediction (this is literally how `engine_mode="HEURISTIC"` gets set
+    in production) — so evaluating one on the same temporal holdout IS
+    evaluating the real heuristic, not a re-implementation of it that
+    could silently drift from the real one.
+  - **Fix — three simple statistical baselines**, computed on the exact
+    same train/holdout split as the challenger
+    (`services/ml/champion_challenger.py::_evaluate_baselines()`):
+    **logistic regression** (sklearn, fit on the same feature matrix —
+    if the 3-model ensemble can't beat plain logistic regression, that's
+    a real red flag), **momentum** (a naive single-indicator rule off
+    `rsi_14` alone, no other feature considered), and **"always take the
+    trade"** (predicts the training-set base rate unconditionally — the
+    buy-and-hold baseline the spec names, which is mathematically
+    identical to a majority-class predictor in this touch-probability
+    label framing; documented as such rather than fabricating an
+    artificially "different" number).
+  - **Fix — the promotion gate is now hard-enforced in code, not just
+    informational**: `promote_model()` re-derives (never trusts a cached
+    boolean) whether the challenger's out-of-sample AUC on the platform's
+    primary +10% threshold *strictly beats* the heuristic AND every one
+    of the three baselines, from the exact metrics stored on the
+    `ModelVersion` row at training time. Refuses with a new
+    `PromotionRefused` (mapped to HTTP 409, same pattern as the existing
+    `NotEnoughHistory`) if any comparison is missing, ungradeable, or
+    simply lost. A human can still *approve* a promotion, but can never
+    override this floor by calling the endpoint anyway — the gate lives
+    in `promote_model()` itself, not in the operator's judgment call.
+  - Brier score added to every comparison subject's per-threshold metrics
+    (challenger/champion/heuristic/each baseline all now report it, not
+    just AUC and calibration gap) — consistent with Phase 7's own choice
+    of Brier score as the platform's primary reliability metric.
+  - Dataset construction, leakage prevention, and walk-forward validation
+    were already correct and are unchanged — verified, not rebuilt.
+  - Tests: extended `test_challenger_registered_inactive_with_comparison`
+    to assert the new heuristic/baseline fields are always present; added
+    `test_promotion_refused_when_challenger_does_not_beat_heuristic_or_baselines`
+    (using the existing 60-row synthetic fixture, which — correctly and
+    expectedly — does NOT reliably beat the baselines at that data volume,
+    proving the gate is real, not a rubber stamp); rewrote
+    `test_promotion_is_explicit_and_atomic` to construct a hand-crafted
+    passing `ModelVersion` directly, isolating promotion *mechanics* from
+    whether a real ensemble happens to win on any given training run; and
+    added `test_promotion_refused_for_a_version_with_no_recorded_comparison`
+    (a legacy-shaped `ModelVersion` missing the new fields — must refuse,
+    never silently treat "no data" as "passed").
+  - No schema/migration changes needed — `ModelVersion.training_metrics`
+    is an existing free-form JSON column.
+  - Verified live: `GET /models` (empty registry on a fresh deployment),
+    `POST /models/train-challenger` on a fresh DB correctly returns 409
+    "Only 0 graded predictions... requires >= 40" — the exact honest
+    blocked-state the spec asks for, not a fabricated result. A live
+    end-to-end "challenger clearly beats everything, gets promoted" run
+    wasn't practical in this session (would need >=40 real graded
+    predictions, which only accumulate over real hours/days now that
+    Phase 7's `prediction_scheduler` is running) — covered instead by the
+    7 backend tests, including the hand-crafted-metrics atomicity test
+    that exercises the exact same `promote_model()` code path a real
+    promotion would.
+  - **Explicitly out of scope, left for Phase 11**: a frontend page for
+    browsing the model registry / triggering training / approving
+    promotions. `/models` is API-only today; a UI for it belongs with the
+    rest of Phase 11's Admin/Operator surface (Safe Mode toggle, provider
+    health, migration status), not bolted onto this phase.
+
 ## Files changed (this effort, cumulative)
 
 Phase 1:
@@ -614,6 +702,19 @@ Phase 7:
 - `frontend/app/performance/page.tsx` (new route).
 - `frontend/components/layout/Sidebar.tsx` — nav entry.
 
+Phase 8:
+- `backend/app/services/ml/champion_challenger.py` — `_metrics_from_predictions()`
+  (extracted, adds Brier score), `_momentum_baseline()`, `_evaluate_baselines()`
+  (logistic regression / momentum / always-take-the-trade), `PRIMARY_THRESHOLD_KEY`,
+  `_primary_auc()`, `_beats()`, new `PromotionRefused` exception.
+  `train_challenger()` now records `heuristic`, `baselines`,
+  `beats_on_primary_threshold`, `eligible_for_promotion` on every
+  `ModelVersion`. `promote_model()` hard-refuses on a failing/missing
+  comparison.
+- `backend/app/api/v1/endpoints/models.py` — maps `PromotionRefused` to 409.
+- `backend/app/tests/test_champion_challenger.py` — extended/rewritten (7
+  tests, was 5).
+
 ## Database migrations created (this effort)
 
 - `5b5ab8be5d21_add_risk_policy_version_to_signals.py` (Phase 4) — additive,
@@ -638,8 +739,20 @@ Phase 7:
   `predictions` table (`server_default='HEURISTIC'`/`'unversioned'` on the
   two new NOT NULL columns). Verified: fresh-DB upgrade, upgrade-from-
   prior-head (`6f1d3edac330`), downgrade back one revision, and a
-  follow-up autogenerate confirming zero remaining drift. Phase 8's model
-  training/registry is where the next migration is likely to appear.
+  follow-up autogenerate confirming zero remaining drift. Phase 8 needed no
+  schema changes at all (`ModelVersion.training_metrics` is an existing
+  free-form JSON column, sufficient for the new heuristic/baseline data).
+
+## Verification commands run (after Phase 8)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **349 passed, 10 skipped** (up from 347+10 at the end of Phase 7) |
+| `cd backend && python3 -m pytest app/tests/test_champion_challenger.py app/tests/test_walkforward.py -q` | 9/9 passed (isolated) |
+| Live dev-server check: `GET /models` (fresh DB), `POST /models/train-challenger` (fresh DB) | `[]`; correct honest `409 "Only 0 graded predictions... requires >= 40"` — never fabricated |
+| `python3 -c "import app.main"` | clean, no import errors |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
 
 ## Verification commands run (after Phase 7)
 
@@ -667,7 +780,7 @@ Phase 7:
 - [x] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared `ErrorState` on 6 routes, a real backend 404-vs-503 bug found+fixed, mobile responsiveness verified via Playwright — no changes needed; component/page-level frontend tests explicitly deferred to Phase 12, no testing-library infra exists yet)
 - [x] Phase 6 — Paper Trading system (PaperTradingAccount/PaperPosition, execution gated by the same evaluate_risk() the scanner/Signal Engine use, cash-only realistic bid/ask fill pricing, /paper-trading UI, full lifecycle verified live; automatic stop/target-triggered closing explicitly deferred to Phase 7's outcome-evaluation job)
 - [x] Phase 7 — prediction ledger + performance proof (existing Prediction/Outcome/evaluator scaffolding audited and found disconnected from the mainstream universe — fixed with a new non-OTC-gated prediction_scheduler worker; added engine_mode/model_version/risk_policy_version provenance and a real Brier score broken down by engine_mode; new /performance frontend page)
-- [ ] Phase 8 — ML dataset + training + Champion/Challenger promotion gate
+- [x] Phase 8 — ML dataset + training + Champion/Challenger promotion gate (dataset/training/walk-forward/registry all pre-existing and verified; added the missing heuristic + logistic-regression/momentum/buy-and-hold baseline comparison and hard-enforced the "never promote unless it beats them" gate in promote_model() itself)
 - [ ] Phase 9 — chart timeframes + technical indicators
 - [ ] Phase 10 — user alerts
 - [ ] Phase 11 — Admin/Operator UI
@@ -681,39 +794,40 @@ Phase 7:
 
 ## Exact next action
 
-Start **Phase 8 — ML dataset + training + Champion/Challenger promotion
-gate**:
-1. Check `backend/app/services/ml/` for existing scaffolding before
-   assuming a blank slate — Phases 6 and 7 both found substantial
-   pre-existing infrastructure (`ensemble.py`, `training_pipeline.py`,
-   `calibration.py`, `feature_vector.py`, `explainability.py` were all
-   referenced earlier in this effort) that just needed auditing and
-   wiring up, not rebuilding.
-2. Point-in-time-correct, leakage-resistant dataset construction: the
-   Phase 7 prediction ledger (`predictions`/`outcomes` tables, now with
-   `engine_mode` provenance) is the natural label source —
-   `outcome.max_runup_pct >= threshold` is literally documented as "the
-   label source for retraining" in `db/models/prediction.py`'s `Outcome`
-   docstring. Verify no future information leaks into a training row's
-   features (a feature computed from data that wouldn't have been
-   available at `prediction.created_at`).
-3. Baselines required before any trained model can be discussed
-   seriously: logistic regression, momentum, buy-and-hold. Walk-forward
-   (not k-fold — this is time series) validation.
-4. **The promotion gate itself, using Phase 7's new infrastructure
-   directly**: `build_calibration_report()`'s `by_engine_mode` breakdown
-   already gives HEURISTIC's real historical Brier score. A trained
-   model may only flip `EnsembleModel`'s trained-vs-heuristic behavior in
-   production once its own out-of-sample Brier score (computed the exact
-   same way, via the same ledger, once it's been running long enough to
-   accumulate matured predictions under `engine_mode="TRAINED_ML"`) is
-   demonstrably better — never promoted on training-set metrics alone.
-5. This phase will likely need a DB migration (model registry / training
-   run metadata) — same autogenerate-then-verify-empty-diff discipline as
-   every prior phase's migration.
-6. Do not activate a trained model in production regardless of any
-   internal metric until this out-of-sample, ledger-based comparison
-   exists and favors it — the standing non-negotiable rule.
+Start **Phase 9 — chart timeframes + technical indicators**:
+1. **The backend is already done and already honest**: `GET /stocks/{symbol}/candles`
+   (`backend/app/api/v1/endpoints/stocks.py`) already supports the full
+   `_VALID_TIMEFRAMES = {1m, 5m, 15m, 1H, 1D, 1W, 1M, 1Y, ALL}` set, backed
+   by real streamed intraday bars for intraday timeframes (never
+   fabricated history — see `services/signals/engine.py`'s
+   `bars_for_timeframe`/`candle_provenance`) and lossless resampling of
+   real daily bars for 1W/1M. Verify this still holds before building
+   anything new — Phases 6, 7, and 8 each found significant pre-existing
+   backend work the original audit missed; check first.
+2. **The frontend does NOT use it yet**: `frontend/components/charts/PriceChart.tsx`
+   (used by the Stock Detail page) has no timeframe concept at all — it's
+   wired to the older `/stocks/{symbol}/ohlcv` endpoint (daily bars only,
+   no timeframe parameter). No timeframe-selector UI exists anywhere.
+   This is the actual gap: add a timeframe selector (buttons or a
+   dropdown for the 9 supported values) to the Stock Detail page, call
+   `GET /stocks/{symbol}/candles?timeframe=...` instead of/alongside the
+   existing `/ohlcv` call, and surface the endpoint's own `note` field
+   (e.g. "only N bars of real live history accumulated so far") when
+   intraday history is thin — never silently show a short chart as if it
+   were complete.
+3. Technical indicators: check `services/features/technical.py` (already
+   referenced throughout this effort — computes RSI/MACD/Bollinger/ATR/
+   VWAP/SMA/EMA server-side for scoring) for what's already computed vs.
+   what would need to be added specifically for chart overlay rendering.
+   Likely most of the math already exists; the gap is almost certainly
+   frontend rendering (indicator overlay lines/panels on `PriceChart`),
+   not backend computation.
+4. AI BUY/SELL signal markers on the chart: `LiveChart.tsx` already
+   plots `SignalPayload` levels (entry/stop/targets) for the live 1m
+   feed — check whether that same marker rendering can be reused for the
+   new timeframe-aware chart, rather than building a second marker system.
+5. No backend schema changes expected (candles endpoint is complete) —
+   this phase is very likely frontend-only. If a gap requires a backend
+   change, follow the same audit-first discipline as every phase so far.
 
-Then continue to Phase 9 (chart timeframes + technical indicators) per
-the ledger order above.
+Then continue to Phase 10 (user alerts) per the ledger order above.

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import db_session, require_operator
 from app.db.models.model_version import ModelVersion
 from app.db.models.user import User
-from app.services.ml.champion_challenger import NotEnoughHistory, promote_model, train_challenger
+from app.services.ml.champion_challenger import NotEnoughHistory, PromotionRefused, promote_model, train_challenger
 
 router = APIRouter(prefix="/models", tags=["models"])
 
@@ -49,4 +49,6 @@ def promote_endpoint(version_id: int, db: Session = Depends(db_session), operato
         version = promote_model(db, version_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PromotionRefused as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return _serialize(version)
