@@ -196,24 +196,52 @@ General disciplines: append-only tables never UPDATE (HOT-bloat-free, vacuum-fri
 
 **Tooling:** Alembic, `backend/alembic/`. `env.py` pulls the URL from app settings (environment-driven, same DB the app would use) and `Base.metadata` from the models package — autogenerate always sees the full schema. `render_as_batch` enabled on SQLite so ALTERs work in dev.
 
-**Migration log:**
+**Migration log** (linear chain, no branches — `alembic history` order):
 
 | Revision | Purpose |
 |---|---|
-| `6bbad53f77a7` baseline | Full current schema: 14 tables, all constraints (CHECKs, UNIQUEs), all indexes above |
+| `6bbad53f77a7` baseline | Full initial schema |
+| `98ca21252e8b` | `scan_cycles`/`scan_decisions` + `outcomes.max_runup_pct` |
+| `9b1a60567a48` | `users` table + `user_id` FKs on chat_sessions/portfolio/watchlist |
+| `7842891a0067` | `signals`/`signal_events` tables |
+| `cf153aaf7ad5` | `assets` table (unified multi-asset registry, additive alongside legacy `tickers`) |
+| `aceab66d1590` | AI-indicator columns on `signals` (timeframe, signal_type, explanation, market_regime, ...) |
+| `c7debfca52a5` (head) | Data-only: idempotent seed of the 20-symbol default asset universe |
 
-**Planned migrations (in order):**
+**Operational rules — implemented, not just planned (as of the beta-hardening
+effort, `docs/IMPLEMENTATION_PROGRESS.md`):**
 
-1. `users` + `user_id` FKs on watchlist/portfolio/chat_sessions (FR-1100) — additive, backfill single-tenant rows to a seed user.
-2. `predictions` snapshot-policy columns (`snapshot_kind` enum full/delta) preceding cadence change.
-3. Partitioning migration for `predictions`/`outcomes` (>10M rows): new partitioned tables, dual-write window, backfill, swap — documented runbook required before execution.
-4. Timescale compression + retention policies for `ohlcv_bars` (arrives with intraday data).
-
-**Operational rules:**
-
-- Runtime `create_all` remains only as the SQLite/dev bootstrap; Postgres environments run `alembic upgrade head` in the deploy pipeline **before** new code serves traffic (CI gate: autogenerate against head must produce an empty diff — models and migrations may never drift).
-- Migrations are forward-only in production; down-revisions exist for development.
-- Destructive migrations (drops, type narrowing) require a two-release deprecation window.
+- **Runtime `create_all`** (`app/main.py`'s lifespan) runs **only** when
+  `Settings.sqlalchemy_url` is a SQLite URL — the explicitly-supported
+  zero-config dev/test bootstrap. It is a no-op for Postgres.
+- **Postgres schema is exclusively Alembic-managed.** `backend/scripts/
+  run_migrations.py` runs `alembic upgrade head` **once, before the API
+  process starts serving traffic** — wired into the container entrypoint
+  (`backend/Dockerfile`'s `CMD`: `python scripts/run_migrations.py && exec
+  uvicorn ...`), not from inside the app's own startup/lifespan (which
+  would otherwise re-run per replica and race concurrent DDL). A migration
+  failure fails the whole container start (`&&`) rather than serving
+  requests against a half-migrated schema.
+- **Concurrent-replica safety**: the script wraps the upgrade in a
+  Postgres session-level `pg_advisory_lock` (a fixed, app-specific integer
+  key) so that if more than one replica's entrypoint runs the migration
+  step at once (e.g. an overlapping rolling deploy), only one actually
+  executes the DDL; the others block on the lock, then find the schema
+  already at head (Alembic's upgrade is a no-op once the target revision
+  is applied) and exit cleanly. Not applicable to SQLite (single local
+  file, one process).
+- **Schema readiness is observable independently of process liveness**:
+  `GET /health/ready` (`app/services/deployment/schema_status.py`) compares
+  the database's actual `alembic_version` row against the expected head
+  resolved from the repo's own migration scripts, and returns 503 if they
+  don't match (e.g. the migration step was skipped) — distinct from
+  `GET /health`, which only checks the process is up and the DB is
+  reachable. Orchestrators should gate traffic routing on `/health/ready`,
+  not just `/health`.
+- Migrations are forward-only in production; down-revisions exist for
+  development/rollback testing.
+- Destructive migrations (drops, type narrowing) require a two-release
+  deprecation window.
 
 **Lessons encoded (from real defects in this repo):**
 

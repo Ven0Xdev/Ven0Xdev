@@ -28,6 +28,7 @@ BASE_ENV = {
     "USE_SQLITE_FALLBACK": "true",
     "SQLITE_PATH": "sqlite:///:memory:",
     "CORS_ORIGINS": "http://localhost:3000",
+    "DEBUG": "false",
     "CHAT_BACKEND": "template",
 }
 
@@ -125,3 +126,55 @@ def test_development_boots_with_mock_provider_and_no_opt_in():
         }
     )
     assert result.returncode == 0, result.stderr
+
+
+def _valid_production_env(**overrides: str) -> dict[str, str]:
+    base = {
+        "ENVIRONMENT": "production",
+        "SECRET_KEY": "a-real-production-secret-key-value",
+        "AUTH_REQUIRED": "true",
+        "MARKET_DATA_PROVIDER": "twelvedata",
+        "DEBUG": "false",
+        "CORS_ORIGINS": "https://real-deployed-frontend.example",
+        "USE_SQLITE_FALLBACK": "false",
+        "DATABASE_URL": "postgresql+psycopg://realuser:realpass@real-db-host:5432/real_db",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_production_refuses_debug_true():
+    result = _run_import(_valid_production_env(DEBUG="true"))
+    assert result.returncode != 0
+    assert "DEBUG" in result.stderr
+
+
+def test_production_refuses_default_cors_origins():
+    result = _run_import(_valid_production_env(CORS_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"))
+    assert result.returncode != 0
+    assert "CORS_ORIGINS" in result.stderr
+
+
+def test_production_refuses_default_database_url():
+    result = _run_import(
+        _valid_production_env(
+            USE_SQLITE_FALLBACK="false",
+            DATABASE_URL="postgresql+psycopg://ven0x:ven0x@localhost:5432/ven0x_otc",
+        )
+    )
+    assert result.returncode != 0
+    assert "DATABASE_URL" in result.stderr
+
+
+def test_production_boots_clean_with_a_fully_valid_configuration():
+    result = _run_import(_valid_production_env())
+    assert result.returncode == 0, result.stderr
+
+
+def test_production_warns_but_does_not_refuse_open_registration():
+    """Registration must stay open long enough to bootstrap the first
+    (operator) account on a fresh deployment — this is a loud warning, not
+    a boot refusal, unlike the other production guards."""
+    result = _run_import(_valid_production_env(ALLOW_REGISTRATION="true"))
+    assert result.returncode == 0, result.stderr
+    assert "ALLOW_REGISTRATION" in result.stdout

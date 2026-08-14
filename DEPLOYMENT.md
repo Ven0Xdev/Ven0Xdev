@@ -121,6 +121,10 @@ parsed as JSON. Redeploy the backend service for the change to take effect.
 ## 5. Verification checklist
 
 - [ ] `https://<railway-domain>/health` → 200, `"data_provider":"mock"`
+- [ ] `https://<railway-domain>/health/ready` → 200, `"ready":true` (confirms the database
+      schema is actually at the expected Alembic migration head, not just that the process
+      is up — Railway runs `scripts/run_migrations.py` before `uvicorn` starts, per the
+      Dockerfile; a 503 here means that step didn't complete)
 - [ ] Vercel URL loads → redirects to `/login` when logged out
 - [ ] Register → lands on dashboard, sidebar shows your session
 - [ ] A stock page's live chart shows a connection badge (LIVE/SYNTHETIC FEED) — confirms the

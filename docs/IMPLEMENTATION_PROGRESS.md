@@ -9,7 +9,11 @@ anything.
 
 ## Current phase
 
-**Phase 1 — Real market data and data integrity** — 1.1 and 1.3 done (scoped, see below), 1.2 blocked by missing credentials. Ready to start **Phase 2 — Alembic-in-deploy + production config guards** next.
+**Phase 2 — Alembic-in-deploy + production config guards** — complete (2.1 and 2.2,
+see below). Ready to start **Phase 3 — security hardening** next.
+
+Phase 1 — done (1.1/1.3 implemented, 1.2 honestly blocked). See "Phase 1" entry
+further down for full detail.
 
 ## Baseline (Phase 0 — completed 2026-08-14)
 
@@ -114,7 +118,7 @@ This is the baseline every subsequent phase's verification is measured against �
 
 ## Files changed (this effort, cumulative)
 
-- `docs/IMPLEMENTATION_PROGRESS.md` (new — this file)
+Phase 1:
 - `backend/app/core/config.py` — `allow_synthetic_data` setting
 - `backend/app/main.py` — production synthetic-data boot guard
 - `backend/.env.example`, `DEPLOYMENT.md` — document `ALLOW_SYNTHETIC_DATA`
@@ -125,32 +129,63 @@ This is the baseline every subsequent phase's verification is measured against �
 - `frontend/lib/types.ts` — `StockAnalysis.engine_mode`/`.model_version`
 - `frontend/components/ui/DataBadge.tsx` — engine-mode badge
 - `frontend/app/stock/[ticker]/page.tsx` — wires the badge + footer copy
-- New tests: `backend/app/tests/test_production_guards.py`,
-  `test_live_provider_smoke.py`, `test_ensemble_provenance.py`; one new
-  test added to `test_scorer.py`
+- `backend/app/tests/test_production_guards.py`, `test_live_provider_smoke.py`,
+  `test_ensemble_provenance.py` (new); one new test added to `test_scorer.py`
+
+Phase 2:
+- `backend/scripts/run_migrations.py` (new) — `alembic upgrade head` as a
+  distinct pre-start deploy step, Postgres-advisory-lock-protected against
+  concurrent replicas, SQLite passthrough for dev.
+- `backend/Dockerfile` — `CMD` now runs the migration script before `exec uvicorn`.
+- `backend/app/main.py` — lifespan's `create_all()` now SQLite-only (Postgres
+  is exclusively Alembic-managed); production boot guard extended with
+  `DEBUG`, `CORS_ORIGINS`-default, `DATABASE_URL`-default refusals and an
+  `ALLOW_REGISTRATION` warning (not a refusal — bootstrap needs it open once).
+- `backend/app/services/deployment/__init__.py`,
+  `backend/app/services/deployment/schema_status.py` (new) — schema
+  readiness (Alembic head vs. applied revision), separate from liveness.
+- New `GET /health/ready` route in `backend/app/main.py`.
+- `docker-compose.yml` — `api` service gets a real `/health/ready`
+  healthcheck; `web` now waits on `api` being healthy, not just started.
+- `docs/DATABASE.md` §5 rewritten to describe the now-implemented (not just
+  planned) migration strategy; `DEPLOYMENT.md` verification checklist
+  mentions `/health/ready`.
+- `backend/app/tests/test_production_guards.py` — extended with 5 new
+  tests (DEBUG, CORS default, DATABASE_URL default, full-valid-config
+  success, ALLOW_REGISTRATION warning-not-refusal) and `BASE_ENV` fixed to
+  set `DEBUG=false` so the pre-existing success-case tests keep passing
+  under the new guard.
+- `backend/app/tests/test_schema_readiness.py` (new, 6 tests) — exercises
+  `schema_status.py`'s Postgres-branch logic (missing/stale/matching
+  `alembic_version`) against a real throwaway SQLite engine via the
+  module's `url`/`db_engine` override parameters, since no live Postgres
+  instance exists in this environment; the SQLite branch and the
+  `/health/ready` route itself are tested directly, no override needed.
 
 ## Database migrations created (this effort)
 
-- None yet. (Phase 1 needed no schema changes — Phase 2's Alembic-in-deploy
-  work and Phase 6/7's new tables are where migrations will next appear.)
+- None. Phase 1 and Phase 2 needed no new *schema* — Phase 2 was entirely
+  about correctly *running* the existing 7-migration chain during deploy,
+  not adding to it. Phase 6/7's new tables (Paper Trading, prediction
+  ledger) are where the next new migration will appear.
 
-## Verification commands run (after Phase 1)
+## Verification commands run (after Phase 2)
 
 | Command | Result |
 |---|---|
-| `cd backend && python3 -m pytest app/tests -q` | **290 passed, 10 skipped** (baseline 280 + 10 new passing + 10 new honestly-skipped live tests = 300 collected total, confirmed via `--collect-only`) |
-| `cd backend && python3 -m pytest app/tests/test_production_guards.py -v` | 6/6 passed (isolated) |
-| `cd backend && python3 -m pytest app/tests/test_live_provider_smoke.py -v` | 10/10 skipped (isolated, confirms honest self-skip) |
-| `cd frontend && npm run lint` | clean |
-| `cd frontend && npx tsc --noEmit` | clean |
-| `cd frontend && npm run build` | succeeds |
+| `cd backend && python3 -m pytest app/tests -q` | **301 passed, 10 skipped** (311 collected — Phase 1's 290+10 plus Phase 2's 11 new passing tests) |
+| `cd backend && python3 -m pytest app/tests/test_production_guards.py -v` | 11/11 passed (isolated) |
+| `cd backend && python3 -m pytest app/tests/test_schema_readiness.py -v` | 6/6 passed (isolated) |
+| `cd backend && SQLITE_PATH=sqlite:////tmp/test_migration.db USE_SQLITE_FALLBACK=true python3 scripts/run_migrations.py` (run twice) | 1st run: applies all 7 migrations in order, exit 0. 2nd run: no-op (already at head), exit 0. Real, not simulated. |
+| `cd backend && DATABASE_URL=postgresql+psycopg://baduser:badpassword123@localhost:59999/nonexistent USE_SQLITE_FALLBACK=false python3 scripts/run_migrations.py` | Fails as expected, exit 1, logged traceback confirmed to **not** contain the password string |
+| `cd frontend && npm run lint && npx tsc --noEmit && npm run build` | all clean |
 | `git diff` scanned for secret-shaped strings | none found |
-| `git diff \| grep -i otc` | only pre-existing `MockOTCProvider` test-infra reuse in a new test; no user-facing OTC regression |
+| `git diff \| grep -i otc` | only the pre-existing `..._otc` database-name substring inside the already-existing default `DATABASE_URL` value, now quoted inside a new guard's comparison string — not a new reference, no user-facing OTC regression |
 
 ## Remaining tasks (full 13-phase scope, not started unless marked)
 
 - [x] Phase 1 — real data integrity (1.1, 1.2, 1.3 scoped as above)
-- [ ] Phase 2 — Alembic-in-deploy + production config guards
+- [x] Phase 2 — Alembic-in-deploy + production config guards (2.1, 2.2)
 - [ ] Phase 3 — security hardening (auth rate limiting, monitoring split, prompt-injection defense)
 - [ ] Phase 4 — unified risk/signal policy engine
 - [ ] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared states, mobile)
@@ -170,16 +205,34 @@ This is the baseline every subsequent phase's verification is measured against �
 
 ## Exact next action
 
-Start **Phase 2 — Alembic-in-deploy + production config guards**:
-1. Wire `alembic upgrade head` into the real startup flow (Dockerfile entrypoint or
-   an explicit pre-start step), replacing/supplementing `Base.metadata.create_all()`
-   for non-fresh databases; make deploy fail if migrations fail; guard against
-   multiple replicas racing the same migration.
-2. Extend `app/main.py`'s production boot guard with the still-missing checks from
-   the spec: `DEBUG=false` required, sane `ALLOW_REGISTRATION` posture, and
-   validate `CORS_ORIGINS`/database config are non-default in production.
-3. Verify: fresh DB migrate, existing DB migrate, `alembic current` matches head,
-   a distinct schema-readiness check separate from the plain liveness probe.
+Start **Phase 3 — security hardening**:
+1. **Auth rate limiting**: add the existing token-bucket rate limiter
+   (`app/core/ratelimit.py`, currently only wired to `/scan/multi-asset/prescan`
+   and `/backtest/*`) to `POST /auth/login`, `POST /auth/register`, and
+   `POST /auth/refresh`. Key by a combination of client IP and the submitted
+   email/account identifier without leaking whether an account exists (generic
+   "invalid credentials" / "rate limited" responses). Add tests for normal use,
+   bursts, and recovery after the window.
+2. **`/monitoring` split**: `GET /monitoring/health` (`app/api/v1/endpoints/
+   monitoring.py`) is currently fully unauthenticated and returns internal
+   operational detail (provider failure rates, latency percentiles, calibration
+   gaps). Keep `GET /health` (already minimal) as the public liveness probe,
+   gate `/monitoring/health`'s existing detailed report behind `require_operator`
+   (same dependency pattern as `universe.py`/`models.py`), and confirm nothing
+   in the frontend's PWA connectivity checks (`lib/pwa.ts`'s `useOnlineStatus`)
+   depends on the now-protected route — it should already be hitting `/health`,
+   not `/monitoring/health`, but verify.
+3. **Prompt-injection defenses**: `app/services/chat/tools.py`'s
+   `_tool_get_recent_news` (and any other tool returning untrusted external
+   text — filings, provider text) currently passes raw headline/description
+   text straight into the LLM's tool-result context with no sanitization. Add:
+   length limits, control-character stripping, clear untrusted-content
+   delimiting/quoting in the prompt construction, and an explicit system-prompt
+   instruction that quoted external content is never a command. Add tests with
+   adversarial headlines attempting instruction override / secret exfiltration
+   / unwanted tool calls, asserting they're neutralized (or at minimum never
+   followed).
 
-Then continue to Phase 3 (security hardening: auth rate limiting, `/monitoring`
-split, prompt-injection defenses) per the ledger order above.
+Then continue to Phase 4 (unified risk/signal policy engine — the
+`risk/engine.py` vs `signals/engine.py` dual-threshold inconsistency flagged
+in the original audit) per the ledger order above.

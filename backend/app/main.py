@@ -44,6 +44,34 @@ if settings.environment == "production":
             "to run a deliberately-labelled demo deployment."
         )
 
+    if settings.debug:
+        raise RuntimeError(
+            "Refusing to start: DEBUG must be false in production — the global exception handler "
+            "includes exception type/message/path in its response body when DEBUG is true, which "
+            "must never reach an external caller in production."
+        )
+
+    if settings.cors_origins_raw.strip() == "http://localhost:3000,http://127.0.0.1:3000":
+        raise RuntimeError(
+            "Refusing to start: CORS_ORIGINS is still the localhost development default in "
+            "production. Set it to your real deployed frontend origin(s)."
+        )
+
+    if not settings.use_sqlite_fallback and settings.database_url == (
+        "postgresql+psycopg://ven0x:ven0x@localhost:5432/ven0x_otc"
+    ):
+        raise RuntimeError(
+            "Refusing to start: DATABASE_URL is still the localhost development default in "
+            "production. Set it to your real database connection string."
+        )
+
+    if settings.allow_registration:
+        logger.warning(
+            "ALLOW_REGISTRATION=true in production — anyone can create an account on this "
+            "deployment. This is expected only until the first (operator) account has been "
+            "created; set ALLOW_REGISTRATION=false immediately after that (see DEPLOYMENT.md)."
+        )
+
 
 def _sanitized_db_url() -> str:
     """DB URL safe to log — a DSN's userinfo (user:password@) is credentials,
@@ -66,12 +94,27 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting %s (environment=%s)", settings.app_name, settings.environment)
     logger.info("Database: %s", _sanitized_db_url())
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables ready.")
-    except Exception:
-        logger.exception("Database initialization failed — the app cannot serve requests reliably.")
-        raise
+    # SQLite (local dev/test fallback): create_all() is the explicitly
+    # supported zero-config path — a single local file, never a shared
+    # production database, so there is no schema-evolution/migration
+    # concern to hand off to Alembic. Postgres (real deployments): schema
+    # is exclusively Alembic-managed by scripts/run_migrations.py, run
+    # once by the container entrypoint BEFORE this process starts (see
+    # Dockerfile) — create_all() only ever *creates missing tables* and
+    # never *alters* an existing one, so relying on it here for an
+    # existing production database would silently skip column-adding
+    # migrations. If schema isn't present yet at this point on Postgres,
+    # that means the migration step was skipped — a deploy misconfiguration
+    # this app should surface loudly (a query failing), not paper over.
+    if settings.sqlalchemy_url.startswith("sqlite"):
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables ready (SQLite dev/test fallback via create_all()).")
+        except Exception:
+            logger.exception("Database initialization failed — the app cannot serve requests reliably.")
+            raise
+    else:
+        logger.info("Postgres database — schema is Alembic-managed (see scripts/run_migrations.py), not create_all().")
     init_timescale_hypertables()
 
     from app.db.session import SessionLocal
@@ -220,6 +263,21 @@ def health_check():
         "market_data": market_data_status,
         "ai": ai_status,
     }
+
+
+@app.get("/health/ready")
+def readiness_check():
+    """Database *schema* readiness, distinct from /health's plain process/
+    connectivity liveness — see services/deployment/schema_status.py.
+    Deliberately unauthenticated (orchestrators probe this without
+    credentials) and deliberately minimal (booleans + revision ids only,
+    never a DSN or stack trace)."""
+    from fastapi.responses import JSONResponse
+
+    from app.services.deployment.schema_status import get_schema_status
+
+    status = get_schema_status()
+    return JSONResponse(status_code=200 if status["ready"] else 503, content=status)
 
 
 @app.get("/")
