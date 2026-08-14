@@ -19,6 +19,7 @@ from typing import Any, Callable
 
 from sqlalchemy.orm import Session
 
+from app.services.chat.sanitize import sanitize_untrusted_text, wrap_untrusted
 from app.services.data_providers.base import MarketDataProvider
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,11 @@ def _tool_get_stock_analysis(args: dict, db: Session | None, provider: MarketDat
     analysis = analyze_ticker(args["symbol"], provider=provider)
     payload = analysis.model_dump()
     payload.pop("feature_vector", None)  # model internals, not chat material
+    # company_name/sector are vendor-supplied (not platform-computed, unlike
+    # every score/level in this payload) — the only two fields here that
+    # count as untrusted external text.
+    payload["company_name"] = sanitize_untrusted_text(payload.get("company_name", ""), max_length=200, source="provider company_name")
+    payload["sector"] = sanitize_untrusted_text(payload.get("sector", ""), max_length=100, source="provider sector")
     return payload
 
 
@@ -41,20 +47,25 @@ def _tool_get_deliberation(args: dict, db: Session | None, provider: MarketDataP
 
 
 def _tool_get_recent_news(args: dict, db: Session | None, provider: MarketDataProvider) -> dict:
+    """News headlines/sources are genuinely external, untrusted text (a
+    compromised or malicious vendor feed could embed anything) — every
+    string field is sanitized, and the whole result is wrapped with an
+    explicit untrusted-content label the model sees alongside it."""
     news = provider.get_news(args["symbol"], limit=int(args.get("limit", 10)))
-    return {
+    result = {
         "symbol": args["symbol"].upper(),
         "articles": [
             {
                 "published_at": n.published_at.isoformat(),
-                "source": n.source,
-                "headline": n.headline,
+                "source": sanitize_untrusted_text(n.source, max_length=100, source="news.source"),
+                "headline": sanitize_untrusted_text(n.headline, max_length=300, source="news.headline"),
                 "sentiment": n.sentiment,
                 "is_promotional": n.is_promotional,
             }
             for n in news
         ],
     }
+    return wrap_untrusted(result)
 
 
 def _tool_get_prediction_history(args: dict, db: Session | None, provider: MarketDataProvider) -> dict:
@@ -107,7 +118,12 @@ def _tool_get_calibration_report(args: dict, db: Session | None, provider: Marke
 def _tool_search_universe(args: dict, db: Session | None, provider: MarketDataProvider) -> dict:
     query = args.get("query", "").upper()
     matches = [
-        {"symbol": t.symbol, "company_name": t.company_name, "tier": t.tier, "sector": t.sector}
+        {
+            "symbol": t.symbol,
+            "company_name": sanitize_untrusted_text(t.company_name, max_length=200, source="provider company_name"),
+            "tier": t.tier,
+            "sector": t.sector,
+        }
         for t in provider.get_universe()
         if query in t.symbol or query in t.company_name.upper()
     ]

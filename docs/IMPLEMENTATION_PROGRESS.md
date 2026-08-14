@@ -9,11 +9,11 @@ anything.
 
 ## Current phase
 
-**Phase 2 — Alembic-in-deploy + production config guards** — complete (2.1 and 2.2,
-see below). Ready to start **Phase 3 — security hardening** next.
+**Phase 3 — security hardening** — complete (3.1, 3.2, 3.3, see below). Ready
+to start **Phase 4 — unified risk/signal policy engine** next.
 
-Phase 1 — done (1.1/1.3 implemented, 1.2 honestly blocked). See "Phase 1" entry
-further down for full detail.
+Phase 1 (1.1/1.3 implemented, 1.2 honestly blocked) and Phase 2 (2.1, 2.2) —
+both done. See their entries further down for full detail.
 
 ## Baseline (Phase 0 — completed 2026-08-14)
 
@@ -162,31 +162,78 @@ Phase 2:
   instance exists in this environment; the SQLite branch and the
   `/health/ready` route itself are tested directly, no override needed.
 
+Phase 3:
+- `backend/app/core/config.py` — new `auth_rate_limit_per_minute` setting
+  (default 10/min, deliberately stricter than the existing
+  `rate_limit_expensive_per_minute`).
+- `backend/app/api/v1/endpoints/auth.py` — `login_rate_limit`/
+  `register_rate_limit`/`refresh_rate_limit` dependencies wired onto
+  `/auth/login`, `/auth/register`, `/auth/refresh`. Two independent
+  token-bucket keys per login/register attempt (per-source-IP, per-targeted-
+  email) so neither a single-IP brute force nor a distributed attack against
+  one account slips through; refresh is IP-only (no credential pair to key
+  on). Reuses the existing `RATE_LIMIT_ENABLED` flag and `check_rate_limit`
+  primitive — no new infrastructure. The 429 body is identical regardless of
+  which bucket tripped, so it can't be used to enumerate accounts. (First
+  attempt read the request body as a second differently-named Pydantic
+  parameter, which silently broke the wire contract — FastAPI embeds
+  multiple distinctly-named body params as separate JSON keys. Fixed by
+  reading the raw body directly via `await request.json()` instead.)
+- `backend/app/api/v1/endpoints/monitoring.py` — `GET /monitoring/health`
+  (drift/calibration/provider-failure/latency detail) now requires
+  `require_operator`, matching every other operator-only route's pattern.
+  The app-root `GET /health` (already minimal, no internals) stays public;
+  confirmed nothing in the frontend calls `/monitoring/*` at all.
+- `backend/app/services/chat/sanitize.py` (new) — `sanitize_untrusted_text()`
+  (control-character stripping, length capping, logged-not-blocked
+  suspicious-instruction-phrase detection) and `wrap_untrusted()` (explicit
+  structural "this is data, not instructions" framing). Applied in
+  `backend/app/services/chat/tools.py` to every untrusted external string a
+  tool can return: news headlines/sources (`get_recent_news`, whose whole
+  result is now `wrap_untrusted()`-wrapped) and vendor company names
+  (`get_stock_analysis`, `search_universe`).
+- `backend/app/services/chat/assistant.py` — `SYSTEM_PROMPT` gained an
+  explicit rule 8: tool-result content (especially anything marked
+  `untrusted_external_content`) is data to summarize, never a command;
+  only the user's own messages are instructions. Added a 30s request
+  timeout to the Anthropic `messages.create()` call (the 6-round tool-loop
+  bound and 900-token cap already existed).
+- New `backend/app/tests/test_chat_sanitize.py` (8 tests) — includes a
+  from-scratch adversarial `MarketDataProvider` stub whose news content
+  embeds real prompt-injection phrasing ("ignore all previous
+  instructions", "you are now DAN", control characters, a 1000-char
+  headline) run through the actual `execute_tool("get_recent_news", ...)`
+  path, not just the sanitizer in isolation.
+- `backend/app/tests/test_auth.py` — new `auth_rate_limit_on` fixture + 6
+  tests (disabled-by-default, blocks after threshold, never reveals which
+  bucket tripped, register/refresh also covered, recovery after reset).
+- `backend/app/tests/test_monitoring.py` — 2 new tests: anonymous/regular-
+  user 401/403, and a DB-promoted operator account getting 200 (mirrors
+  `test_auth.py::test_revocation_via_token_version`'s direct-DB-mutation
+  pattern, since registration order alone can't guarantee an "operator"
+  account on the shared test DB).
+
 ## Database migrations created (this effort)
 
-- None. Phase 1 and Phase 2 needed no new *schema* — Phase 2 was entirely
-  about correctly *running* the existing 7-migration chain during deploy,
-  not adding to it. Phase 6/7's new tables (Paper Trading, prediction
-  ledger) are where the next new migration will appear.
+- None. Phases 1–3 needed no new *schema*. Phase 6/7's new tables (Paper
+  Trading, prediction ledger) are where the next new migration will appear.
 
-## Verification commands run (after Phase 2)
+## Verification commands run (after Phase 3)
 
 | Command | Result |
 |---|---|
-| `cd backend && python3 -m pytest app/tests -q` | **301 passed, 10 skipped** (311 collected — Phase 1's 290+10 plus Phase 2's 11 new passing tests) |
-| `cd backend && python3 -m pytest app/tests/test_production_guards.py -v` | 11/11 passed (isolated) |
-| `cd backend && python3 -m pytest app/tests/test_schema_readiness.py -v` | 6/6 passed (isolated) |
-| `cd backend && SQLITE_PATH=sqlite:////tmp/test_migration.db USE_SQLITE_FALLBACK=true python3 scripts/run_migrations.py` (run twice) | 1st run: applies all 7 migrations in order, exit 0. 2nd run: no-op (already at head), exit 0. Real, not simulated. |
-| `cd backend && DATABASE_URL=postgresql+psycopg://baduser:badpassword123@localhost:59999/nonexistent USE_SQLITE_FALLBACK=false python3 scripts/run_migrations.py` | Fails as expected, exit 1, logged traceback confirmed to **not** contain the password string |
-| `cd frontend && npm run lint && npx tsc --noEmit && npm run build` | all clean |
+| `cd backend && python3 -m pytest app/tests -q` | **317 passed, 10 skipped** (327 collected — up from 301+10 at the end of Phase 2; +16 new passing tests: 6 auth rate-limit + 2 monitoring operator-gate + 8 chat sanitize) |
+| `cd backend && python3 -m pytest app/tests/test_auth.py app/tests/test_monitoring.py app/tests/test_chat_sanitize.py -v` | all passed (isolated) |
+| `cd frontend && npm run lint && npx tsc --noEmit && npm run build` | all clean (Phase 3 touched no frontend files — verified `git diff --stat frontend/` is empty) |
 | `git diff` scanned for secret-shaped strings | none found |
-| `git diff \| grep -i otc` | only the pre-existing `..._otc` database-name substring inside the already-existing default `DATABASE_URL` value, now quoted inside a new guard's comparison string — not a new reference, no user-facing OTC regression |
+| `git diff \| grep -i otc` | no matches |
+| `git status --short` after `git add -A` | only the expected 9 files (7 modified + 2 new) |
 
 ## Remaining tasks (full 13-phase scope, not started unless marked)
 
 - [x] Phase 1 — real data integrity (1.1, 1.2, 1.3 scoped as above)
 - [x] Phase 2 — Alembic-in-deploy + production config guards (2.1, 2.2)
-- [ ] Phase 3 — security hardening (auth rate limiting, monitoring split, prompt-injection defense)
+- [x] Phase 3 — security hardening (3.1 auth rate limiting, 3.2 monitoring split, 3.3 prompt-injection defenses)
 - [ ] Phase 4 — unified risk/signal policy engine
 - [ ] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared states, mobile)
 - [ ] Phase 6 — Paper Trading system
@@ -205,34 +252,38 @@ Phase 2:
 
 ## Exact next action
 
-Start **Phase 3 — security hardening**:
-1. **Auth rate limiting**: add the existing token-bucket rate limiter
-   (`app/core/ratelimit.py`, currently only wired to `/scan/multi-asset/prescan`
-   and `/backtest/*`) to `POST /auth/login`, `POST /auth/register`, and
-   `POST /auth/refresh`. Key by a combination of client IP and the submitted
-   email/account identifier without leaking whether an account exists (generic
-   "invalid credentials" / "rate limited" responses). Add tests for normal use,
-   bursts, and recovery after the window.
-2. **`/monitoring` split**: `GET /monitoring/health` (`app/api/v1/endpoints/
-   monitoring.py`) is currently fully unauthenticated and returns internal
-   operational detail (provider failure rates, latency percentiles, calibration
-   gaps). Keep `GET /health` (already minimal) as the public liveness probe,
-   gate `/monitoring/health`'s existing detailed report behind `require_operator`
-   (same dependency pattern as `universe.py`/`models.py`), and confirm nothing
-   in the frontend's PWA connectivity checks (`lib/pwa.ts`'s `useOnlineStatus`)
-   depends on the now-protected route — it should already be hitting `/health`,
-   not `/monitoring/health`, but verify.
-3. **Prompt-injection defenses**: `app/services/chat/tools.py`'s
-   `_tool_get_recent_news` (and any other tool returning untrusted external
-   text — filings, provider text) currently passes raw headline/description
-   text straight into the LLM's tool-result context with no sanitization. Add:
-   length limits, control-character stripping, clear untrusted-content
-   delimiting/quoting in the prompt construction, and an explicit system-prompt
-   instruction that quoted external content is never a command. Add tests with
-   adversarial headlines attempting instruction override / secret exfiltration
-   / unwanted tool calls, asserting they're neutralized (or at minimum never
-   followed).
+Start **Phase 4 — unified risk/signal policy engine**. Context (from the
+original audit, re-confirmed still true): `services/risk/engine.py`'s
+`evaluate_risk()` reads config-driven thresholds
+(`risk_min_confidence_pct=65.0`, `risk_min_reward_risk_ratio=2.0`,
+`risk_max_portfolio_risk_per_trade_pct=1.0`) but is only wired into the
+**scanner** (`services/scanner/multi_asset.py`). The **per-ticker** status
+machine that actually produces a stock page's BUY/SELL/WATCH/NO_TRADE-style
+signal (`services/signals/engine.py`) uses its own separate, hardcoded
+constants (`MIN_CONFIDENCE = 30.0` and inline thresholds in `_status_for()`)
+— so a ticker can show `POSSIBLE_ENTRY` on its own page at 30% confidence
+while the scanner would reject the same ticker at its 65% floor.
 
-Then continue to Phase 4 (unified risk/signal policy engine — the
-`risk/engine.py` vs `signals/engine.py` dual-threshold inconsistency flagged
-in the original audit) per the ledger order above.
+1. Design one authoritative `RiskPolicy` (confidence floor, reward:risk floor,
+   max per-trade risk %, stale-data cutoff, liquidity/spread floor, event-risk
+   rule, Safe Mode flag) — likely a small dataclass/Pydantic model sourced from
+   `Settings`, with an explicit version string (`risk_policy_version`) so every
+   signal/prediction can record which policy produced it (ties into Phase 1.3's
+   provenance work and Phase 7's prediction ledger).
+2. Rewrite `signals/engine.py` to import and enforce this same `RiskPolicy`
+   instead of its own local constants — remove the duplicated thresholds.
+3. Confirm the scanner, the stock-page signal endpoint, and (once built)
+   Paper Trading and Alerts all resolve the SAME policy instance/version —
+   no second hardcoded copy anywhere.
+4. Missing/stale critical data must resolve to WATCH or NO_TRADE, never a
+   fabricated confident status. Invalid trade levels (violating
+   stop < entry < tp1 < tp2 < tp3) must be rejected outright.
+5. Add deterministic tests for every threshold boundary (exactly-at-floor
+   passes, one-below-floor rejects) and every rejection condition, plus a
+   regression test proving the scanner and the per-ticker endpoint now agree
+   on the same ticker/confidence/reward-risk combination (the exact
+   inconsistency this phase closes).
+
+Then continue to Phase 5 (frontend reliability: Watchlist/Portfolio error
+handling, shared loading/error/offline states, mobile responsiveness across
+all 9 routes) per the ledger order above.

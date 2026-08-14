@@ -17,6 +17,25 @@ def auth_on():
     settings.auth_required = original
 
 
+@pytest.fixture
+def auth_rate_limit_on():
+    """Flip RATE_LIMIT_ENABLED (and lower the per-minute cap so a test
+    doesn't need dozens of requests to trip it) for a test, and reset the
+    shared in-process token-bucket state before and after so this test
+    can't leak into — or be polluted by — any other test hitting
+    /api/v1/auth/*."""
+    settings = get_settings()
+    original_enabled = settings.rate_limit_enabled
+    original_limit = settings.auth_rate_limit_per_minute
+    settings.rate_limit_enabled = True
+    settings.auth_rate_limit_per_minute = 3
+    reset_for_tests()
+    yield settings
+    settings.rate_limit_enabled = original_enabled
+    settings.auth_rate_limit_per_minute = original_limit
+    reset_for_tests()
+
+
 def _register(client, email, password="correct-horse-battery"):
     return client.post("/api/v1/auth/register", json={"email": email, "password": password})
 
@@ -160,3 +179,61 @@ def test_revocation_via_token_version(client, auth_on, test_engine):
         session.close()
 
     assert client.get("/api/v1/auth/me", headers=_auth_header(tokens["access_token"])).status_code == 401
+
+
+# ---------- auth endpoint rate limiting -------------------------------------
+
+def test_login_rate_limit_disabled_by_default(client):
+    """RATE_LIMIT_ENABLED=false (the default) — repeated bad logins are
+    never throttled, only rejected on their own merits (401)."""
+    for _ in range(10):
+        r = client.post("/api/v1/auth/login", json={"email": "nobody@example.com", "password": "wrong-password"})
+        assert r.status_code == 401
+
+
+def test_login_rate_limit_blocks_after_threshold(client, auth_rate_limit_on):
+    responses = [
+        client.post("/api/v1/auth/login", json={"email": "ratelimit-login@example.com", "password": "wrong-password"})
+        for _ in range(4)
+    ]
+    statuses = [r.status_code for r in responses]
+    # First 3 are judged on their own merits (401: no such account); the
+    # 4th trips the per-minute cap regardless of credentials.
+    assert statuses == [401, 401, 401, 429]
+    assert "Retry-After" in responses[-1].headers
+
+
+def test_login_rate_limit_never_reveals_which_bucket_tripped(client, auth_rate_limit_on):
+    """Same generic 429 body whether the IP bucket or the per-email bucket
+    is what tripped — an attacker learns nothing about which limit fired,
+    and by extension nothing about whether the targeted email exists."""
+    for _ in range(3):
+        client.post("/api/v1/auth/login", json={"email": "distinct-1@example.com", "password": "x"})
+    r = client.post("/api/v1/auth/login", json={"email": "distinct-2@example.com", "password": "x"})
+    assert r.status_code == 429
+    assert "wait" in r.json()["detail"].lower()
+
+
+def test_register_rate_limit_blocks_after_threshold(client, auth_rate_limit_on):
+    responses = [
+        client.post("/api/v1/auth/register", json={"email": f"ratelimit-reg-{i}@example.com", "password": "correct-horse-battery"})
+        for i in range(4)
+    ]
+    statuses = [r.status_code for r in responses]
+    assert statuses == [201, 201, 201, 429]
+
+
+def test_refresh_rate_limit_blocks_after_threshold(client, auth_rate_limit_on):
+    responses = [client.post("/api/v1/auth/refresh", json={"refresh_token": "not-a-real-token"}) for _ in range(4)]
+    statuses = [r.status_code for r in responses]
+    assert statuses == [401, 401, 401, 429]
+
+
+def test_login_rate_limit_recovers_after_reset(client, auth_rate_limit_on):
+    for _ in range(3):
+        client.post("/api/v1/auth/login", json={"email": "recovers@example.com", "password": "wrong"})
+    assert client.post("/api/v1/auth/login", json={"email": "recovers@example.com", "password": "wrong"}).status_code == 429
+
+    reset_for_tests()  # simulates the bucket having refilled over time
+
+    assert client.post("/api/v1/auth/login", json={"email": "recovers@example.com", "password": "wrong"}).status_code == 401

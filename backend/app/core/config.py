@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     allow_registration: bool = True
     rate_limit_enabled: bool = False
     rate_limit_expensive_per_minute: int = 6
+    # Deliberately much stricter than rate_limit_expensive_per_minute: this
+    # gates credential-guessing endpoints (login/register/refresh), not
+    # CPU-heavy analytical ones — see api/v1/endpoints/auth.py's
+    # login_rate_limit/register_rate_limit/refresh_rate_limit.
+    auth_rate_limit_per_minute: int = 10
 
     # --- Database ---
     database_url: str = Field(
