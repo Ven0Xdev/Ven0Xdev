@@ -1,4 +1,8 @@
 import type {
+  AlertConditionType,
+  AlertComparison,
+  AlertEvent,
+  AlertRule,
   BacktestResult,
   CalibrationReport,
   CandlesResponse,
@@ -259,6 +263,22 @@ export const api = {
     }),
 
   calibrationReport: () => request<CalibrationReport>(`/predictions/calibration`),
+
+  alertRules: () => request<AlertRule[]>(`/alerts/rules`),
+  createAlertRule: (payload: {
+    ticker_symbol: string;
+    condition_type: AlertConditionType;
+    comparison: AlertComparison;
+    threshold_value?: number;
+    target_status?: string;
+  }) => request<AlertRule>(`/alerts/rules`, { method: "POST", body: JSON.stringify(payload) }),
+  setAlertRuleActive: (ruleId: number, isActive: boolean) =>
+    request<AlertRule>(`/alerts/rules/${ruleId}?is_active=${isActive}`, { method: "PATCH" }),
+  deleteAlertRule: (ruleId: number) => request<{ status: string }>(`/alerts/rules/${ruleId}`, { method: "DELETE" }),
+  alertEvents: (unacknowledgedOnly = false) =>
+    request<AlertEvent[]>(`/alerts/events?unacknowledged_only=${unacknowledgedOnly}`),
+  acknowledgeAlertEvent: (eventId: number) =>
+    request<AlertEvent>(`/alerts/events/${eventId}/acknowledge`, { method: "POST" }),
 
   paperAccount: () => request<PaperAccount>(`/paper-trading/account`),
   paperPositions: (status: "open" | "closed" = "open") =>

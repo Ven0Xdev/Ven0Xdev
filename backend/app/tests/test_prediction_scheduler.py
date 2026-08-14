@@ -11,8 +11,10 @@ own test-only assets that are never rolled back — see
 test_multi_asset_scanner.py's module docstring for the same discipline
 applied there.
 """
+from app.db.models.alert import AlertEvent, AlertRule
 from app.db.models.prediction import Prediction
 from app.services.data_providers.mock_provider import MockOTCProvider
+from app.services.scoring.scorer import analyze_ticker
 from app.services.universe.manager import SEED_UNIVERSE, seed_default_universe
 from app.workers.prediction_scheduler import run_prediction_cycle
 
@@ -78,3 +80,22 @@ def test_run_prediction_cycle_never_crashes_on_one_bad_symbol(db_session):
     seed_default_universe(db_session)
     logged = run_prediction_cycle(provider=MockOTCProvider(), db=db_session)
     assert logged == 0
+
+
+def test_run_prediction_cycle_also_evaluates_alert_rules(db_session):
+    seed_default_universe(db_session)
+    provider = _AnyAssetMockProvider()
+    symbol = "AAPL"
+    real_price = analyze_ticker(symbol, provider=provider).current_price
+
+    db_session.add(AlertRule(
+        user_id=1, ticker_symbol=symbol, condition_type="price",
+        comparison="above", threshold_value=real_price - 0.01,
+    ))
+    db_session.commit()
+
+    run_prediction_cycle(provider=provider, db=db_session)
+
+    events = db_session.query(AlertEvent).filter_by(ticker_symbol=symbol).all()
+    assert len(events) == 1
+    assert events[0].observed_value == real_price

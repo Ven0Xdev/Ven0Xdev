@@ -243,6 +243,32 @@ export interface CalibrationReport extends Partial<CalibrationBucketReport> {
   note?: string;
 }
 
+export type AlertConditionType = "price" | "ai_score" | "manipulation_risk" | "signal_status";
+export type AlertComparison = "above" | "below" | "equals";
+
+export interface AlertRule {
+  id: number;
+  ticker_symbol: string;
+  condition_type: AlertConditionType;
+  comparison: AlertComparison;
+  threshold_value: number | null;
+  target_status: string | null;
+  is_active: boolean;
+  created_at: string;
+  last_fired_at: string | null;
+}
+
+export interface AlertEvent {
+  id: number;
+  rule_id: number;
+  ticker_symbol: string;
+  fired_at: string;
+  message: string;
+  observed_value: number | null;
+  observed_status: string | null;
+  acknowledged: boolean;
+}
+
 export interface SearchMatch {
   symbol: string;
   company_name: string;

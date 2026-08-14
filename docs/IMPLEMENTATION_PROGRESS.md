@@ -812,6 +812,22 @@ Phase 9:
   free-form JSON column, sufficient for the new heuristic/baseline data).
   Phase 9 touched no DB models — no migration.
 
+## Verification commands run (after Phase 10)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **373 passed, 10 skipped** (up from 357+10 at the end of Phase 9; +16 new passing tests) |
+| `cd backend && python3 -m pytest app/tests/test_alerts.py -q` | 15/15 passed (isolated) |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 11 migrations in order, exit 0 |
+| same, upgrading from prior head (`2f065e542a7c`) only | applies only `131cd2bbc4f4_alert_rules_and_events`, exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 15 routes generated (new `/alerts`) |
+| Live dev-server: `POST /alerts/rules` with `ticker_symbol=AXNT` (not in tracked universe) | correctly refused with `400` — a genuine correctness gap found via live testing (a rule on an untracked ticker would silently never fire, since the scheduler only visits the Asset Universe Manager's active universe) and fixed with server-side validation, not left as a UX footgun |
+| Live dev-server + Playwright: `/alerts` with a real fired `AlertEvent` inserted directly (scheduler firing itself is blocked by the same mock-provider-cannot-fabricate-real-ticker-data limitation documented since Phase 5/9) | renders the fired-alert message and timestamp correctly; clicking "Dismiss" acknowledges it and removes the action button, event shown at reduced opacity — screenshots `alerts_with_event.png`/`alerts_after_dismiss.png` |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
 ## Verification commands run (after Phase 9)
 
 | Command | Result |
@@ -860,7 +876,7 @@ Phase 9:
 - [x] Phase 7 — prediction ledger + performance proof (existing Prediction/Outcome/evaluator scaffolding audited and found disconnected from the mainstream universe — fixed with a new non-OTC-gated prediction_scheduler worker; added engine_mode/model_version/risk_policy_version provenance and a real Brier score broken down by engine_mode; new /performance frontend page)
 - [x] Phase 8 — ML dataset + training + Champion/Challenger promotion gate (dataset/training/walk-forward/registry all pre-existing and verified; added the missing heuristic + logistic-regression/momentum/buy-and-hold baseline comparison and hard-enforced the "never promote unless it beats them" gate in promote_model() itself)
 - [x] Phase 9 — chart timeframes + technical indicators (backend /candles already supported all 9 timeframes; added GET /indicators, a new lightweight-charts-based TradingChart with timeframe selector + toggleable SMA/EMA/Bollinger/VWAP overlays + always-on RSI/MACD sub-panes + AI trade-plan price lines, replacing the old hand-rolled SVG PriceChart)
-- [ ] Phase 10 — user alerts
+- [x] Phase 10 — user alerts (genuinely new: `AlertRule`/`AlertEvent` models, condition types price/ai_score/manipulation_risk/signal_status, 1-hour cooldown against re-firing a persistently-true condition, evaluation piggybacked onto the existing `prediction_scheduler.py` cadence rather than a new worker, server-side rejection of rules on tickers outside the tracked Asset Universe — a real gap found via live testing — new `/alerts` CRUD + events API and frontend page with honest "in-app only, hourly cadence, never claims a delivery that didn't happen" copy)
 - [ ] Phase 11 — Admin/Operator UI
 - [ ] Phase 12 — frontend/E2E testing expansion
 - [ ] Phase 13 — commercial beta readiness (entitlements, disclosures)
@@ -872,42 +888,37 @@ Phase 9:
 
 ## Exact next action
 
-Start **Phase 10 — user alerts**:
-1. **Genuinely nothing pre-existing this time** — `find app -iname "*alert*"`
-   in `backend/` returns zero results, unlike every phase since 6. This
-   phase needs real design, not just auditing/wiring.
-2. Design the DB model: an `AlertRule` (user_id, ticker_symbol, condition
-   type — e.g. price crosses level, AI score crosses threshold,
-   manipulation_risk exceeds X, signal status changes to POSSIBLE_ENTRY —
-   comparison operator, threshold value, is_active, created_at) and an
-   `AlertEvent`/`AlertDelivery` log (immutable record of when a rule
-   actually fired, so a user can see history, and so a rule doesn't
-   re-fire every single evaluation cycle once triggered — needs a
-   fired/acknowledged or cooldown concept).
-3. Evaluation mechanism: **reuse Phase 7's `prediction_scheduler.py` cadence
-   rather than building a fourth periodic worker** — it already visits
-   every active asset's fresh analysis on an hourly cycle; alert rules
-   tied to AI score/manipulation/signal-status conditions can piggyback on
-   that same pass. Price-cross-level conditions may need a tighter
-   interval than an hour — decide per-condition-type rather than forcing
-   one cadence on all of them, but avoid standing up an unrelated 4th
-   scheduler if the existing ones can be extended honestly.
-4. Delivery: check what channels are actually feasible in this
-   environment (in-app notification center is the obvious baseline —
-   requires frontend UI, no new infra; email/push need a real provider
-   integration, which may not be available here — same "implement what's
-   possible, report the exact blocker" discipline as Phase 1.2's live
-   market-data verification).
-5. New API endpoints (CRUD for alert rules, list fired events) + ownership
-   scoping matching the existing `_owned()`-style pattern in
-   `portfolio.py`/`paper_trading.py`.
-6. New frontend: an alerts management page (create/edit/delete rules) and
-   a notifications center (view fired alerts), using Phase 5's
-   `ErrorState`/loading patterns.
-7. This phase will need a DB migration (new alert tables) — same
-   autogenerate-then-verify-empty-diff discipline as every prior phase's
-   migration that actually changed schema.
-8. Never fabricate a fired alert or claim a delivery succeeded that
-   didn't — an alert system users can't trust is worse than none.
+Start **Phase 11 — Admin/Operator UI**:
+1. Audit first (this project's established discipline): `find` for any
+   existing admin/operator scaffolding before assuming a blank slate —
+   check for an `is_admin`/role concept on `User`, any existing
+   `/admin`-prefixed routes, and any existing frontend route already
+   gated behind one.
+2. Scope (per the original spec): provider health (which data provider is
+   active, mock vs real, last successful fetch), migration status
+   (current Alembic head vs latest available), model registry status
+   (Champion/Challenger versions, promotion history — reuse Phase 8's
+   `ModelVersion` table rather than inventing a new one), Safe Mode
+   toggle (reuse Phase 4's `RiskPolicy`/Safe Mode concept — confirm
+   whether it is already togglable and by whom), and asset universe
+   management (the existing `/api/v1/universe` CRUD already used
+   throughout the test suite — needs a real UI surface, not just API
+   access).
+3. Authorization: this must be **server-enforced**, not merely a hidden
+   frontend route — add real role/admin-flag checks on every new
+   endpoint, matching the existing `get_current_user`-based ownership
+   pattern used everywhere else (`portfolio.py`, `paper_trading.py`,
+   `alerts.py`). Decide whether admin status is a new `User.is_admin`
+   column (likely needs a migration) or reuses something that already
+   exists — audit before assuming.
+4. New frontend: an `/admin` route (or similar), visible only to
+   admin-flagged users, reusing Phase 5's `ErrorState`/loading patterns
+   and the existing card/table visual language from `/alerts`,
+   `/performance`, `/paper-trading`.
+5. Never expose secrets/API keys/tokens in any admin view, even to
+   admins — status/health only, never raw credential values.
+6. This phase likely needs a DB migration if an admin/role concept does
+   not already exist — same autogenerate-then-verify-empty-diff
+   discipline as every prior phase's schema change.
 
-Then continue to Phase 11 (Admin/Operator UI) per the ledger order above.
+Then continue to Phase 12 (frontend/E2E testing expansion) per the ledger order above.

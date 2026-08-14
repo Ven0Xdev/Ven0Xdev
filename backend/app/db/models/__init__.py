@@ -1,3 +1,4 @@
+from app.db.models.alert import AlertEvent, AlertRule
 from app.db.models.asset import Asset
 from app.db.models.backtest import BacktestResult, BacktestTrade
 from app.db.models.chat import ChatMessage, ChatSession
@@ -36,4 +37,6 @@ __all__ = [
     "PortfolioPosition",
     "PaperTradingAccount",
     "PaperPosition",
+    "AlertRule",
+    "AlertEvent",
 ]

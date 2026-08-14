@@ -17,6 +17,10 @@ Run via: `python -m app.workers.prediction_scheduler`. Runs by default (not
 gated behind a feature flag) — logging the platform's own real predictions
 and proving out their track record is core to the mainstream product, not
 optional module behavior.
+
+Also evaluates every user's active `AlertRule`s against each symbol's fresh
+analysis on the same pass (`services/alerts/evaluator.py`) — Phase 10 reuses
+this cadence rather than standing up a dedicated alerts scheduler.
 """
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ from app.core.logging import configure_logging
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.db import models  # noqa: F401
+from app.services.alerts.evaluator import evaluate_rules_for_symbol
 from app.services.data_providers.factory import get_data_provider
 from app.services.evaluation.outcome_evaluator import evaluate_due_predictions
 from app.services.scoring.prediction_log import build_prediction_row
@@ -65,6 +70,15 @@ def run_prediction_cycle(provider=None, db=None) -> int:
             db.add(build_prediction_row(analysis))
             logged += 1
         db.commit()
+
+        alerts_fired = 0
+        for symbol, analysis in results.items():
+            try:
+                alerts_fired += len(evaluate_rules_for_symbol(db, symbol, analysis))
+            except Exception:  # noqa: BLE001
+                logger.exception("prediction_scheduler: alert evaluation failed for %s", symbol)
+        if alerts_fired:
+            logger.info("prediction_scheduler: %d alert(s) fired", alerts_fired)
 
         summary = evaluate_due_predictions(db, provider)
         if summary.evaluated:
