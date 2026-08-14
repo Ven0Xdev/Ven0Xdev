@@ -22,6 +22,28 @@ if settings.environment == "production":
     if not settings.auth_required:
         raise RuntimeError("Refusing to start: AUTH_REQUIRED must be true in production.")
 
+    # A synthetic/demo provider (data_mode == "synthetic", e.g. the mock
+    # provider) must never be what a production deployment silently serves.
+    # A misconfigured *real* provider (missing API key etc.) is a different,
+    # already-safe case: it raises ProviderDataUnavailable per request ->
+    # structured 503, which is itself the "clearly labelled unavailable
+    # mode" this platform has always used instead of fabricating data — so
+    # only an actually-synthetic provider is gated here, not every failure.
+    from app.services.data_providers.registry import build_provider
+
+    try:
+        _boot_provider = build_provider(settings.market_data_provider, settings)
+        _boot_provider_is_synthetic = getattr(_boot_provider, "data_mode", None) == "synthetic"
+    except Exception:
+        _boot_provider_is_synthetic = False
+    if _boot_provider_is_synthetic and not settings.allow_synthetic_data:
+        raise RuntimeError(
+            f"Refusing to start: MARKET_DATA_PROVIDER={settings.market_data_provider!r} resolves to a "
+            "synthetic/demo data source in production. Set MARKET_DATA_PROVIDER to a real vendor "
+            "(twelvedata/alphavantage/finnhub) with its API key, or set ALLOW_SYNTHETIC_DATA=true "
+            "to run a deliberately-labelled demo deployment."
+        )
+
 
 def _sanitized_db_url() -> str:
     """DB URL safe to log — a DSN's userinfo (user:password@) is credentials,

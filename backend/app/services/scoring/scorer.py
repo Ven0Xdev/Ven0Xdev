@@ -143,6 +143,8 @@ def _analyze_ticker_uncached(symbol: str, provider: MarketDataProvider) -> Stock
         data_mode=getattr(provider, "data_mode", "unspecified"),
         as_of=datetime.now(timezone.utc),
         price_as_of=last_bar_ts,
+        engine_mode="TRAINED_ML" if ensemble_pred.is_trained else "HEURISTIC",
+        model_version=getattr(model, "version", None) if ensemble_pred.is_trained else None,
         liquidity_score=liquidity_score,
         manipulation_risk=manipulation_risk,
         fundamental_score=fundamental_score,

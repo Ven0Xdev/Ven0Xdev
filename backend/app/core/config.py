@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     # at startup — a plain string so new registered adapters need no config
     # change here; unknown names fail with the list of registered providers.
     market_data_provider: str = "mock"
+    # Production must never silently serve fabricated/synthetic prices as if
+    # they were real market data. This must be explicitly opted into (e.g. a
+    # deliberately-labelled demo deployment) — see the production boot guard
+    # in app/main.py, which refuses to start with MARKET_DATA_PROVIDER=mock
+    # in production unless this is true. Irrelevant outside production: dev/
+    # test environments keep running on the mock provider with zero config,
+    # exactly as before.
+    allow_synthetic_data: bool = False
     polygon_api_key: str | None = None
     finnhub_api_key: str | None = None
     # twelvedata = primary; alphavantage = automatic fallback when Twelve

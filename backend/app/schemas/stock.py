@@ -38,6 +38,15 @@ class StockAnalysis(BaseModel):
     as_of: datetime | None = Field(None, description="UTC time this analysis was computed")
     price_as_of: datetime | None = Field(None, description="Timestamp of the most recent price bar used")
 
+    # Model provenance (never let a heuristic result be presented as a
+    # trained-ML result): "HEURISTIC" means the probability numbers came
+    # from EnsembleModel._heuristic_prior(), a hand-written feature formula
+    # — not from a trained LightGBM/XGBoost/CatBoost model. "TRAINED_ML"
+    # means every horizon threshold was actually served by fitted models.
+    # See services/ml/ensemble.py's EnsemblePrediction.is_trained.
+    engine_mode: str = Field("HEURISTIC", description="'HEURISTIC' | 'TRAINED_ML' — which engine actually produced probability_matrix")
+    model_version: str | None = Field(None, description="Trained-model artifact version tag, or null when engine_mode is HEURISTIC")
+
     liquidity_score: float = Field(..., ge=0, le=100)
     manipulation_risk: float = Field(..., ge=0, le=100)
     fundamental_score: float = Field(..., ge=0, le=100)

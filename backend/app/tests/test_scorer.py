@@ -66,3 +66,15 @@ def test_analyze_all_universe_symbols_succeed():
     for meta in provider.get_universe():
         analysis = analyze_ticker(meta.symbol, provider=provider)
         assert analysis.ticker == meta.symbol
+
+
+def test_engine_mode_is_honestly_heuristic_with_no_trained_artifact():
+    """No trained model artifact exists in this repo/test run (nothing ever
+    calls training_pipeline.save_model() here), so every analysis must be
+    labeled HEURISTIC, with no fabricated model_version — never TRAINED_ML."""
+    provider = MockOTCProvider()
+    symbol = provider.get_universe(limit=1)[0].symbol
+    analysis = analyze_ticker(symbol, provider=provider)
+
+    assert analysis.engine_mode == "HEURISTIC"
+    assert analysis.model_version is None

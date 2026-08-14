@@ -32,9 +32,19 @@ Your choices from setup: **login required** (`AUTH_REQUIRED=true`) and **synthet
    ALLOW_REGISTRATION=true
    RATE_LIMIT_ENABLED=true
    MARKET_DATA_PROVIDER=mock
+   ALLOW_SYNTHETIC_DATA=true
    CHAT_BACKEND=template
    CORS_ORIGINS=["http://localhost:3000"]
    ```
+
+   `ALLOW_SYNTHETIC_DATA=true` is required here because `MARKET_DATA_PROVIDER=mock`
+   is a synthetic demo data source — the backend refuses to boot in
+   `ENVIRONMENT=production` with a synthetic provider unless this is set, so a real
+   deployment can never silently end up serving fabricated prices without the
+   operator explicitly acknowledging it. Omit both `MARKET_DATA_PROVIDER=mock` and
+   `ALLOW_SYNTHETIC_DATA=true` (and set `TWELVE_DATA_API_KEY`/`ALPHA_VANTAGE_API_KEY`
+   instead, with `MARKET_DATA_PROVIDER=twelvedata`) for a deployment backed by real
+   market data.
 
    (Leave `CORS_ORIGINS` as-is for now — you'll update it to your real Vercel URL in step 3, since
    you don't have that URL yet.) Take `DATABASE_URL`'s pieces from the Postgres service Railway

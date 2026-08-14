@@ -20,6 +20,13 @@ class EnsemblePrediction:
     raw_model_outputs: dict[str, dict[int, float]]
     feature_importance: dict[str, float]
     agreement_score: float  # 0-1, how much the 3 models agree (proxy for confidence)
+    # True only if every requested horizon threshold was actually served by
+    # a fitted LightGBM/XGBoost/CatBoost trio. False means at least one
+    # threshold fell back to `_heuristic_prior()` — callers (scorer.py) use
+    # this to label the whole analysis HEURISTIC rather than TRAINED_ML_*,
+    # so a heuristic number can never be presented as a trained-model
+    # prediction.
+    is_trained: bool = False
 
 
 class EnsembleModel:
@@ -31,6 +38,11 @@ class EnsembleModel:
         self.calibrators: dict[int, ProbabilityCalibrator] = {}
         self._feature_names: list[str] = []
         self._fitted = False
+        # Set by training_pipeline.save_model()/load_latest_model() to the
+        # artifact's version tag (its filename timestamp). None for a
+        # never-trained instance — scorer.py reports that as "heuristic",
+        # never a fabricated model version.
+        self.version: str | None = None
 
     def fit(self, X: np.ndarray, labels_by_threshold: dict[int, np.ndarray], feature_names: list[str]) -> "EnsembleModel":
         self._feature_names = feature_names
@@ -53,6 +65,7 @@ class EnsembleModel:
         probabilities: dict[int, float] = {}
         raw_outputs: dict[str, dict[int, float]] = {"lightgbm": {}, "xgboost": {}, "catboost": {}}
         agreement_scores = []
+        used_trained_model = True
 
         for threshold in HORIZON_THRESHOLDS:
             if self._fitted and threshold in self.models:
@@ -69,12 +82,14 @@ class EnsembleModel:
                 # feature-driven heuristic prior rather than a trained model.
                 calibrated = self._heuristic_prior(x_row[0], threshold)
                 agreement_scores.append(0.5)
+                used_trained_model = False
             probabilities[threshold] = calibrated
 
         importance = self._aggregate_importance()
         return EnsemblePrediction(
             probabilities=probabilities,
             raw_model_outputs=raw_outputs,
+            is_trained=used_trained_model,
             feature_importance=importance,
             agreement_score=float(np.mean(agreement_scores)) if agreement_scores else 0.5,
         )

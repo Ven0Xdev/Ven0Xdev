@@ -28,6 +28,11 @@ export interface StockAnalysis {
   data_mode: "synthetic" | "delayed" | "live" | "cached" | "unspecified";
   as_of: string | null;
   price_as_of: string | null;
+  /** Which engine actually produced probability_matrix — "HEURISTIC" means a
+   * hand-written feature formula, never a trained model. Never render
+   * HEURISTIC numbers as if they came from a trained ML model. */
+  engine_mode: "HEURISTIC" | "TRAINED_ML";
+  model_version: string | null;
   liquidity_score: number;
   manipulation_risk: number;
   fundamental_score: number;

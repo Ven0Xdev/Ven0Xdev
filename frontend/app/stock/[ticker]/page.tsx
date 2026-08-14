@@ -119,7 +119,14 @@ export default function StockDetailPage() {
             {a.explanation}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <DataBadge mode={a.data_mode} source={a.data_source} asOf={a.as_of} priceAsOf={a.price_as_of} />
+            <DataBadge
+              mode={a.data_mode}
+              source={a.data_source}
+              asOf={a.as_of}
+              priceAsOf={a.price_as_of}
+              engineMode={a.engine_mode}
+              modelVersion={a.model_version}
+            />
             {analysisCachedAt !== null && <CacheBadge cachedAt={analysisCachedAt} />}
           </div>
         </div>
@@ -248,8 +255,9 @@ export default function StockDetailPage() {
         <p className="px-1 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
           Sources &amp; timestamps: market data from &quot;{a.data_source}&quot; ({a.data_mode}); analysis computed{" "}
           {a.as_of ? new Date(a.as_of).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "at unknown time"}; last
-          price bar {a.price_as_of ? new Date(a.price_as_of).toISOString().slice(0, 10) : "unknown"}. Probabilities are
-          model estimates, never guarantees.
+          price bar {a.price_as_of ? new Date(a.price_as_of).toISOString().slice(0, 10) : "unknown"}. Probabilities come
+          from {a.engine_mode === "TRAINED_ML" ? `a trained ML model (version ${a.model_version ?? "unknown"})` : "a heuristic feature formula, not a trained ML model"},
+          and are estimates, never guarantees.
         </p>
       </div>
 
