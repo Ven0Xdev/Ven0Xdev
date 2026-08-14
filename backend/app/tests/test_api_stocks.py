@@ -29,6 +29,37 @@ def test_get_stock_analysis_unknown_symbol_handles_gracefully(client):
     assert response.status_code in (200, 404)
 
 
+def test_get_stock_analysis_for_a_real_tracked_asset_is_503_not_404(client):
+    # A real, tracked asset (Asset Universe Manager) that the default mock
+    # provider's own synthetic OTC-only universe simply doesn't recognize.
+    # That is a *provider* limitation, not evidence the symbol doesn't
+    # exist — the response must say so honestly (503, structured
+    # provider_unavailable) rather than claim the symbol was "not found".
+    _ensure_test_symbol_in_universe(client, "ZTRAK")
+    try:
+        response = client.get("/api/v1/stocks/ZTRAK/analysis")
+        assert response.status_code == 503
+        detail = response.json()["detail"]
+        assert detail["code"] == "provider_unavailable"
+        assert detail["market_data_available"] is False
+    finally:
+        _retire_test_symbol(client, "ZTRAK")
+
+
+def test_get_stock_candles_for_a_real_tracked_asset_is_503_not_404(client):
+    # A distinct symbol from the analysis test above: add_asset()'s 409
+    # branch never reactivates an existing-but-deactivated row, so reusing
+    # the same symbol across tests that each ensure/retire it would make
+    # this test see it deactivated whenever it runs after the other one.
+    _ensure_test_symbol_in_universe(client, "ZTRK2")
+    try:
+        response = client.get("/api/v1/stocks/ZTRK2/candles?timeframe=1D")
+        assert response.status_code == 503
+        assert response.json()["detail"]["code"] == "provider_unavailable"
+    finally:
+        _retire_test_symbol(client, "ZTRK2")
+
+
 def test_watchlist_add_list_remove(client):
     add_response = client.post("/api/v1/watchlist", json={"ticker_symbol": "AXNT", "note": "watching"})
     assert add_response.status_code == 200

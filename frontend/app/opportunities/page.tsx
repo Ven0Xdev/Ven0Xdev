@@ -6,12 +6,13 @@ import type { StockAnalysis } from "@/lib/types";
 import { OpportunityTable } from "@/components/dashboard/OpportunityTable";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function OpportunitiesPage() {
   const [rows, setRows] = useState<StockAnalysis[] | null>(null);
   const [minScore, setMinScore] = useState(0);
   const [maxRisk, setMaxRisk] = useState(100);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchRows = () => {
@@ -19,10 +20,11 @@ export default function OpportunitiesPage() {
       .opportunities(50)
       .then((r) => {
         setRows(r);
+        setError(null);
         setRefreshing(false);
       })
       .catch((e) => {
-        setError(String(e));
+        setError(e);
         setRefreshing(false);
       });
   };
@@ -77,15 +79,13 @@ export default function OpportunitiesPage() {
         </button>
       </div>
 
-      {filtered === null && !error ? (
+      {error ? (
+        <ErrorState error={error} onRetry={refresh} />
+      ) : filtered === null ? (
         <CardSkeleton lines={6} />
       ) : (
         <div className="card animate-in overflow-hidden">
-          {error ? (
-            <p className="p-6 text-sm" style={{ color: "var(--status-critical)" }}>{error}</p>
-          ) : (
-            <OpportunityTable rows={filtered!} />
-          )}
+          <OpportunityTable rows={filtered} />
         </div>
       )}
     </div>

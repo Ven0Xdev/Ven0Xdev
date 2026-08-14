@@ -9,6 +9,7 @@ import { ScoreMeter } from "@/components/ui/ScoreMeter";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
 import { DataBadge } from "@/components/ui/DataBadge";
 import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { SignalReveal } from "@/components/ui/SignalReveal";
 import { PriceChart } from "@/components/charts/PriceChart";
 import { LiveChart } from "@/components/charts/LiveChart";
@@ -26,7 +27,7 @@ export default function StockDetailPage() {
   const [bars, setBars] = useState<OhlcvBar[] | null>(null);
   const [news, setNews] = useState<NewsArticle[] | null>(null);
   const [deliberation, setDeliberation] = useState<Deliberation | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [watchlisted, setWatchlisted] = useState(false);
   const [analysisCachedAt, setAnalysisCachedAt] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export default function StockDetailPage() {
         setAnalysisCachedAt(meta?.offline ? meta.cachedAt : null);
       })
       .catch((e) => {
-        if (!cancelled) setError(String(e));
+        if (!cancelled) setError(e);
       });
     api.ohlcv(ticker, 120).then((d) => !cancelled && setBars(d.bars)).catch(() => !cancelled && setBars([]));
     api.news(ticker, 8).then((d) => !cancelled && setNews(d)).catch(() => !cancelled && setNews([]));
@@ -57,6 +58,11 @@ export default function StockDetailPage() {
   useEffect(load, [load]);
   useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
 
+  const retry = useCallback(() => {
+    setError(null);
+    load();
+  }, [load]);
+
   const addToWatchlist = async () => {
     setBusy(true);
     try {
@@ -68,14 +74,7 @@ export default function StockDetailPage() {
   };
 
   if (error) {
-    return (
-      <div className="card animate-in p-5 text-sm" style={{ borderColor: "var(--status-critical-soft)" }}>
-        <p className="font-semibold" style={{ color: "var(--status-critical)" }}>
-          Couldn&apos;t load {ticker.toUpperCase()}
-        </p>
-        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{error}</p>
-      </div>
-    );
+    return <ErrorState error={error} onRetry={retry} />;
   }
   if (!analysis || analysis.ticker !== ticker.toUpperCase()) {
     return <StockDetailSkeleton />;

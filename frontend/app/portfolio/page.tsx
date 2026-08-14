@@ -1,22 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useResyncListener } from "@/lib/pwa";
 import type { PortfolioPosition } from "@/lib/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function PortfolioPage() {
   const [positions, setPositions] = useState<PortfolioPosition[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
   const [form, setForm] = useState({ ticker: "", quantity: "", price: "" });
   const [opening, setOpening] = useState(false);
 
-  const load = () => api.portfolio().then(setPositions);
+  // Kept free of any synchronous setState call so it's safe to hand
+  // directly to useEffect below, matching the Dashboard/Watchlist
+  // pages' established load() pattern.
+  const load = useCallback(() => {
+    api
+      .portfolio()
+      .then((data) => {
+        setPositions(data);
+        setError(null);
+      })
+      .catch((e) => setError(e));
+  }, []);
+
+  useEffect(load, [load]);
+  useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
 
   useEffect(() => {
+    if (positions !== null || error !== null) return;
+    const t = setTimeout(() => setLoadingTooLong(true), 8000);
+    return () => clearTimeout(t);
+  }, [positions, error]);
+
+  // Event-handler-only: safe to setState synchronously here.
+  const retry = useCallback(() => {
+    setError(null);
+    setLoadingTooLong(false);
     load();
-  }, []);
+  }, [load]);
 
   const openPosition = async () => {
     if (!form.ticker || !form.quantity || !form.price || opening) return;
@@ -24,7 +51,9 @@ export default function PortfolioPage() {
     try {
       await api.openPosition(form.ticker.toUpperCase(), Number(form.quantity), Number(form.price));
       setForm({ ticker: "", quantity: "", price: "" });
-      await load();
+      load();
+    } catch (e) {
+      setError(e);
     } finally {
       setOpening(false);
     }
@@ -67,8 +96,20 @@ export default function PortfolioPage() {
         </button>
       </form>
 
-      {!positions ? (
-        <CardSkeleton lines={3} />
+      {error ? (
+        <ErrorState error={error} onRetry={retry} />
+      ) : !positions ? (
+        loadingTooLong ? (
+          <div className="card flex flex-col gap-2 p-5 text-sm">
+            <p className="font-semibold">Still waiting on your portfolio.</p>
+            <p style={{ color: "var(--text-secondary)" }}>This is taking longer than expected.</p>
+            <button onClick={retry} className="btn btn-secondary btn-sm mt-1 w-fit">
+              Retry
+            </button>
+          </div>
+        ) : (
+          <CardSkeleton lines={3} />
+        )
       ) : positions.length === 0 ? (
         <div className="card animate-in flex flex-col items-center gap-2 p-10 text-center">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ color: "var(--text-muted)" }}>

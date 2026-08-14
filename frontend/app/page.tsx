@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { api, classifyApiError, getFetchMeta } from "@/lib/api";
+import { api, getFetchMeta } from "@/lib/api";
 import { useResyncListener } from "@/lib/pwa";
 import type { DashboardSummary, SectorHeatmapEntry } from "@/lib/types";
 import { StatTile } from "@/components/ui/StatTile";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { SectorHeatmap } from "@/components/charts/SectorHeatmap";
 import { CacheBadge } from "@/components/pwa/CacheBadge";
 import { MarketOverview } from "@/components/dashboard/MarketOverview";
@@ -226,26 +227,6 @@ function DashboardSummarySkeleton() {
         <CardSkeleton lines={4} />
       </div>
       <CardSkeleton lines={3} />
-    </div>
-  );
-}
-
-function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const { title, hint } = classifyApiError(error);
-  return (
-    <div className="card animate-in p-5 text-sm" style={{ borderColor: "var(--status-critical-soft)" }}>
-      <p className="font-semibold" style={{ color: "var(--status-critical)" }}>
-        {title}
-      </p>
-      <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{hint}</p>
-      <pre className="mt-2 whitespace-pre-wrap text-xs" style={{ color: "var(--text-muted)" }}>
-        {String(error)}
-      </pre>
-      {onRetry && (
-        <button onClick={onRetry} className="btn btn-secondary btn-sm mt-3">
-          Retry
-        </button>
-      )}
     </div>
   );
 }

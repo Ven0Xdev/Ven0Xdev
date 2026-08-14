@@ -1,22 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useResyncListener } from "@/lib/pwa";
 import type { WatchlistItem } from "@/lib/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function WatchlistPage() {
   const [items, setItems] = useState<WatchlistItem[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
   const [newTicker, setNewTicker] = useState("");
   const [adding, setAdding] = useState(false);
 
-  const load = () => api.watchlist().then(setItems);
+  // Kept free of any synchronous setState call so it's safe to hand
+  // directly to useEffect below, matching the Dashboard/Stock-Detail
+  // pages' established load() pattern.
+  const load = useCallback(() => {
+    api
+      .watchlist()
+      .then((data) => {
+        setItems(data);
+        setError(null);
+      })
+      .catch((e) => setError(e));
+  }, []);
+
+  useEffect(load, [load]);
+  useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
 
   useEffect(() => {
+    if (items !== null || error !== null) return;
+    const t = setTimeout(() => setLoadingTooLong(true), 8000);
+    return () => clearTimeout(t);
+  }, [items, error]);
+
+  // Event-handler-only: safe to setState synchronously here.
+  const retry = useCallback(() => {
+    setError(null);
+    setLoadingTooLong(false);
     load();
-  }, []);
+  }, [load]);
 
   const add = async () => {
     if (!newTicker.trim() || adding) return;
@@ -24,15 +51,21 @@ export default function WatchlistPage() {
     try {
       await api.addToWatchlist(newTicker.trim().toUpperCase());
       setNewTicker("");
-      await load();
+      load();
+    } catch (e) {
+      setError(e);
     } finally {
       setAdding(false);
     }
   };
 
   const remove = async (symbol: string) => {
-    await api.removeFromWatchlist(symbol);
-    load();
+    try {
+      await api.removeFromWatchlist(symbol);
+      load();
+    } catch (e) {
+      setError(e);
+    }
   };
 
   return (
@@ -40,7 +73,7 @@ export default function WatchlistPage() {
       <PageHeader title="Watchlist" description="Tickers you're tracking. Click through for the full AI analysis and chat." />
 
       <form
-        className="card animate-in flex gap-2.5 p-4"
+        className="card animate-in flex flex-wrap gap-2.5 p-4"
         onSubmit={(e) => {
           e.preventDefault();
           add();
@@ -57,8 +90,20 @@ export default function WatchlistPage() {
         </button>
       </form>
 
-      {!items ? (
-        <CardSkeleton lines={3} />
+      {error ? (
+        <ErrorState error={error} onRetry={retry} />
+      ) : !items ? (
+        loadingTooLong ? (
+          <div className="card flex flex-col gap-2 p-5 text-sm">
+            <p className="font-semibold">Still waiting on your watchlist.</p>
+            <p style={{ color: "var(--text-secondary)" }}>This is taking longer than expected.</p>
+            <button onClick={retry} className="btn btn-secondary btn-sm mt-1 w-fit">
+              Retry
+            </button>
+          </div>
+        ) : (
+          <CardSkeleton lines={3} />
+        )
       ) : items.length === 0 ? (
         <div className="card animate-in flex flex-col items-center gap-2 p-10 text-center">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ color: "var(--text-muted)" }}>

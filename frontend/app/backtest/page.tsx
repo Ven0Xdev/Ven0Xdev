@@ -6,11 +6,12 @@ import type { BacktestResult } from "@/lib/types";
 import { StatTile } from "@/components/ui/StatTile";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EquityCurveChart } from "@/components/charts/EquityCurveChart";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function BacktestPage() {
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [params, setParams] = useState({ universe_limit: 15, lookback_days: 300, max_hold_days: 20, position_size_dollars: 2000 });
 
   const run = async () => {
@@ -20,7 +21,7 @@ export default function BacktestPage() {
       const res = await api.runBacktest(params);
       setResult(res);
     } catch (e) {
-      setError(String(e));
+      setError(e);
     } finally {
       setLoading(false);
     }
@@ -53,11 +54,7 @@ export default function BacktestPage() {
         </button>
       </form>
 
-      {error && (
-        <div className="card animate-in p-4 text-sm" style={{ color: "var(--status-critical)" }}>
-          {error}
-        </div>
-      )}
+      {error !== null && <ErrorState error={error} onRetry={run} />}
 
       {loading && !result && (
         <div className="card animate-in flex flex-col items-center gap-3 p-14 text-center">

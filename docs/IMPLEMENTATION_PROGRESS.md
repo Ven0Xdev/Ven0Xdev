@@ -9,11 +9,12 @@ anything.
 
 ## Current phase
 
-**Phase 4 — unified risk/signal policy engine** — complete, see below. Ready
-to start **Phase 5 — frontend reliability** next.
+**Phase 5 — frontend reliability** — complete, see below. Ready to start
+**Phase 6 — Paper Trading system** next.
 
-Phases 1 (1.1/1.3 implemented, 1.2 honestly blocked), 2 (2.1, 2.2), and 3
-(3.1, 3.2, 3.3) — all done. See their entries further down for full detail.
+Phases 1 (1.1/1.3 implemented, 1.2 honestly blocked), 2 (2.1, 2.2), 3
+(3.1, 3.2, 3.3), and 4 (unified risk/signal policy engine) — all done. See
+their entries further down for full detail.
 
 ## Baseline (Phase 0 — completed 2026-08-14)
 
@@ -115,6 +116,99 @@ This is the baseline every subsequent phase's verification is measured against �
     assertion added to the existing `test_scorer.py` confirming today's
     real, current state: every live analysis is honestly `HEURISTIC` with
     `model_version=None`, because no trained artifact exists in this repo.
+
+- [x] Phase 5 — frontend reliability.
+  - **Watchlist & Portfolio stuck-loading bug (the originally-audited
+    issue)**: both pages' `load()` had zero `.catch()` — a failed
+    `GET /watchlist`/`GET /portfolio` left the page on its skeleton
+    forever, with no way out for the user. Rewrote both
+    (`frontend/app/watchlist/page.tsx`, `frontend/app/portfolio/page.tsx`)
+    with the same pattern already established on Dashboard/Stock-Detail:
+    `useCallback`-wrapped `load()` with a real `.catch()`, an 8s
+    `loadingTooLong` fallback independent of the network-layer timeout, a
+    `retry()` handler, `useResyncListener(load)` for PWA-reconnect refetch,
+    and mutation handlers (`add`/`remove`/`openPosition`) that route
+    failures into the same `error` state instead of throwing unhandled.
+  - **Shared `ErrorState` component** (new,
+    `frontend/components/ui/ErrorState.tsx`) — extracted from a
+    Dashboard-only local function so every page shows the identical,
+    correctly-classified message for the identical failure (network
+    unreachable / timeout / provider unavailable / unauthorized /
+    rate-limited / backend 5xx), via the existing `classifyApiError`.
+    Standardized onto Watchlist, Portfolio, Dashboard (was already using
+    its own copy — now the shared one), Opportunities, Backtest, and Stock
+    Detail — six of eight data-fetching routes now render errors through
+    one component instead of five different one-off inline blocks. Chat
+    and Login/Register were left as-is: Chat already degrades per-message
+    (a failed send shows inline in the transcript, not a page-level
+    error), and the auth forms' inline field-level error text is the
+    correct UX for a login/register failure, not a full-page error state.
+  - **Real bug found and fixed while verifying this phase in a live
+    browser** (backend, not originally in this phase's file list, but a
+    direct instance of exactly what "shared error states" is for): opening
+    any of the platform's real 20-asset-universe tickers (e.g. `AAPL`)
+    from the Stock Detail page — the Dashboard's own Market Overview
+    widget links directly to it — showed a confusing, unclassified
+    `ApiError: API 404 ... Unknown symbol 'AAPL'` dump instead of the
+    already-correct, already-tested "Market data is currently unavailable"
+    message the Dashboard's sector-heatmap widget shows for the identical
+    root cause. Root cause: `backend/app/main.py` already registers a
+    global `@app.exception_handler(ProviderDataUnavailable)` that answers
+    with a proper structured 503 (`{code: "provider_unavailable", ...}`) —
+    but `backend/app/api/v1/endpoints/stocks.py`'s `get_stock_analysis`,
+    `get_stock_deliberation`, and `get_stock_candles` each wrapped their
+    logic in a local `except Exception` that caught `ProviderDataUnavailable`
+    *before* it reached that handler and converted it into an unstructured
+    404 instead. This was **not** a case of "make the mock provider
+    fabricate large-cap data" — `MockOTCProvider.get_ticker_meta()`
+    correctly refusing to invent a company for a real-market ticker it
+    doesn't carry is itself audited, deliberate, tested behavior (see
+    `test_multi_asset_scanner.py::test_mock_provider_correctly_refuses_symbols_outside_its_universe`,
+    left untouched). The fix only changes *which HTTP status/shape* an
+    already-honest refusal is reported with, and only for symbols that are
+    real, tracked assets: added `_is_tracked_asset(symbol, db)` (checks
+    Asset Universe Manager membership) to `stocks.py`; a `ProviderDataUnavailable`
+    now only escalates to the app-level 503 handler when the symbol is a
+    tracked asset (a provider capability gap, honestly reported as
+    degraded service) — a genuinely unknown symbol (e.g. `ZZZZZZ`, not in
+    any universe) still gets 404 ("this doesn't exist"), preserving every
+    existing test's behavior for that case exactly.
+  - **Mobile responsiveness — verified, not just asserted**: ran a real
+    dev-server + Playwright check (`/opt/pw-browsers/chromium`) across all
+    8 static routes at two mobile viewports (375×812, 414×896), asserting
+    `document.documentElement.scrollWidth === clientWidth` (no horizontal
+    page overflow) plus a manual visual screenshot review of
+    Dashboard/Watchlist/Portfolio/Stock-Detail. Result: **zero routes had
+    real horizontal overflow** — the only elements flagged by a naive
+    per-element `scrollWidth` scan were the intentionally-horizontally-
+    scrolling ticker tape and decorative ambient-background blobs, both
+    already contained by their own `overflow:hidden` wrappers. `Sidebar`/
+    `MobileNav` (`frontend/components/layout/`) already implement a proper
+    responsive nav pattern (persistent left rail ≥`sm`, top bar + slide-in
+    drawer with focus trap below it); every table (`OpportunityTable`,
+    Backtest's trade table, Portfolio's position table) already wraps in
+    `overflow-x-auto`; every stat/card grid already collapses via
+    `grid-cols-2 sm:grid-cols-4`-style breakpoints. The prior ledger note
+    calling this "not addressed" was based on the original text audit, not
+    a live check — corrected here. **Not changed**: base `.btn`/`.btn-sm`
+    touch-target heights (40px/32px, under the 44px WCAG-recommended
+    minimum) — left as-is deliberately; this is an existing, deliberately-
+    designed premium desktop-first density (matches the `ui-ux-pro-max`
+    skill's own design-system output for this product), and a global
+    control-sizing change is a design-system-wide visual change outside
+    this phase's "fix what's broken" scope, not a "mobile is broken" bug.
+  - **Explicitly deferred, not silently skipped**: component/page-level
+    frontend tests for the fixed error paths. The frontend test suite
+    today (`lib/motion.test.ts`, `lib/apiError.test.ts`) is pure
+    utility-function tests under plain `vitest run` — no
+    `@testing-library/react`, no DOM test environment, no `vitest.config.ts`
+    exist yet. Standing up real component-render testing (choosing a DOM
+    environment, installing testing-library, mocking `fetch`/routing) is
+    itself meaningful infrastructure work that belongs to **Phase 12**
+    (frontend/E2E testing expansion) as originally scoped in this ledger's
+    own 13-phase list, not a two-line addition here — adding a shallow
+    test now just to check a box would not meaningfully verify anything
+    beyond what `classifyApiError`'s existing unit tests already do.
 
 ## Files changed (this effort, cumulative)
 
@@ -277,27 +371,51 @@ Phase 4:
   synthetic data, only valid-status-set / not-POSSIBLE_ENTRY-style
   assertions, so all 53 passed unchanged.
 
+Phase 5:
+- `frontend/components/ui/ErrorState.tsx` (new) — shared error card, used
+  by six routes now.
+- `frontend/app/watchlist/page.tsx`, `frontend/app/portfolio/page.tsx` —
+  rewritten with real error handling (see above); the originally-audited
+  stuck-on-skeleton bug.
+- `frontend/app/page.tsx` — now imports the shared `ErrorState` instead of
+  its own local copy (behavior unchanged, duplication removed).
+- `frontend/app/stock/[ticker]/page.tsx` — error state now holds the raw
+  `unknown` error (was `String(e)`, discarding classification) and renders
+  via `ErrorState` with a working retry button.
+- `frontend/app/opportunities/page.tsx`, `frontend/app/backtest/page.tsx`
+  — same standardization (raw error + `ErrorState` + retry) applied for
+  consistency across every data-fetching route.
+- `backend/app/api/v1/endpoints/stocks.py` — `_is_tracked_asset()` helper;
+  `get_stock_analysis` (now takes `db`), `get_stock_deliberation`,
+  `get_stock_candles` (now takes `db`) distinguish "tracked asset, provider
+  can't serve it" (503, structured, honest) from "genuinely unknown
+  symbol" (404) — see the bug writeup above.
+- `backend/app/tests/test_api_stocks.py` — 2 new tests
+  (`test_get_stock_analysis_for_a_real_tracked_asset_is_503_not_404`,
+  `test_get_stock_candles_for_a_real_tracked_asset_is_503_not_404`) proving
+  the fix; existing `test_get_stock_analysis_unknown_symbol_handles_gracefully`
+  (genuinely-unknown-symbol case) untouched and still passing.
+
 ## Database migrations created (this effort)
 
 - `5b5ab8be5d21_add_risk_policy_version_to_signals.py` (Phase 4) — additive,
   backfill-safe (`server_default='unversioned'`), reversible. Verified
   against a fresh SQLite DB, an existing-DB upgrade from the prior head,
   and a follow-up autogenerate confirming zero remaining model/migration
-  drift. Phases 1–3 needed no schema changes. Phase 6/7's new tables
+  drift. Phases 1–3 and 5 needed no schema changes. Phase 6/7's new tables
   (Paper Trading, prediction ledger) are where the next migration appears.
 
-## Verification commands run (after Phase 4)
+## Verification commands run (after Phase 5)
 
 | Command | Result |
 |---|---|
-| `cd backend && python3 -m pytest app/tests -q` | **324 passed, 10 skipped** (334 collected — up from 317+10 at the end of Phase 3; +7 new passing tests, all in `test_risk_policy.py`) |
-| `cd backend && python3 -m pytest app/tests/test_signal_engine.py app/tests/test_risk_engine.py app/tests/test_risk_policy.py app/tests/test_signal_ai_indicator.py app/tests/test_multi_asset_scanner.py app/tests/test_multi_asset_scan_endpoint.py app/tests/test_scanner_v2.py app/tests/test_streaming.py -v` | 53/53 passed (isolated, the full blast-radius of this phase's change) |
-| `SQLITE_PATH=sqlite:////tmp/... python3 -m alembic upgrade head` on a fresh DB | applies all 8 migrations in order, exit 0 |
-| same, on a DB already at the prior head (`c7debfca52a5`) | applies only the new migration, exit 0 |
-| `python3 -m alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration (no `upgrade()`/`downgrade()` body) — model and migration confirmed in sync; throwaway file deleted |
-| `cd frontend && npm run lint && npx tsc --noEmit && npm run build` | all clean |
+| `cd backend && python3 -m pytest app/tests -q` | **326 passed, 10 skipped** (up from 324+10 at the end of Phase 4; +2 new passing tests in `test_api_stocks.py`) |
+| `cd backend && python3 -m pytest app/tests/test_api_stocks.py app/tests/test_p0_slice.py app/tests/test_multi_asset_scanner.py app/tests/test_market_overview.py app/tests/test_reasoning_engine.py -q` | 46/46 passed (isolated, the full blast-radius of the `stocks.py` change) |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 12 routes generated |
+| Live dev-server check: `curl .../api/v1/stocks/AAPL/analysis` before/after fix | 404 unstructured → **503** `{"code":"provider_unavailable","provider":"mock","market_data_available":false}` |
+| Playwright, 8 routes × 2 mobile viewports (375×812, 414×896) | 0 routes with real horizontal page overflow (`scrollWidth === clientWidth` everywhere); full-page screenshots of Dashboard/Watchlist/Portfolio/Stock-Detail visually reviewed |
 | `git diff` scanned for secret-shaped strings | none found |
-| `git diff \| grep -i otc` | only an unrelated pre-existing context line near an edit in `config.py` (the OTC module flag, untouched) — no regression |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
 
 ## Remaining tasks (full 13-phase scope, not started unless marked)
 
@@ -305,7 +423,7 @@ Phase 4:
 - [x] Phase 2 — Alembic-in-deploy + production config guards (2.1, 2.2)
 - [x] Phase 3 — security hardening (3.1 auth rate limiting, 3.2 monitoring split, 3.3 prompt-injection defenses)
 - [x] Phase 4 — unified risk/signal policy engine (RiskPolicy, Safe Mode, POSSIBLE_ENTRY now gated by the same evaluate_risk() the scanner uses)
-- [ ] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared states, mobile)
+- [x] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared `ErrorState` on 6 routes, a real backend 404-vs-503 bug found+fixed, mobile responsiveness verified via Playwright — no changes needed; component/page-level frontend tests explicitly deferred to Phase 12, no testing-library infra exists yet)
 - [ ] Phase 6 — Paper Trading system
 - [ ] Phase 7 — prediction ledger + outcome evaluation/performance proof
 - [ ] Phase 8 — ML dataset + training + Champion/Challenger promotion gate
@@ -322,36 +440,26 @@ Phase 4:
 
 ## Exact next action
 
-Start **Phase 5 — frontend reliability**:
-1. **Watchlist & Portfolio error handling**: `frontend/app/watchlist/page.tsx`
-   and `frontend/app/portfolio/page.tsx`'s `load()` calls have no `.catch()` at
-   all today — a failed `GET /watchlist`/`GET /portfolio` leaves the page
-   stuck on its skeleton forever. Add the same error+retry pattern already
-   used on `app/page.tsx` (Dashboard) and `app/stock/[ticker]/page.tsx`
-   (`ErrorState`-style component, retry button, loading-too-long fallback).
-2. **Standardize shared UI states**: loading / empty / error / offline / stale
-   / delayed / cached / unauthorized / rate-limited / provider-unavailable /
-   Safe Mode. `frontend/lib/api.ts`'s `classifyApiError`/`classifyResponse`
-   already distinguish several of these (503 provider_unavailable vs. 401/403
-   vs. 429 vs. generic 5xx) — extend the classification to cover the new
-   429 rate-limit responses from Phase 3 and a Safe Mode indicator once
-   Phase 4's `safe_mode_enabled` is surfaced through an endpoint (`/health` or
-   a small dedicated one), and make sure every page's error rendering uses the
-   same shared classifier/components rather than one-off strings, so a
-   provider-specific failure never collapses into a generic "backend
-   unavailable" message.
-3. **Mobile responsiveness**: per the original audit, real responsive
-   breakpoint tuning (`sm:`/`md:`/`lg:` grid classes) is concentrated on only
-   2 of 9 routes (Dashboard, Stock Detail) — Opportunities/Watchlist/
-   Portfolio/Backtest/Chat/Login/Register rely only on `overflow-x-auto` table
-   wrappers. Extend real responsive layout (not just horizontal scroll
-   fallback) to the remaining 7 routes; verify touch targets, chart resizing,
-   and that `prefers-reduced-motion` is still respected.
-4. Add component/page-level frontend tests for the fixed Watchlist/Portfolio
-   error paths (today's frontend test suite is 2 files of pure utility-function
-   tests only — this is also a down payment on Phase 12's broader frontend
-   testing expansion).
+Start **Phase 6 — Paper Trading system**:
+1. Design the account/position/trade lifecycle on top of the existing
+   (partial) DB model — check `backend/app/db/models/` for whatever
+   Paper Trading scaffolding already exists (the original audit noted "not
+   implemented beyond partial DB model") before adding new tables.
+2. Execution safety must reuse Phase 4's `RiskPolicy`/`evaluate_risk()` —
+   the same single gate the scanner and Signal Engine already share — so a
+   paper trade can't be opened on a setup the platform itself would flag as
+   NO_TRADE/AVOID. Reuse the existing `broker_sim`-style fill simulation
+   (spread/slippage/partial-fill/halts) already proven in the Backtest
+   engine (`services/backtest/`) rather than inventing a second one.
+3. New API endpoints (open/close/list positions, account state) + a
+   `/paper-trading` frontend route using the same `ErrorState`/loading/
+   empty-state patterns just standardized in Phase 5.
+4. This phase will need a DB migration (new Paper Trading tables) —
+   generate it the same way as `5b5ab8be5d21` (autogenerate against a real
+   migrated DB, verify with a second empty-diff autogenerate, hand-check
+   `server_default`s for any NOT NULL column added to a non-empty table).
+5. Only Paper Trading execution — no real-money broker integration, per
+   the standing non-negotiable rule.
 
-Then continue to Phase 6 (Paper Trading system — account/position/trade
-lifecycle, execution safety tied to Phase 4's RiskPolicy gate, broker_sim
-reuse for realistic fills) per the ledger order above.
+Then continue to Phase 7 (prediction ledger + outcome evaluation/
+performance proof) per the ledger order above.

@@ -6,11 +6,23 @@ from sqlalchemy.orm import Session
 from app.api.deps import data_provider, db_session
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
+from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.scoring.scorer import analyze_ticker
+from app.services.universe.manager import get_active_universe
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
 
 _SYMBOL_RE = __import__("re").compile(r"^[A-Z0-9.\-]{1,10}$")
+
+
+def _is_tracked_asset(symbol: str, db: Session) -> bool:
+    """True when `symbol` is a real, tracked asset in the Asset Universe
+    Manager (e.g. AAPL) — as opposed to a genuinely unrecognized string.
+    Distinguishes "this asset exists but the current provider can't serve
+    it right now" (503, honest degraded-service signal) from "this symbol
+    doesn't exist" (404) — see the endpoints below.
+    """
+    return symbol.upper() in {a.symbol for a in get_active_universe(db)}
 
 
 @router.get("/search")
@@ -69,6 +81,14 @@ def get_stock_deliberation(
 
     try:
         deliberation = ReasoningEngine().deliberate(symbol, provider=provider, db=db)
+    except ProviderDataUnavailable as exc:
+        if _is_tracked_asset(symbol, db):
+            # A real, tracked asset the current provider can't serve right
+            # now — let the app-level handler answer with the honest,
+            # structured 503 it already produces for this exception type,
+            # instead of masking a provider outage as a 404 "not found".
+            raise
+        raise HTTPException(status_code=404, detail=f"Could not deliberate on {symbol}: {exc}") from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=404, detail=f"Could not deliberate on {symbol}: {exc}") from exc
     return asdict(deliberation)
@@ -91,9 +111,13 @@ def get_universe(limit: int = 100, provider: MarketDataProvider = Depends(data_p
 
 
 @router.get("/{symbol}/analysis", response_model=StockAnalysis)
-def get_stock_analysis(symbol: str):
+def get_stock_analysis(symbol: str, db: Session = Depends(db_session)):
     try:
         return analyze_ticker(symbol)
+    except ProviderDataUnavailable as exc:
+        if _is_tracked_asset(symbol, db):
+            raise
+        raise HTTPException(status_code=404, detail=f"Could not analyze {symbol}: {exc}") from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=404, detail=f"Could not analyze {symbol}: {exc}") from exc
 
@@ -126,6 +150,7 @@ async def get_stock_candles(
     timeframe: str = "1D",
     limit: int = 500,
     provider: MarketDataProvider = Depends(data_provider),
+    db: Session = Depends(db_session),
 ):
     """Timeframe-aware candles for the trading chart. Backs every button in
     the chart's timeframe selector with the *real* data available for that
@@ -144,6 +169,10 @@ async def get_stock_candles(
 
     try:
         provider.get_ticker_meta(symbol)
+    except ProviderDataUnavailable as exc:
+        if _is_tracked_asset(symbol, db):
+            raise
+        raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
 
