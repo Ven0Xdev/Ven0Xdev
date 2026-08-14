@@ -5,6 +5,8 @@ import type {
   MarketOverviewResponse,
   NewsArticle,
   OhlcvBar,
+  PaperAccount,
+  PaperPosition,
   PortfolioPosition,
   SearchResponse,
   SectorHeatmapEntry,
@@ -248,6 +250,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ticker_symbol, quantity, avg_entry_price }),
     }),
+
+  paperAccount: () => request<PaperAccount>(`/paper-trading/account`),
+  paperPositions: (status: "open" | "closed" = "open") =>
+    request<PaperPosition[]>(`/paper-trading/positions?status=${status}`),
+  openPaperPosition: (ticker_symbol: string, quantity: number) =>
+    request<PaperPosition>(`/paper-trading/positions`, {
+      method: "POST",
+      body: JSON.stringify({ ticker_symbol, quantity }),
+    }),
+  closePaperPosition: (positionId: number) =>
+    request<PaperPosition>(`/paper-trading/positions/${positionId}/close`, { method: "POST" }),
 
   runBacktest: (params: {
     universe_limit?: number;

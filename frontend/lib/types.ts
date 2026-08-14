@@ -102,6 +102,34 @@ export interface PortfolioPosition {
   unrealized_pnl_pct: number | null;
 }
 
+export interface PaperAccount {
+  cash_balance: number;
+  starting_balance: number;
+  created_at: string;
+}
+
+export interface PaperPosition {
+  id: number;
+  ticker_symbol: string;
+  quantity: number;
+  avg_entry_price: number;
+  opened_at: string;
+  closed_at: string | null;
+  exit_price: number | null;
+  status: "open" | "closed";
+  realized_pnl_dollars: number | null;
+  entry_confidence_pct: number | null;
+  entry_risk_reward: number | null;
+  planned_stop_loss: number | null;
+  planned_take_profit: number | null;
+  risk_policy_version: string;
+  entry_data_source: string;
+  entry_data_mode: string;
+  current_price: number | null;
+  unrealized_pnl_dollars: number | null;
+  unrealized_pnl_pct: number | null;
+}
+
 export interface BacktestTrade {
   symbol: string;
   entry_ts: string;

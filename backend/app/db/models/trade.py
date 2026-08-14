@@ -1,13 +1,18 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Index, Integer, String
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
 
 class Trade(Base):
-    """Live/paper trade log, independent from backtest trades."""
+    """Immutable fill log — live/paper trade log, independent from backtest
+    trades. `account_id`/`position_id` link a fill to the Paper Trading
+    account/position it belongs to (services/paper_trading/engine.py);
+    both nullable since this table predates that system and may in future
+    log fills unrelated to a tracked paper position.
+    """
 
     __tablename__ = "trades"
     __table_args__ = (
@@ -22,3 +27,7 @@ class Trade(Base):
     executed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     prediction_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="filled")
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("paper_trading_accounts.id"), nullable=True, index=True)
+    position_id: Mapped[int | None] = mapped_column(ForeignKey("paper_positions.id"), nullable=True, index=True)
+    data_source: Mapped[str] = mapped_column(String(32), default="unknown")
+    data_mode: Mapped[str] = mapped_column(String(16), default="unspecified")

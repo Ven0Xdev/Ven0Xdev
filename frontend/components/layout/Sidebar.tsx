@@ -20,6 +20,7 @@ export const NAV_ITEMS = [
   { href: "/opportunities", label: "Opportunities", icon: "M3 17l5-5 4 4 8-9M20 7v6h-6" },
   { href: "/watchlist", label: "Watchlist", icon: "M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" },
   { href: "/portfolio", label: "Portfolio", icon: "M3 7h18v13H3V7Zm5 0V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M3 12h18" },
+  { href: "/paper-trading", label: "Paper Trading", icon: "M3 3v18h18 M7 15l4-5 3 3 5-7" },
   { href: "/backtest", label: "Backtest", icon: "M12 8v4l3 2 M21 12a9 9 0 1 1-3.5-7.14 M21 3v5h-5" },
   { href: "/chat", label: "AI Assistant", icon: "M12 3a8 8 0 0 0-6.93 12.02L4 21l6.1-1.05A8 8 0 1 0 12 3Z M8.5 12h.01 M12 12h.01 M15.5 12h.01" },
 ];

@@ -9,12 +9,12 @@ anything.
 
 ## Current phase
 
-**Phase 5 — frontend reliability** — complete, see below. Ready to start
-**Phase 6 — Paper Trading system** next.
+**Phase 6 — Paper Trading system** — complete, see below. Ready to start
+**Phase 7 — prediction ledger + performance proof** next.
 
 Phases 1 (1.1/1.3 implemented, 1.2 honestly blocked), 2 (2.1, 2.2), 3
-(3.1, 3.2, 3.3), and 4 (unified risk/signal policy engine) — all done. See
-their entries further down for full detail.
+(3.1, 3.2, 3.3), 4 (unified risk/signal policy engine), and 5 (frontend
+reliability) — all done. See their entries further down for full detail.
 
 ## Baseline (Phase 0 — completed 2026-08-14)
 
@@ -210,6 +210,89 @@ This is the baseline every subsequent phase's verification is measured against �
     test now just to check a box would not meaningfully verify anything
     beyond what `classifyApiError`'s existing unit tests already do.
 
+- [x] Phase 6 — Paper Trading system. The platform's **only** trading
+  execution mode — no real-money broker integration exists or is planned.
+  - **New DB tables**: `PaperTradingAccount` (one virtual cash account per
+    user, `paper_trading_starting_balance` setting, default $100,000) and
+    `PaperPosition` (open/closed simulated long positions). Extended the
+    existing, previously-unused `Trade` model (`db/models/trade.py` —
+    audit finding: "no trading beyond a partial DB model") with
+    `account_id`/`position_id` linkage and `data_source`/`data_mode`
+    provenance, reusing it as the immutable fill log rather than adding a
+    redundant parallel table.
+  - **Execution safety — the actual point of this phase**:
+    `services/paper_trading/engine.py`'s `open_position()` calls the exact
+    same `evaluate_risk()` function (`services/risk/engine.py`) the
+    scanner and Signal Engine already use for the POSSIBLE_ENTRY gate —
+    including the platform-wide Safe Mode kill switch. A setup the
+    platform's own analysis would flag NO_TRADE/AVOID cannot be paper-
+    traded either. This is also the **first real caller** of
+    `evaluate_risk()`'s `position_risk_pct` parameter (every existing
+    caller only has a candidate, not a sized order, so it was always
+    omitted before) — computed as `quantity * |fill_price - stop_loss| /
+    account.cash_balance * 100` and checked against
+    `risk_max_portfolio_risk_per_trade_pct`.
+  - **Fill pricing**: a market buy fills at the provider's current best
+    ask, a market sell/close fills at the current best bid — the real
+    cost of crossing the spread. When bid/ask depth isn't available
+    (`Quote.bid`/`.ask` are `None` for some vendors), honestly falls back
+    to `last` rather than inventing a spread.
+  - **Cash-only v1**: no shorting, no margin, no fees — a position can
+    never cost more than the account's current cash balance (checked
+    *after* the risk gate, since a refused setup shouldn't even reach the
+    affordability check).
+  - **Explicitly out of scope, documented, not silently missing**:
+    automatic stop-loss/take-profit-triggered position closing. This
+    version closes only on an explicit user action; `planned_stop_loss`/
+    `planned_take_profit`/entry-time confidence/reward:risk are captured
+    on every position for a **future** periodic outcome-evaluation job —
+    which Phase 7 (prediction ledger) is building anyway, so building a
+    second, duplicate background-evaluation mechanism here would be
+    wasted, divergent infrastructure.
+  - New endpoints (`api/v1/endpoints/paper_trading.py`, prefix
+    `/paper-trading`): `GET /account`, `GET /positions?status=open|closed`
+    (mark-to-market unrealized P/L computed live from a fresh quote, never
+    stored/stale), `POST /positions` (open, 400 with the risk gate's exact
+    named reason on refusal), `POST /positions/{id}/close`.
+  - New frontend route `frontend/app/paper-trading/page.tsx` (added to
+    the sidebar nav) — account summary stat tiles, open-positions table
+    with live unrealized P/L and a Close action, closed-positions history
+    with realized P/L, using the same `ErrorState`/loading-too-long/retry
+    pattern Phase 5 standardized. Verified live in a real browser (not
+    just unit tests): opened a position that clears the risk gate (cash
+    debited, position appears, live mark-to-market shown), attempted one
+    that fails it (refused with the exact reason inline, account state
+    unchanged), and closed the open position (moved to history, cash
+    credited back, realized P/L computed correctly).
+  - **Real dev-environment issue found and worked around while verifying
+    this phase, not a code bug**: SQLite's `create_all()` (the documented
+    dev-only path, distinct from Alembic which is what actually runs in
+    production per Phase 2) only creates *missing* tables — it never
+    alters an existing table's columns. A stale local `ven0x_dev.db` left
+    over from before this phase's `Trade` model change caused a real
+    "table trades has no column named account_id" error the first two
+    times the dev server was restarted (some orphaned prior uvicorn
+    processes from rapid successive manual restarts kept serving stale
+    schema). Deleting the gitignored local dev DB file and confirming
+    exactly one server process was running resolved it; this has no
+    bearing on real deployments, which are exclusively Alembic-managed.
+  - New `backend/app/tests/test_paper_trading.py` (12 tests): account
+    creation/reuse; open succeeds against a real generated analysis that
+    clears the risk gate (found deterministically by iterating the mock
+    provider's fixed universe once — not hardcoded/fabricated); open is
+    refused (cash unchanged, no position created) for one that fails it;
+    non-positive quantity rejected; insufficient-cash refusal isolated
+    from the position-sizing gate (they'd otherwise always co-trigger
+    under the default 1% risk-per-trade policy, since both scale with
+    quantity identically — monkeypatches a permissive risk policy to
+    isolate the affordability check specifically); close realizes P&L and
+    credits cash correctly; closing an unknown/already-closed/someone-
+    else's position is refused; entry-time provenance
+    (stop/target/confidence/reward:risk) is captured for the future
+    Phase 7 evaluation job; and 3 full API-level lifecycle tests
+    (open→list→account→close, a risk-gate refusal via the API returning
+    400 with the exact reason, and an invalid status-filter 400).
+
 ## Files changed (this effort, cumulative)
 
 Phase 1:
@@ -396,24 +479,63 @@ Phase 5:
   the fix; existing `test_get_stock_analysis_unknown_symbol_handles_gracefully`
   (genuinely-unknown-symbol case) untouched and still passing.
 
+Phase 6:
+- `backend/app/core/config.py` — `paper_trading_starting_balance` setting
+  ($100,000 default).
+- `backend/app/db/models/paper_trading.py` (new) — `PaperTradingAccount`,
+  `PaperPosition`.
+- `backend/app/db/models/trade.py` — extended with `account_id`,
+  `position_id`, `data_source`, `data_mode`.
+- `backend/app/db/models/__init__.py` — registers the two new models.
+- `backend/app/services/paper_trading/engine.py` (new) —
+  `get_or_create_account`, `open_position`, `close_position`,
+  `list_open_positions`, `list_closed_positions`, `PaperTradingError`.
+- `backend/app/schemas/paper_trading.py` (new) — `PaperAccountOut`,
+  `PaperPositionOut`, `PaperOpenRequest`.
+- `backend/app/api/v1/endpoints/paper_trading.py` (new) — `/paper-trading`
+  routes; registered in `backend/app/api/v1/api.py`.
+- `backend/alembic/versions/6f1d3edac330_paper_trading_accounts_and_positions.py`
+  (new) — see migrations section below.
+- `backend/app/tests/test_paper_trading.py` (new, 12 tests).
+- `frontend/lib/types.ts` — `PaperAccount`, `PaperPosition` interfaces.
+- `frontend/lib/api.ts` — `paperAccount`, `paperPositions`,
+  `openPaperPosition`, `closePaperPosition`.
+- `frontend/app/paper-trading/page.tsx` (new route).
+- `frontend/components/layout/Sidebar.tsx` — nav entry for the new route.
+
 ## Database migrations created (this effort)
 
 - `5b5ab8be5d21_add_risk_policy_version_to_signals.py` (Phase 4) — additive,
   backfill-safe (`server_default='unversioned'`), reversible. Verified
   against a fresh SQLite DB, an existing-DB upgrade from the prior head,
   and a follow-up autogenerate confirming zero remaining model/migration
-  drift. Phases 1–3 and 5 needed no schema changes. Phase 6/7's new tables
-  (Paper Trading, prediction ledger) are where the next migration appears.
+  drift. Phases 1–3 and 5 needed no schema changes.
+- `6f1d3edac330_paper_trading_accounts_and_positions.py` (Phase 6) — new
+  tables `paper_trading_accounts`/`paper_positions`; adds
+  `account_id`/`position_id`/`data_source`/`data_mode` to the existing
+  `trades` table (`server_default='unknown'`/`'unspecified'` on the two
+  new NOT NULL string columns — backfill-safe on a non-empty table).
+  Named the new FK constraints explicitly (`fk_trades_account_id`,
+  `fk_trades_position_id`) after autogenerate's default unnamed
+  constraints failed SQLite's batch-alter mode ("Constraint must have a
+  name") — matches the existing `fk_<table>_<column>` convention from
+  `9b1a60567a48`. Verified: fresh-DB upgrade, upgrade-from-prior-head
+  (`5b5ab8be5d21`), downgrade back one revision, and a follow-up
+  autogenerate confirming zero remaining model/migration drift. Phase 7's
+  prediction ledger is where the next migration appears.
 
-## Verification commands run (after Phase 5)
+## Verification commands run (after Phase 6)
 
 | Command | Result |
 |---|---|
-| `cd backend && python3 -m pytest app/tests -q` | **326 passed, 10 skipped** (up from 324+10 at the end of Phase 4; +2 new passing tests in `test_api_stocks.py`) |
-| `cd backend && python3 -m pytest app/tests/test_api_stocks.py app/tests/test_p0_slice.py app/tests/test_multi_asset_scanner.py app/tests/test_market_overview.py app/tests/test_reasoning_engine.py -q` | 46/46 passed (isolated, the full blast-radius of the `stocks.py` change) |
-| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 12 routes generated |
-| Live dev-server check: `curl .../api/v1/stocks/AAPL/analysis` before/after fix | 404 unstructured → **503** `{"code":"provider_unavailable","provider":"mock","market_data_available":false}` |
-| Playwright, 8 routes × 2 mobile viewports (375×812, 414×896) | 0 routes with real horizontal page overflow (`scrollWidth === clientWidth` everywhere); full-page screenshots of Dashboard/Watchlist/Portfolio/Stock-Detail visually reviewed |
+| `cd backend && python3 -m pytest app/tests -q` | **338 passed, 10 skipped** (up from 326+10 at the end of Phase 5; +12 new passing tests in `test_paper_trading.py`) |
+| `cd backend && python3 -m pytest app/tests/test_paper_trading.py -q` | 12/12 passed (isolated) |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 9 migrations in order, exit 0 |
+| same, upgrading from prior head (`5b5ab8be5d21`) only | applies only the new migration, exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 13 routes generated |
+| Live dev-server + Playwright: open BLKM (clears risk gate), attempt AXNT (fails it), close BLKM | open debits cash + shows live mark-to-market; refusal shows the exact risk-gate reason inline, account state unchanged; close moves position to history, credits cash, computes realized P/L correctly — all screenshotted and visually confirmed |
 | `git diff` scanned for secret-shaped strings | none found |
 | `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
 
@@ -424,7 +546,7 @@ Phase 5:
 - [x] Phase 3 — security hardening (3.1 auth rate limiting, 3.2 monitoring split, 3.3 prompt-injection defenses)
 - [x] Phase 4 — unified risk/signal policy engine (RiskPolicy, Safe Mode, POSSIBLE_ENTRY now gated by the same evaluate_risk() the scanner uses)
 - [x] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared `ErrorState` on 6 routes, a real backend 404-vs-503 bug found+fixed, mobile responsiveness verified via Playwright — no changes needed; component/page-level frontend tests explicitly deferred to Phase 12, no testing-library infra exists yet)
-- [ ] Phase 6 — Paper Trading system
+- [x] Phase 6 — Paper Trading system (PaperTradingAccount/PaperPosition, execution gated by the same evaluate_risk() the scanner/Signal Engine use, cash-only realistic bid/ask fill pricing, /paper-trading UI, full lifecycle verified live; automatic stop/target-triggered closing explicitly deferred to Phase 7's outcome-evaluation job)
 - [ ] Phase 7 — prediction ledger + outcome evaluation/performance proof
 - [ ] Phase 8 — ML dataset + training + Champion/Challenger promotion gate
 - [ ] Phase 9 — chart timeframes + technical indicators
@@ -440,26 +562,40 @@ Phase 5:
 
 ## Exact next action
 
-Start **Phase 6 — Paper Trading system**:
-1. Design the account/position/trade lifecycle on top of the existing
-   (partial) DB model — check `backend/app/db/models/` for whatever
-   Paper Trading scaffolding already exists (the original audit noted "not
-   implemented beyond partial DB model") before adding new tables.
-2. Execution safety must reuse Phase 4's `RiskPolicy`/`evaluate_risk()` —
-   the same single gate the scanner and Signal Engine already share — so a
-   paper trade can't be opened on a setup the platform itself would flag as
-   NO_TRADE/AVOID. Reuse the existing `broker_sim`-style fill simulation
-   (spread/slippage/partial-fill/halts) already proven in the Backtest
-   engine (`services/backtest/`) rather than inventing a second one.
-3. New API endpoints (open/close/list positions, account state) + a
-   `/paper-trading` frontend route using the same `ErrorState`/loading/
-   empty-state patterns just standardized in Phase 5.
-4. This phase will need a DB migration (new Paper Trading tables) —
-   generate it the same way as `5b5ab8be5d21` (autogenerate against a real
-   migrated DB, verify with a second empty-diff autogenerate, hand-check
-   `server_default`s for any NOT NULL column added to a non-empty table).
-5. Only Paper Trading execution — no real-money broker integration, per
-   the standing non-negotiable rule.
+Start **Phase 7 — prediction ledger + outcome evaluation/performance
+proof**:
+1. There is already a `Prediction`/`Outcome` model pair
+   (`backend/app/db/models/prediction.py`, in `db/models/__init__.py`'s
+   `__all__` since before this effort) — inspect what it already captures
+   and whether anything currently writes to it before assuming a blank
+   slate; this phase very likely extends/wires up existing scaffolding
+   rather than starting from nothing, the same situation Phase 6 found
+   with the `Trade` model.
+2. Every prediction (`StockAnalysis`/`Signal` output) needs to be logged
+   *immutably* at generation time — ticker, horizon, predicted probability,
+   `engine_mode`/`model_version`/`risk_policy_version` provenance (Phase 1
+   and 4's fields), timestamp — before its outcome is known, so evaluation
+   can never be back-fit.
+3. An evaluation job (the periodic background mechanism Phase 6's paper
+   positions are already waiting on for automatic stop/target-triggered
+   closing — wire that in here too, once this job exists, rather than
+   building a second one) that checks each logged prediction's horizon
+   (1D/5D/20D) against real subsequent price action once it's actually
+   elapsed, and computes: hit/miss, Brier score, calibration (predicted
+   probability vs. realized frequency, bucketed).
+4. Performance views/endpoints: by symbol, by regime, by `engine_mode`
+   (HEURISTIC vs. TRAINED_ML — this is the proof point Phase 8's
+   Champion/Challenger promotion gate needs: a trained model may only be
+   promoted if it demonstrably beats the heuristic here, out-of-sample),
+   by confidence bucket.
+5. This phase will need a DB migration if the existing
+   `Prediction`/`Outcome` schema needs new columns — same
+   autogenerate-then-verify-empty-diff discipline as every prior phase's
+   migration.
+6. Never fabricate an outcome for a prediction whose horizon hasn't
+   elapsed yet, and never silently skip logging a prediction because the
+   engine was HEURISTIC rather than TRAINED_ML — the whole point of this
+   ledger is proving the heuristic's real track record too.
 
-Then continue to Phase 7 (prediction ledger + outcome evaluation/
-performance proof) per the ledger order above.
+Then continue to Phase 8 (ML dataset + training + Champion/Challenger
+promotion gate) per the ledger order above.
