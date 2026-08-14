@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getFetchMeta } from "@/lib/api";
 import { useResyncListener } from "@/lib/pwa";
-import type { Deliberation, NewsArticle, OhlcvBar, SignalPayload, StockAnalysis } from "@/lib/types";
+import type { Deliberation, NewsArticle, SignalPayload, StockAnalysis } from "@/lib/types";
 import { ScoreMeter } from "@/components/ui/ScoreMeter";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
 import { DataBadge } from "@/components/ui/DataBadge";
 import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SignalReveal } from "@/components/ui/SignalReveal";
-import { PriceChart } from "@/components/charts/PriceChart";
+import { TradingChart } from "@/components/charts/TradingChart";
 import { LiveChart } from "@/components/charts/LiveChart";
 import { ProbabilityMatrix } from "@/components/dashboard/ProbabilityMatrix";
 import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
@@ -24,7 +24,6 @@ export default function StockDetailPage() {
   const params = useParams<{ ticker: string }>();
   const ticker = params.ticker;
   const [analysis, setAnalysis] = useState<StockAnalysis | null>(null);
-  const [bars, setBars] = useState<OhlcvBar[] | null>(null);
   const [news, setNews] = useState<NewsArticle[] | null>(null);
   const [deliberation, setDeliberation] = useState<Deliberation | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -47,7 +46,6 @@ export default function StockDetailPage() {
       .catch((e) => {
         if (!cancelled) setError(e);
       });
-    api.ohlcv(ticker, 120).then((d) => !cancelled && setBars(d.bars)).catch(() => !cancelled && setBars([]));
     api.news(ticker, 8).then((d) => !cancelled && setNews(d)).catch(() => !cancelled && setNews([]));
     api.deliberation(ticker).then((d) => !cancelled && setDeliberation(d)).catch(() => !cancelled && setDeliberation(null));
     return () => {
@@ -140,23 +138,17 @@ export default function StockDetailPage() {
         </div>
 
         <div className="card animate-in p-5 sm:p-6">
-          <SectionLabel>Price — last {bars?.length ?? "…"} sessions, with trade-plan levels</SectionLabel>
-          {bars === null ? (
-            <Skeleton className="h-64 w-full" />
-          ) : (
-            <div className="content-reveal">
-              <PriceChart
-                bars={bars}
-                markers={[
-                  { label: "Entry", price: a.ideal_entry_price, color: "var(--series-blue)" },
-                  { label: "Stop", price: a.stop_loss, color: "var(--status-critical)" },
-                  { label: "TP1", price: a.take_profit_1, color: "var(--status-good)" },
-                  { label: "TP2", price: a.take_profit_2, color: "var(--status-good)" },
-                  { label: "TP3", price: a.take_profit_3, color: "var(--status-good)" },
-                ]}
-              />
-            </div>
-          )}
+          <SectionLabel>Price chart — timeframes, indicators, and trade-plan levels</SectionLabel>
+          <TradingChart
+            symbol={a.ticker}
+            tradePlan={[
+              { label: "Entry", price: a.ideal_entry_price },
+              { label: "Stop", price: a.stop_loss },
+              { label: "TP1", price: a.take_profit_1 },
+              { label: "TP2", price: a.take_profit_2 },
+              { label: "TP3", price: a.take_profit_3 },
+            ]}
+          />
         </div>
 
         <div className="card animate-in-stagger grid grid-cols-2 gap-5 p-5 sm:grid-cols-3 sm:p-6">

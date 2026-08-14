@@ -1,8 +1,10 @@
 import type {
   BacktestResult,
   CalibrationReport,
+  CandlesResponse,
   DashboardSummary,
   Deliberation,
+  IndicatorSeriesResponse,
   MarketOverviewResponse,
   NewsArticle,
   OhlcvBar,
@@ -222,6 +224,10 @@ export const api = {
   analysis: (symbol: string) => request<StockAnalysis>(`/stocks/${symbol}/analysis`),
   ohlcv: (symbol: string, lookbackDays = 250) =>
     request<{ symbol: string; bars: OhlcvBar[] }>(`/stocks/${symbol}/ohlcv?lookback_days=${lookbackDays}`),
+  candles: (symbol: string, timeframe: string, limit = 500) =>
+    request<CandlesResponse>(`/stocks/${symbol}/candles?timeframe=${timeframe}&limit=${limit}`),
+  indicators: (symbol: string, timeframe: string) =>
+    request<IndicatorSeriesResponse>(`/stocks/${symbol}/indicators?timeframe=${timeframe}`),
   news: (symbol: string, limit = 20) => request<NewsArticle[]>(`/stocks/${symbol}/news?limit=${limit}`),
 
   // These three run a full ML pass (ensemble + SHAP + Monte Carlo) across

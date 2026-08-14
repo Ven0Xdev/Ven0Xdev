@@ -86,6 +86,26 @@ export interface OhlcvBar {
   volume: number;
 }
 
+export type ChartTimeframe = "1m" | "5m" | "15m" | "1H" | "1D" | "1W" | "1M" | "1Y" | "ALL";
+
+export interface CandlesResponse {
+  symbol: string;
+  timeframe: string;
+  bars: OhlcvBar[];
+  bar_count: number;
+  data_source: string;
+  data_mode: string;
+  as_of: string;
+  note: string | null;
+}
+
+export interface IndicatorSeriesResponse {
+  symbol: string;
+  timeframe: string;
+  timestamps: string[];
+  series: Record<string, (number | null)[]>;
+}
+
 export interface WatchlistItem {
   ticker_symbol: string;
   added_at: string;

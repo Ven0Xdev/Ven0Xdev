@@ -9,14 +9,14 @@ anything.
 
 ## Current phase
 
-**Phase 8 — ML dataset + training + Champion/Challenger** — complete, see
-below. Ready to start **Phase 9 — chart timeframes + technical indicators**
-next.
+**Phase 9 — chart timeframes + technical indicators** — complete, see
+below. Ready to start **Phase 10 — user alerts** next.
 
 Phases 1 (1.1/1.3 implemented, 1.2 honestly blocked), 2 (2.1, 2.2), 3
 (3.1, 3.2, 3.3), 4 (unified risk/signal policy engine), 5 (frontend
-reliability), 6 (Paper Trading), and 7 (prediction ledger + performance
-proof) — all done. See their entries further down for full detail.
+reliability), 6 (Paper Trading), 7 (prediction ledger + performance
+proof), and 8 (Champion/Challenger promotion gate) — all done. See their
+entries further down for full detail.
 
 ## Baseline (Phase 0 — completed 2026-08-14)
 
@@ -464,6 +464,62 @@ This is the baseline every subsequent phase's verification is measured against �
     rest of Phase 11's Admin/Operator surface (Safe Mode toggle, provider
     health, migration status), not bolted onto this phase.
 
+- [x] Phase 9 — chart timeframes + technical indicators. **The backend
+  half was already done**: `GET /stocks/{symbol}/candles` already
+  supported the full 9-timeframe set (1m/5m/15m/1H/1D/1W/1M/1Y/ALL) with
+  honest provenance (real streamed intraday bars, never fabricated
+  history) — verified before touching anything, no changes needed there.
+  **The real gap was entirely frontend**: `components/charts/PriceChart.tsx`
+  (the only chart on the Stock Detail page) was a hand-rolled SVG line
+  chart with no timeframe concept at all, wired to the older
+  `/{symbol}/ohlcv` endpoint (daily bars only) — no timeframe selector, no
+  indicator overlays, no candlesticks/volume existed anywhere outside the
+  separate 1m-only `LiveChart.tsx`.
+  - **New backend endpoint**: `GET /stocks/{symbol}/indicators?timeframe=X&indicators=...`
+    — per-bar SMA(20/50), EMA(9/21), RSI(14), MACD(line/signal/histogram),
+    Bollinger Bands(upper/middle/lower), ATR(14), VWAP, aligned 1:1 with
+    `/candles` at the same timeframe. Pure composition over the technical
+    indicator math `services/features/technical.py` already had — no new
+    indicator formulas written, just exposed as full series instead of
+    collapsed to scoring's single latest value. A value not yet defined
+    (a 50-period SMA on bar 3) is `null`, never a fabricated number
+    standing in for "not enough history yet." Reuses the same
+    tracked-asset-vs-unknown-symbol 404-vs-503 distinction from Phase 5's
+    `stocks.py` fix, and the same timeframe/indicator-name validation
+    pattern as the existing `/candles` endpoint.
+  - **New frontend component `components/charts/TradingChart.tsx`**,
+    replacing `PriceChart.tsx` entirely (deleted — nothing else referenced
+    it, and the new component is a strict superset of its functionality):
+    built on `lightweight-charts` (already a dependency, already proven
+    in `LiveChart.tsx`), not the old hand-rolled SVG. Real candlesticks +
+    volume (pane 0), a 9-button timeframe selector, toggleable price-pane
+    overlays (SMA 20/50, EMA 9/21, Bollinger Bands, VWAP — checkboxes),
+    an always-visible RSI sub-pane with 30/70 reference lines (pane 1),
+    an always-visible MACD sub-pane with line/signal/histogram (pane 2) —
+    all three panes share one chart instance's time scale/crosshair via
+    `lightweight-charts` v5's `addSeries(..., paneIndex)`, not three
+    separately-synced charts. AI trade-plan levels (Entry/Stop/TP1-3)
+    render as labeled price lines on the candle series, reusing the exact
+    literal-hex-color pattern `LiveChart.tsx` already established (canvas
+    rendering can't resolve `var(--x)` CSS custom properties).
+  - Uses Phase 5's `ErrorState`/retry pattern for a failed fetch, matching
+    every other data-fetching surface in the app.
+  - Verified live in a real browser (not just unit tests): timeframe
+    switching (1D → 1W) correctly reloads candles+indicators and refits
+    the visible range; toggling the Bollinger Bands checkbox correctly
+    adds/removes the band overlay live; RSI and MACD sub-panes both
+    render real computed values with correct reference lines/histogram
+    coloring; trade-plan price lines (TP3/TP2/TP1/Entry/Stop) render with
+    correct labels/colors/values matching the analysis panel above the
+    chart.
+  - New `backend/app/tests/test_stock_indicators.py` (8 tests): default
+    indicator set returned and aligned with `/candles`' bar count; filtering
+    to a subset via `?indicators=`; RSI stays in [0,100] where defined;
+    an immature rolling window is honestly `null`, not fabricated;
+    unknown indicator/timeframe both rejected (400); unknown symbol
+    honestly errors, never returns fabricated indicator values.
+  - No schema/migration changes — this phase touched no DB models.
+
 ## Files changed (this effort, cumulative)
 
 Phase 1:
@@ -715,6 +771,18 @@ Phase 8:
 - `backend/app/tests/test_champion_challenger.py` — extended/rewritten (7
   tests, was 5).
 
+Phase 9:
+- `backend/app/api/v1/endpoints/stocks.py` — new `GET /{symbol}/indicators`
+  route, `_series_out()`, `_VALID_INDICATORS`.
+- `backend/app/tests/test_stock_indicators.py` (new, 8 tests).
+- `frontend/components/charts/TradingChart.tsx` (new) — replaces
+  `frontend/components/charts/PriceChart.tsx` (deleted).
+- `frontend/app/stock/[ticker]/page.tsx` — uses `TradingChart` instead of
+  `PriceChart`; removed the now-unneeded `/ohlcv` fetch and `bars` state.
+- `frontend/lib/types.ts` — `ChartTimeframe`, `CandlesResponse`,
+  `IndicatorSeriesResponse`.
+- `frontend/lib/api.ts` — `candles()`, `indicators()`.
+
 ## Database migrations created (this effort)
 
 - `5b5ab8be5d21_add_risk_policy_version_to_signals.py` (Phase 4) — additive,
@@ -742,8 +810,18 @@ Phase 8:
   follow-up autogenerate confirming zero remaining drift. Phase 8 needed no
   schema changes at all (`ModelVersion.training_metrics` is an existing
   free-form JSON column, sufficient for the new heuristic/baseline data).
+  Phase 9 touched no DB models — no migration.
 
-## Verification commands run (after Phase 8)
+## Verification commands run (after Phase 9)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **357 passed, 10 skipped** (up from 349+10 at the end of Phase 8) |
+| `cd backend && python3 -m pytest app/tests/test_stock_indicators.py -q` | 8/8 passed (isolated) |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 14 routes generated |
+| Live dev-server + Playwright: `/stock/AXNT` — 1D→1W timeframe switch, Bollinger Bands toggle, scroll to RSI/MACD sub-panes | all render correctly with real computed values; trade-plan price lines (TP3/TP2/TP1/Entry/Stop) match the analysis panel above |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
 
 | Command | Result |
 |---|---|
@@ -781,7 +859,7 @@ Phase 8:
 - [x] Phase 6 — Paper Trading system (PaperTradingAccount/PaperPosition, execution gated by the same evaluate_risk() the scanner/Signal Engine use, cash-only realistic bid/ask fill pricing, /paper-trading UI, full lifecycle verified live; automatic stop/target-triggered closing explicitly deferred to Phase 7's outcome-evaluation job)
 - [x] Phase 7 — prediction ledger + performance proof (existing Prediction/Outcome/evaluator scaffolding audited and found disconnected from the mainstream universe — fixed with a new non-OTC-gated prediction_scheduler worker; added engine_mode/model_version/risk_policy_version provenance and a real Brier score broken down by engine_mode; new /performance frontend page)
 - [x] Phase 8 — ML dataset + training + Champion/Challenger promotion gate (dataset/training/walk-forward/registry all pre-existing and verified; added the missing heuristic + logistic-regression/momentum/buy-and-hold baseline comparison and hard-enforced the "never promote unless it beats them" gate in promote_model() itself)
-- [ ] Phase 9 — chart timeframes + technical indicators
+- [x] Phase 9 — chart timeframes + technical indicators (backend /candles already supported all 9 timeframes; added GET /indicators, a new lightweight-charts-based TradingChart with timeframe selector + toggleable SMA/EMA/Bollinger/VWAP overlays + always-on RSI/MACD sub-panes + AI trade-plan price lines, replacing the old hand-rolled SVG PriceChart)
 - [ ] Phase 10 — user alerts
 - [ ] Phase 11 — Admin/Operator UI
 - [ ] Phase 12 — frontend/E2E testing expansion
@@ -794,40 +872,42 @@ Phase 8:
 
 ## Exact next action
 
-Start **Phase 9 — chart timeframes + technical indicators**:
-1. **The backend is already done and already honest**: `GET /stocks/{symbol}/candles`
-   (`backend/app/api/v1/endpoints/stocks.py`) already supports the full
-   `_VALID_TIMEFRAMES = {1m, 5m, 15m, 1H, 1D, 1W, 1M, 1Y, ALL}` set, backed
-   by real streamed intraday bars for intraday timeframes (never
-   fabricated history — see `services/signals/engine.py`'s
-   `bars_for_timeframe`/`candle_provenance`) and lossless resampling of
-   real daily bars for 1W/1M. Verify this still holds before building
-   anything new — Phases 6, 7, and 8 each found significant pre-existing
-   backend work the original audit missed; check first.
-2. **The frontend does NOT use it yet**: `frontend/components/charts/PriceChart.tsx`
-   (used by the Stock Detail page) has no timeframe concept at all — it's
-   wired to the older `/stocks/{symbol}/ohlcv` endpoint (daily bars only,
-   no timeframe parameter). No timeframe-selector UI exists anywhere.
-   This is the actual gap: add a timeframe selector (buttons or a
-   dropdown for the 9 supported values) to the Stock Detail page, call
-   `GET /stocks/{symbol}/candles?timeframe=...` instead of/alongside the
-   existing `/ohlcv` call, and surface the endpoint's own `note` field
-   (e.g. "only N bars of real live history accumulated so far") when
-   intraday history is thin — never silently show a short chart as if it
-   were complete.
-3. Technical indicators: check `services/features/technical.py` (already
-   referenced throughout this effort — computes RSI/MACD/Bollinger/ATR/
-   VWAP/SMA/EMA server-side for scoring) for what's already computed vs.
-   what would need to be added specifically for chart overlay rendering.
-   Likely most of the math already exists; the gap is almost certainly
-   frontend rendering (indicator overlay lines/panels on `PriceChart`),
-   not backend computation.
-4. AI BUY/SELL signal markers on the chart: `LiveChart.tsx` already
-   plots `SignalPayload` levels (entry/stop/targets) for the live 1m
-   feed — check whether that same marker rendering can be reused for the
-   new timeframe-aware chart, rather than building a second marker system.
-5. No backend schema changes expected (candles endpoint is complete) —
-   this phase is very likely frontend-only. If a gap requires a backend
-   change, follow the same audit-first discipline as every phase so far.
+Start **Phase 10 — user alerts**:
+1. **Genuinely nothing pre-existing this time** — `find app -iname "*alert*"`
+   in `backend/` returns zero results, unlike every phase since 6. This
+   phase needs real design, not just auditing/wiring.
+2. Design the DB model: an `AlertRule` (user_id, ticker_symbol, condition
+   type — e.g. price crosses level, AI score crosses threshold,
+   manipulation_risk exceeds X, signal status changes to POSSIBLE_ENTRY —
+   comparison operator, threshold value, is_active, created_at) and an
+   `AlertEvent`/`AlertDelivery` log (immutable record of when a rule
+   actually fired, so a user can see history, and so a rule doesn't
+   re-fire every single evaluation cycle once triggered — needs a
+   fired/acknowledged or cooldown concept).
+3. Evaluation mechanism: **reuse Phase 7's `prediction_scheduler.py` cadence
+   rather than building a fourth periodic worker** — it already visits
+   every active asset's fresh analysis on an hourly cycle; alert rules
+   tied to AI score/manipulation/signal-status conditions can piggyback on
+   that same pass. Price-cross-level conditions may need a tighter
+   interval than an hour — decide per-condition-type rather than forcing
+   one cadence on all of them, but avoid standing up an unrelated 4th
+   scheduler if the existing ones can be extended honestly.
+4. Delivery: check what channels are actually feasible in this
+   environment (in-app notification center is the obvious baseline —
+   requires frontend UI, no new infra; email/push need a real provider
+   integration, which may not be available here — same "implement what's
+   possible, report the exact blocker" discipline as Phase 1.2's live
+   market-data verification).
+5. New API endpoints (CRUD for alert rules, list fired events) + ownership
+   scoping matching the existing `_owned()`-style pattern in
+   `portfolio.py`/`paper_trading.py`.
+6. New frontend: an alerts management page (create/edit/delete rules) and
+   a notifications center (view fired alerts), using Phase 5's
+   `ErrorState`/loading patterns.
+7. This phase will need a DB migration (new alert tables) — same
+   autogenerate-then-verify-empty-diff discipline as every prior phase's
+   migration that actually changed schema.
+8. Never fabricate a fired alert or claim a delivery succeeded that
+   didn't — an alert system users can't trust is worse than none.
 
-Then continue to Phase 10 (user alerts) per the ledger order above.
+Then continue to Phase 11 (Admin/Operator UI) per the ledger order above.

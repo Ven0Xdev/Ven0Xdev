@@ -215,6 +215,89 @@ async def get_stock_candles(
     }
 
 
+_VALID_INDICATORS = {"sma", "ema", "rsi", "macd", "bollinger", "atr", "vwap"}
+
+
+def _series_out(series) -> list[float | None]:
+    """NaN (e.g. before a rolling window has enough bars) becomes `null`,
+    never a fabricated number or a silently dropped point — the chart can
+    render a gap exactly where the indicator genuinely isn't defined yet.
+    """
+    import math
+
+    return [None if math.isnan(v) else round(float(v), 6) for v in series]
+
+
+@router.get("/{symbol}/indicators")
+def get_stock_indicators(
+    symbol: str,
+    timeframe: str = "1D",
+    indicators: str = "sma,ema,rsi,macd,bollinger,atr,vwap",
+    provider: MarketDataProvider = Depends(data_provider),
+    db: Session = Depends(db_session),
+):
+    """Per-bar technical indicator series, aligned 1:1 with
+    `/{symbol}/candles` at the same timeframe — chart overlay data. Reuses
+    the exact same indicator math `services/scoring/scorer.py` already
+    computes for scoring (`services/features/technical.py`), just returned
+    as a full series instead of collapsed to a single latest value.
+    """
+    from app.services.features import technical
+    from app.services.signals.engine import bars_for_timeframe
+
+    symbol = symbol.upper()
+    if timeframe not in _VALID_TIMEFRAMES:
+        raise HTTPException(status_code=400, detail=f"Unknown timeframe {timeframe!r}. Valid: {sorted(_VALID_TIMEFRAMES)}")
+
+    requested = {name.strip() for name in indicators.split(",") if name.strip()}
+    unknown = requested - _VALID_INDICATORS
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"Unknown indicator(s) {sorted(unknown)}. Valid: {sorted(_VALID_INDICATORS)}")
+
+    try:
+        provider.get_ticker_meta(symbol)
+    except ProviderDataUnavailable as exc:
+        if _is_tracked_asset(symbol, db):
+            raise
+        raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
+
+    df = bars_for_timeframe(symbol, provider, timeframe)
+    series: dict[str, list[float | None]] = {}
+
+    if len(df) >= 2:
+        if "sma" in requested:
+            series["sma_20"] = _series_out(technical.sma(df["close"], 20))
+            series["sma_50"] = _series_out(technical.sma(df["close"], 50))
+        if "ema" in requested:
+            series["ema_9"] = _series_out(technical.ema(df["close"], 9))
+            series["ema_21"] = _series_out(technical.ema(df["close"], 21))
+        if "rsi" in requested:
+            series["rsi_14"] = _series_out(technical.rsi(df["close"], 14))
+        if "macd" in requested:
+            macd_df = technical.macd(df["close"])
+            series["macd_line"] = _series_out(macd_df["macd"])
+            series["macd_signal"] = _series_out(macd_df["signal"])
+            series["macd_histogram"] = _series_out(macd_df["histogram"])
+        if "bollinger" in requested:
+            bb = technical.bollinger_bands(df["close"])
+            series["bb_upper"] = _series_out(bb["upper"])
+            series["bb_middle"] = _series_out(bb["mid"])
+            series["bb_lower"] = _series_out(bb["lower"])
+        if "atr" in requested:
+            series["atr_14"] = _series_out(technical.atr(df, 14))
+        if "vwap" in requested:
+            series["vwap"] = _series_out(technical.vwap(df))
+
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "timestamps": [ts.isoformat() for ts in df.index],
+        "series": series,
+    }
+
+
 @router.get("/{symbol}/news")
 def get_stock_news(symbol: str, limit: int = 20, provider: MarketDataProvider = Depends(data_provider)):
     news = provider.get_news(symbol, limit=limit)
