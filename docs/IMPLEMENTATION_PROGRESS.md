@@ -812,6 +812,24 @@ Phase 9:
   free-form JSON column, sufficient for the new heuristic/baseline data).
   Phase 9 touched no DB models — no migration.
 
+## Verification commands run (after Phase 11)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **382 passed, 10 skipped** (up from 373+10 at the end of Phase 10; +9 new passing tests) |
+| `cd backend && python3 -m pytest app/tests/test_platform_settings.py -q` | 9/9 passed (isolated) |
+| Full-suite run surfaced two cross-file test-isolation collisions in the new test file: (1) collection-order collision with `test_auth.py`'s "first real registration becomes operator" bootstrap assumption, (2) an email reused from `test_auth.py`'s own shared-DB fixture data | fixed by renaming the file to `test_platform_settings.py` (sorts after `test_auth.py`) and scoping test emails uniquely — same shared-in-memory-DB discipline established in `test_universe_endpoint.py`/`test_prediction_scheduler.py` |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 12 migrations in order, exit 0 |
+| same, upgrading from prior head (`131cd2bbc4f4`) only | applies only `a772e90e7e90_platform_settings`, exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 16 routes generated (new `/admin`) |
+| Live dev-server + Playwright: registered a fresh account (first real registration → operator via the existing bootstrap rule), `/admin` renders Safe Mode / provider health / schema status / database health / platform alerts (empty) / model registry (empty) / the full 20-asset universe table | all sections render with real data, no fabricated values |
+| Live dev-server: clicked "Force ON" in the Admin UI, then `POST /paper-trading/positions` for a mock-universe symbol | refused with `400 "...Safe Mode is active platform-wide..."` — the toggle genuinely gates trading, not just a visual switch |
+| Live dev-server: cleared the override, retried the same trade | proceeded to its normal risk-gate evaluation (rejected on its own reward:risk merit, unrelated to Safe Mode) — proves the override only affects Safe Mode, nothing else |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
 ## Verification commands run (after Phase 10)
 
 | Command | Result |
@@ -877,7 +895,7 @@ Phase 9:
 - [x] Phase 8 — ML dataset + training + Champion/Challenger promotion gate (dataset/training/walk-forward/registry all pre-existing and verified; added the missing heuristic + logistic-regression/momentum/buy-and-hold baseline comparison and hard-enforced the "never promote unless it beats them" gate in promote_model() itself)
 - [x] Phase 9 — chart timeframes + technical indicators (backend /candles already supported all 9 timeframes; added GET /indicators, a new lightweight-charts-based TradingChart with timeframe selector + toggleable SMA/EMA/Bollinger/VWAP overlays + always-on RSI/MACD sub-panes + AI trade-plan price lines, replacing the old hand-rolled SVG PriceChart)
 - [x] Phase 10 — user alerts (genuinely new: `AlertRule`/`AlertEvent` models, condition types price/ai_score/manipulation_risk/signal_status, 1-hour cooldown against re-firing a persistently-true condition, evaluation piggybacked onto the existing `prediction_scheduler.py` cadence rather than a new worker, server-side rejection of rules on tickers outside the tracked Asset Universe — a real gap found via live testing — new `/alerts` CRUD + events API and frontend page with honest "in-app only, hourly cadence, never claims a delivery that didn't happen" copy)
-- [ ] Phase 11 — Admin/Operator UI
+- [x] Phase 11 — Admin/Operator UI (audited first and found most of the surface already existed and was already operator-gated — provider health, schema readiness, full platform health report, model registry, asset universe CRUD; consolidated all of it into one `/admin` frontend page, client-side gated on role with server-side enforcement doing the real work. The one genuinely new backend capability: a DB-backed runtime Safe Mode override, since the env-only kill switch previously needed a redeploy to flip. `evaluate_risk()` gained an optional `db` param plus a `safe_mode` precomputed-flag escape hatch for the scanner's ThreadPoolExecutor path, where the same Session must never be touched from multiple worker threads)
 - [ ] Phase 12 — frontend/E2E testing expansion
 - [ ] Phase 13 — commercial beta readiness (entitlements, disclosures)
 
@@ -888,37 +906,39 @@ Phase 9:
 
 ## Exact next action
 
-Start **Phase 11 — Admin/Operator UI**:
-1. Audit first (this project's established discipline): `find` for any
-   existing admin/operator scaffolding before assuming a blank slate —
-   check for an `is_admin`/role concept on `User`, any existing
-   `/admin`-prefixed routes, and any existing frontend route already
-   gated behind one.
-2. Scope (per the original spec): provider health (which data provider is
-   active, mock vs real, last successful fetch), migration status
-   (current Alembic head vs latest available), model registry status
-   (Champion/Challenger versions, promotion history — reuse Phase 8's
-   `ModelVersion` table rather than inventing a new one), Safe Mode
-   toggle (reuse Phase 4's `RiskPolicy`/Safe Mode concept — confirm
-   whether it is already togglable and by whom), and asset universe
-   management (the existing `/api/v1/universe` CRUD already used
-   throughout the test suite — needs a real UI surface, not just API
-   access).
-3. Authorization: this must be **server-enforced**, not merely a hidden
-   frontend route — add real role/admin-flag checks on every new
-   endpoint, matching the existing `get_current_user`-based ownership
-   pattern used everywhere else (`portfolio.py`, `paper_trading.py`,
-   `alerts.py`). Decide whether admin status is a new `User.is_admin`
-   column (likely needs a migration) or reuses something that already
-   exists — audit before assuming.
-4. New frontend: an `/admin` route (or similar), visible only to
-   admin-flagged users, reusing Phase 5's `ErrorState`/loading patterns
-   and the existing card/table visual language from `/alerts`,
-   `/performance`, `/paper-trading`.
-5. Never expose secrets/API keys/tokens in any admin view, even to
-   admins — status/health only, never raw credential values.
-6. This phase likely needs a DB migration if an admin/role concept does
-   not already exist — same autogenerate-then-verify-empty-diff
-   discipline as every prior phase's schema change.
+Start **Phase 12 — frontend/E2E testing expansion**:
+1. This was explicitly deferred twice already (Phase 5 and Phase 9's
+   ledger entries both note "no testing-library infra exists yet") — no
+   component/page-level frontend test tooling has been set up at all.
+   Audit first: confirm there is genuinely no Vitest/Jest/testing-library
+   config anywhere in `frontend/` before setting one up from scratch.
+2. Scope (per the original spec): component/page tests for the now
+   16-route app (dashboard, opportunities, watchlist, portfolio,
+   paper-trading, backtest, performance, alerts, admin, stock detail,
+   chat, auth pages); API contract tests (verifying frontend `api.ts`
+   bindings match the backend's actual response shapes — a real risk
+   given how many endpoints have been added across 11 phases); critical-
+   flow E2E tests (the Playwright-based manual verification used
+   throughout this whole project's phases — login → analyze a ticker →
+   open a paper position → close it; create an alert rule → confirm it
+   evaluates; the Admin Safe Mode toggle → confirm it blocks a trade —
+   should become permanent, repeatable, CI-runnable tests instead of
+   one-off manual scripts run from the scratchpad each time).
+3. Decide the tooling: Vitest is the natural fit for a Next.js 16 App
+   Router project (fast, ESM-native); Playwright is already proven to
+   work in this environment for E2E (used manually in every phase since
+   5) — likely just needs a proper `playwright.config.ts` and test
+   files instead of ad-hoc scratchpad scripts.
+4. Never fabricate a passing test — if a page genuinely can't be tested
+   here (e.g. anything downstream of `analyze_ticker()` without real
+   market-data API keys, the same environment limitation documented
+   since Phase 1.2), write the test against the mock provider or the
+   documented empty/error state, and report the exact blocker rather
+   than skipping silently.
+5. This phase is frontend/test-infrastructure only — no new backend
+   endpoints or DB migrations are expected, unless a genuine gap is
+   found while writing contract tests (same "verify every phase, fix
+   real gaps found along the way" discipline as Phase 10's tracked-
+   universe validation fix and Phase 11's thread-safety fix).
 
-Then continue to Phase 12 (frontend/E2E testing expansion) per the ledger order above.
+Then continue to Phase 13 (commercial beta readiness) per the ledger order above.
