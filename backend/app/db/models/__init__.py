@@ -7,6 +7,7 @@ from app.db.models.market import OHLCVBar, Ticker
 from app.db.models.model_version import ModelVersion
 from app.db.models.news import NewsItem
 from app.db.models.paper_trading import PaperPosition, PaperTradingAccount
+from app.db.models.platform_setting import PlatformSetting
 from app.db.models.portfolio import PortfolioPosition, WatchlistItem
 from app.db.models.prediction import Outcome, Prediction
 from app.db.models.scan import ScanCycle, ScanDecision
@@ -39,4 +40,5 @@ __all__ = [
     "PaperPosition",
     "AlertRule",
     "AlertEvent",
+    "PlatformSetting",
 ]

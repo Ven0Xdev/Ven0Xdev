@@ -83,7 +83,7 @@ def open_position(
     dollar_at_risk = quantity * abs(fill_price - analysis.stop_loss)
     position_risk_pct = (dollar_at_risk / account.cash_balance * 100) if account.cash_balance > 0 else 100.0
 
-    verdict = evaluate_risk(analysis.confidence_score, analysis.expected_risk_reward, position_risk_pct)
+    verdict = evaluate_risk(analysis.confidence_score, analysis.expected_risk_reward, position_risk_pct, db=db)
     if not verdict.passed:
         raise PaperTradingError(f"Paper trade refused by the risk gate: {'; '.join(verdict.reasons)}")
 

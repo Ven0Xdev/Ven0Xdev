@@ -218,7 +218,9 @@ def apply_safety_rules(
     return SafetyVerdict(passed=not reasons, reasons=reasons)
 
 
-def _status_for(a: StockAnalysis, safety: SafetyVerdict, policy: RiskPolicy) -> tuple[str, list[str]]:
+def _status_for(
+    a: StockAnalysis, safety: SafetyVerdict, policy: RiskPolicy, db: Session | None = None
+) -> tuple[str, list[str]]:
     """Returns (status, extra_reasons) — extra_reasons carries the
     deterministic Risk Engine's own rejection text on the one path where it
     actually changes the outcome (a setup strong enough by score/probability
@@ -239,7 +241,7 @@ def _status_for(a: StockAnalysis, safety: SafetyVerdict, policy: RiskPolicy) -> 
         # additionally requires clearing the same deterministic Risk Engine
         # gate (confidence + reward:risk) the scanner enforces, replacing
         # this engine's own former, looser ad-hoc reward:risk check.
-        risk_verdict = evaluate_risk(a.confidence_score, a.expected_risk_reward)
+        risk_verdict = evaluate_risk(a.confidence_score, a.expected_risk_reward, db=db)
         if risk_verdict.passed:
             return "POSSIBLE_ENTRY", []
         if a.overall_ai_score >= 45 and primary_p10 >= 0.25:
@@ -323,7 +325,7 @@ def evaluate_signal(
 
     tech = technical.compute_all_technical_features(df)
     safety = apply_safety_rules(a, tech, indicators_warm, provider_healthy, policy)
-    status, risk_gate_reasons = _status_for(a, safety, policy)
+    status, risk_gate_reasons = _status_for(a, safety, policy, db=db)
     if risk_gate_reasons:
         safety = SafetyVerdict(passed=safety.passed, reasons=[*safety.reasons, *risk_gate_reasons])
     signal_type = _SIGNAL_TYPE_FOR_STATUS.get(status, "HOLD")

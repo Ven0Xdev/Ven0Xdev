@@ -17,8 +17,12 @@ does the proposed position size respect the portfolio risk budget.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from app.core.config import Settings, get_settings
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 @dataclass
@@ -32,17 +36,34 @@ def evaluate_risk(
     reward_risk_ratio: float,
     position_risk_pct: float | None = None,
     settings: Settings | None = None,
+    db: "Session | None" = None,
+    safe_mode: bool | None = None,
 ) -> RiskVerdict:
     """Checks confidence and reward:risk unconditionally. `position_risk_pct`
     (the fraction of portfolio equity a proposed trade would put at risk) is
     optional — it's only known once a position size has been determined
     (execution time), so a pre-scan/shortlist call that hasn't sized a
     position yet can omit it and this check is simply skipped.
+
+    `db`, when provided, lets Safe Mode be flipped live by an operator (see
+    services/platform_settings.py) instead of only via the env-fixed
+    `settings.safe_mode_enabled`. Omitting it (e.g. a unit test calling this
+    directly) falls back to the env-only default — unchanged behavior.
+
+    `safe_mode`, when provided, is used as-is and `db` is never queried —
+    for callers (the scanner's per-symbol ThreadPoolExecutor) that must not
+    hand the same SQLAlchemy Session to concurrent worker threads: resolve
+    the flag once up front, on the main thread, and pass it down instead.
     """
     settings = settings or get_settings()
     reasons: list[str] = []
 
-    if settings.safe_mode_enabled:
+    if safe_mode is None:
+        from app.services.platform_settings import is_safe_mode_active
+
+        safe_mode = is_safe_mode_active(db, settings=settings)
+
+    if safe_mode:
         # Absolute kill switch — short-circuits before any other check, and
         # applies regardless of how strong the setup otherwise looks.
         return RiskVerdict(

@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from app.db.models.asset import Asset
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
+from app.services.platform_settings import is_safe_mode_active
 from app.services.risk.engine import evaluate_risk
 from app.services.scoring.quality_gates import evaluate_quality_gates
 from app.services.scoring.scorer import analyze_ticker
@@ -54,7 +55,7 @@ class PrescanResult:
     all_candidates: list[PrescanCandidate]
 
 
-def _score_one(asset: Asset, provider: MarketDataProvider) -> PrescanCandidate:
+def _score_one(asset: Asset, provider: MarketDataProvider, safe_mode: bool) -> PrescanCandidate:
     try:
         analysis = analyze_ticker(asset.symbol, provider)
     except ProviderDataUnavailable as exc:
@@ -77,7 +78,7 @@ def _score_one(asset: Asset, provider: MarketDataProvider) -> PrescanCandidate:
         )
 
     gate = evaluate_quality_gates(analysis)
-    risk = evaluate_risk(analysis.confidence_score, analysis.expected_risk_reward)
+    risk = evaluate_risk(analysis.confidence_score, analysis.expected_risk_reward, safe_mode=safe_mode)
     passed = gate.accepted and risk.passed
     return PrescanCandidate(
         symbol=asset.symbol,
@@ -98,8 +99,13 @@ def run_multi_asset_prescan(
     assets: list[Asset] = get_active_universe(db)
     candidates: list[PrescanCandidate] = []
 
+    # Resolved once, on this (main) thread, before any worker thread starts
+    # — the same Session must never be queried concurrently from multiple
+    # threads (see evaluate_risk()'s `safe_mode` param docstring).
+    safe_mode = is_safe_mode_active(db)
+
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = [pool.submit(_score_one, asset, provider) for asset in assets]
+        futures = [pool.submit(_score_one, asset, provider, safe_mode) for asset in assets]
         for future in as_completed(futures):
             candidates.append(future.result())
 

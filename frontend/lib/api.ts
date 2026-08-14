@@ -10,16 +10,22 @@ import type {
   Deliberation,
   IndicatorSeriesResponse,
   MarketOverviewResponse,
+  ModelVersionOut,
   NewsArticle,
   OhlcvBar,
   PaperAccount,
   PaperPosition,
+  PlatformHealthReport,
   PortfolioPosition,
+  ProviderHealth,
+  SafeModeStatus,
+  SchemaStatus,
   SearchResponse,
   SectorHeatmapEntry,
   SignalPayload,
   StockAnalysis,
   StreamBar,
+  UniverseAsset,
   UniverseTicker,
   WatchlistItem,
 } from "./types";
@@ -311,6 +317,29 @@ export const api = {
       signals: SignalPayload[];
       events: { signal_id: number; at: string; type: string; from: string | null; to: string | null; reason: string | null }[];
     }>(`/stream/${symbol}/signal-history?limit=${limit}`),
+
+  // Admin/Operator — Phase 11. Reads are operator-only server-side; the
+  // frontend additionally hides the /admin route client-side for UX, but
+  // that hiding is not the enforcement (see AdminGate in app/admin/page.tsx).
+  safeMode: () => request<SafeModeStatus>(`/admin/safe-mode`),
+  setSafeMode: (override: boolean | null) =>
+    request<SafeModeStatus>(`/admin/safe-mode`, { method: "POST", body: JSON.stringify({ override }) }),
+  providerHealth: () => request<ProviderHealth>(`/providers/health`),
+  platformHealth: () => request<PlatformHealthReport>(`/monitoring/health`),
+  schemaStatus: async () => {
+    const res = await fetch(API_BASE.replace(/\/api\/v1$/, "") + "/health/ready", { cache: "no-store" });
+    if (!res.ok) throw new Error(`schema status check failed: ${res.status}`);
+    return res.json() as Promise<SchemaStatus>;
+  },
+  models: () => request<ModelVersionOut[]>(`/models`),
+  trainChallenger: () => request<ModelVersionOut>(`/models/train-challenger`, { method: "POST" }),
+  promoteModel: (versionId: number) => request<ModelVersionOut>(`/models/${versionId}/promote`, { method: "POST" }),
+  assetUniverse: (includeInactive = true) =>
+    request<UniverseAsset[]>(`/universe?include_inactive=${includeInactive}`),
+  addUniverseAsset: (payload: { symbol: string; asset_type: string; name: string; exchange: string }) =>
+    request<UniverseAsset>(`/universe`, { method: "POST", body: JSON.stringify(payload) }),
+  setUniverseAssetActive: (symbol: string, isActive: boolean) =>
+    request<UniverseAsset>(`/universe/${symbol}`, { method: "PATCH", body: JSON.stringify({ is_active: isActive }) }),
 
   sendChatMessage: (session_key: string, message: string, ticker?: string) =>
     request<{ reply: string; ticker: string | null; session_key: string }>(`/chat/message`, {

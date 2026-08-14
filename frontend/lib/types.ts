@@ -269,6 +269,74 @@ export interface AlertEvent {
   acknowledged: boolean;
 }
 
+export interface SafeModeStatus {
+  override: boolean | null;
+  env_default: boolean;
+  effective: boolean;
+  updated_at: string | null;
+  updated_by_user_id: number | null;
+}
+
+export interface ProviderHealth {
+  provider: string;
+  data_mode: string;
+  ok: boolean;
+  latency_ms: number;
+  sample_symbols: string[];
+  error: string | null;
+  checked_at: string;
+}
+
+export interface SchemaStatus {
+  ready: boolean;
+  schema_managed_by: string;
+  expected_revision?: string;
+  applied_revision?: string | null;
+  detail: string;
+}
+
+export interface PlatformHealthAlert {
+  severity: string;
+  code: string;
+  message: string;
+}
+
+export interface PlatformHealthReport {
+  generated_at: string;
+  drift: Record<string, unknown>;
+  prediction_accuracy: Record<string, unknown>;
+  provider: Record<string, unknown>;
+  scanner: Record<string, unknown>;
+  api_latency: Record<string, unknown>;
+  database: { status: string; ping_ms?: number; error?: string };
+  alerts: PlatformHealthAlert[];
+}
+
+export interface ModelVersionOut {
+  id: number;
+  name: string;
+  version: string;
+  model_type: string;
+  trained_at: string;
+  is_active: boolean;
+  metrics: Record<string, unknown> | null;
+  hyperparameters: Record<string, unknown> | null;
+}
+
+export interface UniverseAsset {
+  symbol: string;
+  asset_type: string;
+  name: string;
+  exchange: string;
+  currency: string;
+  provider: string;
+  is_active: boolean;
+  tradable: boolean;
+  trading_hours: string;
+  data_delay: string;
+  supported_timeframes: string[];
+}
+
 export interface SearchMatch {
   symbol: string;
   company_name: string;

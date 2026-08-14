@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -25,6 +25,12 @@ export const NAV_ITEMS = [
   { href: "/performance", label: "Performance", icon: "M4 19V5 M4 19h16 M8 15l3-4 3 2 4-6" },
   { href: "/alerts", label: "Alerts", icon: "M12 3a5 5 0 0 0-5 5v3.5c0 .8-.3 1.6-.9 2.2L4.5 15.5h15L17.9 13.7c-.6-.6-.9-1.4-.9-2.2V8a5 5 0 0 0-5-5Z M9.5 18.5a2.5 2.5 0 0 0 5 0" },
   { href: "/chat", label: "AI Assistant", icon: "M12 3a8 8 0 0 0-6.93 12.02L4 21l6.1-1.05A8 8 0 1 0 12 3Z M8.5 12h.01 M12 12h.01 M15.5 12h.01" },
+  {
+    href: "/admin",
+    label: "Admin",
+    icon: "M12 2 4 5.5v6c0 5 3.4 8.9 8 10 4.6-1.1 8-5 8-10v-6L12 2Z M9.5 12l1.8 1.8L15 10",
+    operatorOnly: true,
+  },
 ];
 
 export function NexoraMark({ size = 8 }: { size?: number }) {
@@ -51,6 +57,16 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const [query, setQuery] = useState("");
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  const [isOperator, setIsOperator] = useState(false);
+
+  useEffect(() => {
+    api
+      .me()
+      .then((u) => setIsOperator(u.role === "operator"))
+      .catch(() => setIsOperator(false));
+  }, []);
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.operatorOnly || isOperator);
 
   const runSearch = async () => {
     const q = query.trim();
@@ -115,7 +131,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       </form>
 
       <nav className="flex flex-col gap-0.5" aria-label="Primary">
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = pathname === item.href;
           return (
             <Link
