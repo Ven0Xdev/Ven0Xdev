@@ -812,6 +812,19 @@ Phase 9:
   free-form JSON column, sufficient for the new heuristic/baseline data).
   Phase 9 touched no DB models — no migration.
 
+## Verification commands run (after Phase 12)
+
+| Command | Result |
+|---|---|
+| `cd frontend && npm test` (Vitest) | **7 test files, 37 tests, all passed** (up from 2 files/14 tests that pre-existed but were never wired into CI) |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 16 routes generated (test files correctly excluded from the production bundle — not a Next.js route-naming convention) |
+| `cd frontend && npx playwright test` (live backend + dev-mode frontend, `workers: 1`) | **4/4 E2E specs passed** — alerts create/reject/toggle, and the Admin Safe Mode toggle genuinely blocking then un-blocking a paper trade |
+| First E2E run (2 workers, `fullyParallel: true`) surfaced a real flake: concurrent spec files straining the dev server's first-compile step timed out an unrelated navigation, redirecting it to `/login` | fixed by forcing `workers: 1` — these specs share one live backend and one dev-mode frontend, not per-test-isolated environments, so parallelism was never sound here |
+| Same run also caught a Playwright text-matcher bug in my own spec: `getByText("ACTIVE")` (default case-insensitive substring match) matched the "**Inactive**" badge too | fixed with `{ exact: true }` |
+| `cd backend && python3 -m pytest app/tests -q` (unaffected by this phase, re-run per discipline) | **382 passed, 10 skipped** — unchanged from Phase 11, confirming no backend regression |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
 ## Verification commands run (after Phase 11)
 
 | Command | Result |
@@ -896,7 +909,7 @@ Phase 9:
 - [x] Phase 9 — chart timeframes + technical indicators (backend /candles already supported all 9 timeframes; added GET /indicators, a new lightweight-charts-based TradingChart with timeframe selector + toggleable SMA/EMA/Bollinger/VWAP overlays + always-on RSI/MACD sub-panes + AI trade-plan price lines, replacing the old hand-rolled SVG PriceChart)
 - [x] Phase 10 — user alerts (genuinely new: `AlertRule`/`AlertEvent` models, condition types price/ai_score/manipulation_risk/signal_status, 1-hour cooldown against re-firing a persistently-true condition, evaluation piggybacked onto the existing `prediction_scheduler.py` cadence rather than a new worker, server-side rejection of rules on tickers outside the tracked Asset Universe — a real gap found via live testing — new `/alerts` CRUD + events API and frontend page with honest "in-app only, hourly cadence, never claims a delivery that didn't happen" copy)
 - [x] Phase 11 — Admin/Operator UI (audited first and found most of the surface already existed and was already operator-gated — provider health, schema readiness, full platform health report, model registry, asset universe CRUD; consolidated all of it into one `/admin` frontend page, client-side gated on role with server-side enforcement doing the real work. The one genuinely new backend capability: a DB-backed runtime Safe Mode override, since the env-only kill switch previously needed a redeploy to flip. `evaluate_risk()` gained an optional `db` param plus a `safe_mode` precomputed-flag escape hatch for the scanner's ThreadPoolExecutor path, where the same Session must never be touched from multiple worker threads)
-- [ ] Phase 12 — frontend/E2E testing expansion
+- [x] Phase 12 — frontend/E2E testing expansion (audited first: 2 pure-logic Vitest tests already existed but were never run in CI, and no component-rendering or E2E infra existed at all — genuinely new work, not just wiring. Set up Vitest + React Testing Library + jsdom per Next.js 16's own official guide (read from `node_modules/next/dist/docs` per AGENTS.md), with a `vitest.setup.ts` for RTL's automatic DOM cleanup between tests — its absence caused a real cross-test leakage bug in my first draft of the Sidebar test, caught immediately by a false-positive result. Added component tests for `ErrorState`, the Phase-11 Admin nav operator-gating, the `/admin` page's operator gate, and the `/alerts` page's create/validate/dismiss flow; added API contract tests for `lib/api.ts` against a mocked `fetch`, catching a stale-Response-object bug in the tests themselves along the way. Wired `npm test` into the CI workflow (previously absent — the two pre-existing tests were never actually run automatically). Formalized two of the many ad-hoc Playwright scratchpad scripts used throughout this whole project into permanent `e2e/` specs (alerts CRUD/tracked-universe validation; the Admin Safe Mode toggle genuinely blocking then un-blocking a live paper trade) — not wired into CI, since that honestly needs the backend + a seeded DB running as CI services too, a separate infra decision out of this phase's scope)
 - [ ] Phase 13 — commercial beta readiness (entitlements, disclosures)
 
 ## Known blockers
@@ -906,39 +919,37 @@ Phase 9:
 
 ## Exact next action
 
-Start **Phase 12 — frontend/E2E testing expansion**:
-1. This was explicitly deferred twice already (Phase 5 and Phase 9's
-   ledger entries both note "no testing-library infra exists yet") — no
-   component/page-level frontend test tooling has been set up at all.
-   Audit first: confirm there is genuinely no Vitest/Jest/testing-library
-   config anywhere in `frontend/` before setting one up from scratch.
-2. Scope (per the original spec): component/page tests for the now
-   16-route app (dashboard, opportunities, watchlist, portfolio,
-   paper-trading, backtest, performance, alerts, admin, stock detail,
-   chat, auth pages); API contract tests (verifying frontend `api.ts`
-   bindings match the backend's actual response shapes — a real risk
-   given how many endpoints have been added across 11 phases); critical-
-   flow E2E tests (the Playwright-based manual verification used
-   throughout this whole project's phases — login → analyze a ticker →
-   open a paper position → close it; create an alert rule → confirm it
-   evaluates; the Admin Safe Mode toggle → confirm it blocks a trade —
-   should become permanent, repeatable, CI-runnable tests instead of
-   one-off manual scripts run from the scratchpad each time).
-3. Decide the tooling: Vitest is the natural fit for a Next.js 16 App
-   Router project (fast, ESM-native); Playwright is already proven to
-   work in this environment for E2E (used manually in every phase since
-   5) — likely just needs a proper `playwright.config.ts` and test
-   files instead of ad-hoc scratchpad scripts.
-4. Never fabricate a passing test — if a page genuinely can't be tested
-   here (e.g. anything downstream of `analyze_ticker()` without real
-   market-data API keys, the same environment limitation documented
-   since Phase 1.2), write the test against the mock provider or the
-   documented empty/error state, and report the exact blocker rather
-   than skipping silently.
-5. This phase is frontend/test-infrastructure only — no new backend
-   endpoints or DB migrations are expected, unless a genuine gap is
-   found while writing contract tests (same "verify every phase, fix
-   real gaps found along the way" discipline as Phase 10's tracked-
-   universe validation fix and Phase 11's thread-safety fix).
+Start **Phase 13 — commercial beta readiness** (final implementation phase
+before the closing completion report):
+1. Scope per the original spec: feature entitlements / plan concepts
+   (e.g. free vs. paid tiers — audit first whether any plan/entitlement
+   concept already exists on `User`; it does not as of Phase 12), usage
+   limits (rate limiting infrastructure already exists per-endpoint via
+   `expensive_rate_limit`/`RATE_LIMIT_ENABLED` — decide whether plan-based
+   limits reuse or extend that), a safe billing-provider abstraction with
+   **NO fake payments** (never simulate a successful charge; either
+   integrate a real provider in test/sandbox mode with clearly-labeled
+   sandbox status, or build the entitlement/plan data model without any
+   payment collection UI and report that live billing integration needs
+   real provider credentials this environment may not have — same honest-
+   blocker discipline as Phase 1.2's market-data keys), and product
+   disclosures (the "Probabilistic research only — not financial advice"
+   footer already exists in `SidebarFooter` — audit whether beta-specific
+   disclosures, e.g. paper-trading-only / no real execution, already
+   appear prominently enough, or need strengthening).
+2. Audit first, as always: search for any existing `plan`/`tier`/
+   `entitlement`/`subscription`/`billing` concept in both `backend/app`
+   and `frontend` before assuming a blank slate.
+3. Do NOT activate real-money broker trading under any circumstance —
+   Paper Trading remains the platform's only execution mode, unconditionally,
+   regardless of what plan/entitlement work this phase adds.
+4. This phase likely needs a DB migration (plan/entitlement fields on
+   `User` or a new table) — same autogenerate-then-verify-empty-diff
+   discipline as every prior phase's schema change.
+5. Given this is the last of the 13 numbered phases, once it's complete
+   and verified, prepare the 27-item FINAL COMPLETION REPORT in Hebrew
+   per the standing instruction — only once the entire spec is genuinely
+   complete and verified, never before.
 
-Then continue to Phase 13 (commercial beta readiness) per the ledger order above.
+Phase 12 (frontend/E2E testing expansion) is now complete — see its ledger
+entry above and the "Verification commands run (after Phase 12)" table.
