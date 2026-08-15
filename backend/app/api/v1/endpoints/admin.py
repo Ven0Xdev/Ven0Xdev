@@ -1,23 +1,30 @@
-"""Admin/Operator surface — Phase 11. Most of what an operator needs
-already exists as operator-gated endpoints elsewhere (GET/POST /models,
-GET/POST/PATCH/DELETE /universe, GET /monitoring/health, GET
-/providers/health, GET /health/ready for schema readiness) — the Admin UI
-is a frontend consolidation of those, not a reason to duplicate them here.
+"""Admin/Operator surface — Phase 11 (Safe Mode), extended in Phase 13
+(user/plan management). Most of what an operator needs already exists as
+operator-gated endpoints elsewhere (GET/POST /models, GET/POST/PATCH/DELETE
+/universe, GET /monitoring/health, GET /providers/health, GET /health/ready
+for schema readiness) — the Admin UI is a frontend consolidation of those,
+not a reason to duplicate them here.
 
-The one genuinely new capability is the Safe Mode runtime toggle: before
-this, Safe Mode (services/risk/engine.py's platform-wide kill switch) was
-only a fixed env var (`SAFE_MODE_ENABLED`), so flipping it required a
+Phase 11's genuinely new capability was the Safe Mode runtime toggle:
+before it, Safe Mode (services/risk/engine.py's platform-wide kill switch)
+was only a fixed env var (`SAFE_MODE_ENABLED`), so flipping it required a
 redeploy. This lets an operator flip it live — see
 services/platform_settings.py for why that needs a DB-backed override
 rather than just re-reading Settings.
+
+Phase 13 adds the only way to change a user's plan during this beta: no
+self-serve checkout exists (see services/billing/provider.py's
+NullBillingProvider — no real payment provider is configured), so an
+operator grants/changes plans directly, explicitly, and auditably here.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_session, require_operator
 from app.core.config import get_settings
+from app.core.entitlements import VALID_PLANS
 from app.db.models.user import User
-from app.schemas.admin import SafeModeOut, SafeModeUpdate
+from app.schemas.admin import AdminUserOut, SafeModeOut, SafeModeUpdate, UserPlanUpdate
 from app.services.platform_settings import (
     get_platform_setting,
     is_safe_mode_active,
@@ -51,3 +58,27 @@ def set_safe_mode(
 ):
     set_safe_mode_override(db, payload.override, operator)
     return _serialize(db)
+
+
+@router.get("/users", response_model=list[AdminUserOut])
+def list_users(db: Session = Depends(db_session), _operator: User = Depends(require_operator)):
+    return db.query(User).order_by(User.created_at.desc()).all()
+
+
+@router.patch("/users/{user_id}/plan", response_model=AdminUserOut)
+def set_user_plan(
+    user_id: int,
+    payload: UserPlanUpdate,
+    db: Session = Depends(db_session),
+    _operator: User = Depends(require_operator),
+):
+    if payload.plan not in VALID_PLANS:
+        raise HTTPException(status_code=400, detail=f"plan must be one of {VALID_PLANS}")
+    target = db.query(User).filter_by(id=user_id).one_or_none()
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    target.plan = payload.plan
+    db.add(target)
+    db.commit()
+    db.refresh(target)
+    return target

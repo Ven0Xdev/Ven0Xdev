@@ -14,3 +14,19 @@ class SafeModeOut(BaseModel):
     effective: bool
     updated_at: datetime | None
     updated_by_user_id: int | None
+
+
+class AdminUserOut(BaseModel):
+    id: int
+    email: str
+    role: str
+    plan: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserPlanUpdate(BaseModel):
+    plan: str

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_session, get_current_user
+from app.core.entitlements import EntitlementExceeded, enforce_limit
 from app.db.models.alert import CONDITION_TYPES, COMPARISONS, AlertEvent, AlertRule
 from app.db.models.user import User
 from app.schemas.alert import AlertEventOut, AlertRuleCreate, AlertRuleOut
@@ -47,6 +48,13 @@ def create_rule(
     user: User = Depends(get_current_user),
 ):
     _validate(payload, db)
+
+    current_count = db.query(AlertRule).filter_by(user_id=user.id).count()
+    try:
+        enforce_limit(user.plan, "max_alert_rules", current_count, "alert rules")
+    except EntitlementExceeded as exc:
+        raise HTTPException(status_code=402, detail=str(exc)) from exc
+
     rule = AlertRule(
         user_id=user.id,
         ticker_symbol=payload.ticker_symbol.upper(),

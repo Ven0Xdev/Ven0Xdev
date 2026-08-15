@@ -1,9 +1,11 @@
 import type {
+  AdminUser,
   AlertConditionType,
   AlertComparison,
   AlertEvent,
   AlertRule,
   BacktestResult,
+  BillingStatus,
   CalibrationReport,
   CandlesResponse,
   DashboardSummary,
@@ -15,6 +17,7 @@ import type {
   OhlcvBar,
   PaperAccount,
   PaperPosition,
+  PlanCatalog,
   PlatformHealthReport,
   PortfolioPosition,
   ProviderHealth,
@@ -48,6 +51,7 @@ export type ApiErrorCode =
   | "provider_unavailable" // backend up, market-data vendor down/redirected/blocked
   | "unauthorized" // 401/403 — login or API key problem
   | "rate_limited" // 429
+  | "entitlement_exceeded" // 402 — a plan's usage quota was reached
   | "backend_error" // 5xx without a structured provider detail
   | "request_failed"; // other non-2xx
 
@@ -79,6 +83,8 @@ export function classifyApiError(e: unknown): { code: ApiErrorCode; title: strin
         return { code: e.code, title: "Not authorized.", hint: "Your session or API key was rejected. Sign in again or check credentials." };
       case "rate_limited":
         return { code: e.code, title: "Rate limit reached.", hint: "Too many requests — wait a moment and retry." };
+      case "entitlement_exceeded":
+        return { code: e.code, title: "Plan limit reached.", hint: e.detail };
       case "backend_error":
         return { code: e.code, title: "The backend hit an internal error.", hint: "The API is reachable but returned 5xx — check backend logs." };
       default:
@@ -102,6 +108,7 @@ export function classifyResponse(status: number, body: string): { code: ApiError
   }
   const text = typeof detail === "string" ? detail : body;
   if (status === 401 || status === 403) return { code: "unauthorized", detail: text };
+  if (status === 402) return { code: "entitlement_exceeded", detail: text };
   if (status === 429) return { code: "rate_limited", detail: text };
   if (status >= 500) return { code: "backend_error", detail: text };
   return { code: "request_failed", detail: text };
@@ -340,6 +347,14 @@ export const api = {
     request<UniverseAsset>(`/universe`, { method: "POST", body: JSON.stringify(payload) }),
   setUniverseAssetActive: (symbol: string, isActive: boolean) =>
     request<UniverseAsset>(`/universe/${symbol}`, { method: "PATCH", body: JSON.stringify({ is_active: isActive }) }),
+
+  // Billing — Phase 13. No payment is ever collected here; see
+  // services/billing/provider.py's NullBillingProvider on the backend.
+  billingStatus: () => request<BillingStatus>(`/billing/status`),
+  planCatalog: () => request<PlanCatalog>(`/billing/plans`),
+  adminUsers: () => request<AdminUser[]>(`/admin/users`),
+  setUserPlan: (userId: number, plan: string) =>
+    request<AdminUser>(`/admin/users/${userId}/plan`, { method: "PATCH", body: JSON.stringify({ plan }) }),
 
   sendChatMessage: (session_key: string, message: string, ticker?: string) =>
     request<{ reply: string; ticker: string | null; session_key: string }>(`/chat/message`, {

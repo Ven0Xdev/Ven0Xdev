@@ -337,6 +337,35 @@ export interface UniverseAsset {
   supported_timeframes: string[];
 }
 
+export type PlanName = "free" | "pro";
+
+export interface UsageOut {
+  watchlist_items: number;
+  max_watchlist_items: number;
+  alert_rules: number;
+  max_alert_rules: number;
+}
+
+export interface BillingStatus {
+  plan: string;
+  usage: UsageOut;
+  billing_configured: boolean;
+  billing_message: string;
+}
+
+export interface PlanCatalog {
+  plans: Record<string, Record<string, number>>;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  role: string;
+  plan: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface SearchMatch {
   symbol: string;
   company_name: string;

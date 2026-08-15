@@ -25,6 +25,7 @@ export const NAV_ITEMS = [
   { href: "/performance", label: "Performance", icon: "M4 19V5 M4 19h16 M8 15l3-4 3 2 4-6" },
   { href: "/alerts", label: "Alerts", icon: "M12 3a5 5 0 0 0-5 5v3.5c0 .8-.3 1.6-.9 2.2L4.5 15.5h15L17.9 13.7c-.6-.6-.9-1.4-.9-2.2V8a5 5 0 0 0-5-5Z M9.5 18.5a2.5 2.5 0 0 0 5 0" },
   { href: "/chat", label: "AI Assistant", icon: "M12 3a8 8 0 0 0-6.93 12.02L4 21l6.1-1.05A8 8 0 1 0 12 3Z M8.5 12h.01 M12 12h.01 M15.5 12h.01" },
+  { href: "/billing", label: "Plan & Usage", icon: "M3 7h18v3H3V7Zm0 5h18v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm3 4h4" },
   {
     href: "/admin",
     label: "Admin",
@@ -32,6 +33,21 @@ export const NAV_ITEMS = [
     operatorOnly: true,
   },
 ];
+
+/** Beta product indicator, next to the wordmark everywhere it appears —
+ * this platform is in beta (paper-trading-only execution, no real broker
+ * integration, Safe Mode as a standing kill switch) and should never read
+ * as a finished, fully-live product. */
+export function BetaBadge() {
+  return (
+    <span
+      className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+    >
+      Beta
+    </span>
+  );
+}
 
 export function NexoraMark({ size = 8 }: { size?: number }) {
   return (
@@ -191,6 +207,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2.5">
           <NexoraMark />
           <span className="text-[15px] font-semibold tracking-tight">Nexora</span>
+          <BetaBadge />
         </div>
         <div className="flex items-center gap-1">
           <LogoutButton />

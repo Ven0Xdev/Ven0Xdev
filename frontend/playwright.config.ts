@@ -28,6 +28,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: "list",
+  // A route's *first-ever* Turbopack compile in a fresh dev server process
+  // can take longer than the 5s default `expect` timeout on this
+  // environment's disk (heavier pages like /admin are the ones that hit
+  // it) — every later hit to the same route is fast because it's cached.
+  // This isn't a real app slowness; a higher expect timeout absorbs it.
+  expect: { timeout: 10_000 },
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",

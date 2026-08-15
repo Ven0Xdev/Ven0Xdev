@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import DEV_EMAIL, db_session, get_current_user
+from app.core.entitlements import EntitlementExceeded, enforce_limit
 from app.db.models.portfolio import WatchlistItem
 from app.db.models.user import User
 from app.schemas.portfolio import WatchlistAddRequest, WatchlistItemOut
@@ -35,6 +36,13 @@ def add_to_watchlist(
     existing = _owned(db.query(WatchlistItem), user).filter(WatchlistItem.ticker_symbol == symbol).one_or_none()
     if existing:
         return existing
+
+    current_count = _owned(db.query(WatchlistItem), user).count()
+    try:
+        enforce_limit(user.plan, "max_watchlist_items", current_count, "watchlist items")
+    except EntitlementExceeded as exc:
+        raise HTTPException(status_code=402, detail=str(exc)) from exc
+
     item = WatchlistItem(ticker_symbol=symbol, note=request.note, user_id=user.id)
     db.add(item)
     db.commit()

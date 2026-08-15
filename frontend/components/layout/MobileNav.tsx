@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { NexoraMark, SidebarBody, SidebarFooter } from "./Sidebar";
+import { BetaBadge, NexoraMark, SidebarBody, SidebarFooter } from "./Sidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
@@ -64,6 +64,7 @@ export function MobileNav() {
           </button>
           <NexoraMark size={7} />
           <span className="text-[15px] font-semibold tracking-tight">Nexora</span>
+          <BetaBadge />
         </div>
         <div className="flex items-center gap-1">
           <LogoutButton />
@@ -91,6 +92,7 @@ export function MobileNav() {
               <div className="flex items-center gap-2.5">
                 <NexoraMark />
                 <span className="text-[15px] font-semibold tracking-tight">Nexora</span>
+                <BetaBadge />
               </div>
               <button
                 ref={closeButtonRef}

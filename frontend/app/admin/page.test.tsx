@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { SafeModeStatus } from "@/lib/types";
 
 const apiMock = vi.hoisted(() => ({
@@ -10,7 +11,10 @@ const apiMock = vi.hoisted(() => ({
   schemaStatus: vi.fn(),
   models: vi.fn(),
   assetUniverse: vi.fn(),
+  adminUsers: vi.fn(),
+  planCatalog: vi.fn(),
   setSafeMode: vi.fn(),
+  setUserPlan: vi.fn(),
 }));
 vi.mock("@/lib/api", () => ({ api: apiMock }));
 
@@ -30,6 +34,8 @@ function mockDashboardData() {
   apiMock.schemaStatus.mockResolvedValue({ ready: true, schema_managed_by: "create_all", detail: "ok" });
   apiMock.models.mockResolvedValue([]);
   apiMock.assetUniverse.mockResolvedValue([]);
+  apiMock.adminUsers.mockResolvedValue([]);
+  apiMock.planCatalog.mockResolvedValue({ plans: { free: { max_watchlist_items: 10, max_alert_rules: 5 }, pro: { max_watchlist_items: 200, max_alert_rules: 100 } } });
 }
 
 // Server enforcement (require_operator, see backend/app/api/deps.py) is the
@@ -75,5 +81,21 @@ describe("AdminPage — operator gate", () => {
     render(<AdminPage />);
 
     await waitFor(() => expect(screen.getByText("ACTIVE")).toBeTruthy());
+  });
+
+  it("lists users with their plan and lets an operator change it", async () => {
+    apiMock.me.mockResolvedValue({ id: 1, email: "op@example.com", role: "operator", created_at: "" });
+    mockDashboardData();
+    apiMock.adminUsers.mockResolvedValue([
+      { id: 7, email: "beta-tester@example.com", role: "user", plan: "free", is_active: true, created_at: "2026-01-01T00:00:00Z" },
+    ]);
+    apiMock.setUserPlan.mockResolvedValue({ id: 7, email: "beta-tester@example.com", role: "user", plan: "pro", is_active: true, created_at: "2026-01-01T00:00:00Z" });
+    render(<AdminPage />);
+
+    await waitFor(() => expect(screen.getByText("beta-tester@example.com")).toBeTruthy());
+    const select = screen.getByDisplayValue("free");
+    await userEvent.setup().selectOptions(select, "pro");
+
+    await waitFor(() => expect(apiMock.setUserPlan).toHaveBeenCalledWith(7, "pro"));
   });
 });

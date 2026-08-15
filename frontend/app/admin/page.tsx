@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useResyncListener } from "@/lib/pwa";
 import type {
+  AdminUser,
   ModelVersionOut,
+  PlanCatalog,
   PlatformHealthReport,
   ProviderHealth,
   SafeModeStatus,
@@ -60,6 +62,8 @@ function AdminDashboard() {
   const [schemaStatus, setSchemaStatus] = useState<SchemaStatus | null>(null);
   const [models, setModels] = useState<ModelVersionOut[] | null>(null);
   const [assets, setAssets] = useState<UniverseAsset[] | null>(null);
+  const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [planCatalog, setPlanCatalog] = useState<PlanCatalog | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loadingTooLong, setLoadingTooLong] = useState(false);
 
@@ -71,14 +75,18 @@ function AdminDashboard() {
       api.schemaStatus(),
       api.models(),
       api.assetUniverse(),
+      api.adminUsers(),
+      api.planCatalog(),
     ])
-      .then(([sm, ph, plh, ss, m, a]) => {
+      .then(([sm, ph, plh, ss, m, a, u, pc]) => {
         setSafeMode(sm);
         setProviderHealth(ph);
         setPlatformHealth(plh);
         setSchemaStatus(ss);
         setModels(m);
         setAssets(a);
+        setUsers(u);
+        setPlanCatalog(pc);
         setError(null);
       })
       .catch((e) => setError(e));
@@ -100,7 +108,16 @@ function AdminDashboard() {
   }, [load]);
 
   if (error) return <ErrorState error={error} onRetry={retry} />;
-  if (safeMode === null || providerHealth === null || platformHealth === null || schemaStatus === null || models === null || assets === null) {
+  if (
+    safeMode === null ||
+    providerHealth === null ||
+    platformHealth === null ||
+    schemaStatus === null ||
+    models === null ||
+    assets === null ||
+    users === null ||
+    planCatalog === null
+  ) {
     return loadingTooLong ? (
       <div className="card flex flex-col gap-2 p-5 text-sm">
         <p className="font-semibold">Still waiting on the admin dashboard.</p>
@@ -133,6 +150,8 @@ function AdminDashboard() {
       <ModelRegistryCard models={models} onChange={load} />
 
       <AssetUniverseCard assets={assets} onChange={load} />
+
+      <UserPlansCard users={users} planCatalog={planCatalog} onChange={load} />
     </div>
   );
 }
@@ -526,6 +545,82 @@ function AssetUniverseCard({ assets, onChange }: { assets: UniverseAsset[]; onCh
                   <button disabled={busy} onClick={() => toggle(a)} className="btn btn-ghost btn-sm">
                     {a.is_active ? "Active" : "Inactive"}
                   </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function UserPlansCard({
+  users,
+  planCatalog,
+  onChange,
+}: {
+  users: AdminUser[];
+  planCatalog: PlanCatalog;
+  onChange: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<unknown>(null);
+  const planNames = Object.keys(planCatalog.plans);
+
+  const changePlan = async (userId: number, plan: string) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await api.setUserPlan(userId, plan);
+      onChange();
+    } catch (e) {
+      setActionError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+        Users & plans
+      </h2>
+      <p className="mb-3 text-xs" style={{ color: "var(--text-muted)" }}>
+        No self-serve checkout exists during this beta — this is the only way a user&apos;s plan changes.
+      </p>
+      {actionError !== null && (
+        <p className="mb-2 text-xs" style={{ color: "var(--status-critical)" }}>
+          {actionError instanceof Error ? actionError.message : String(actionError)}
+        </p>
+      )}
+      <div className="card animate-in overflow-x-auto">
+        <table className="w-full min-w-[680px] text-sm">
+          <thead>
+            <tr className="text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)", background: "var(--surface-2)" }}>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Plan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-t" style={{ borderColor: "var(--gridline)" }}>
+                <td className="px-4 py-3 font-semibold">{u.email}</td>
+                <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>{u.role}</td>
+                <td className="px-4 py-3">
+                  <select
+                    value={u.plan}
+                    disabled={busy}
+                    onChange={(e) => changePlan(u.id, e.target.value)}
+                    className="input w-32"
+                  >
+                    {planNames.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
                 </td>
               </tr>
             ))}
