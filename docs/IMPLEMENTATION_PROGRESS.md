@@ -812,6 +812,22 @@ Phase 9:
   free-form JSON column, sufficient for the new heuristic/baseline data).
   Phase 9 touched no DB models — no migration.
 
+## Verification commands run (after Phase 13)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **396 passed, 10 skipped** (up from 382+10 at the end of Phase 12; +14 new passing tests) |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 13 migrations in order, exit 0 |
+| same, upgrading from prior head (`a772e90e7e90`) only | applies only `dd1d83f0b571_user_plan_field` (with `server_default='free'` — a NOT NULL column added to the existing non-empty `users` table), exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm test && npm run build` | all clean; Vitest **40/40** across 8 files; build generates 17 routes (new `/billing`) |
+| `cd frontend && npx playwright test` (live backend, `workers: 1`) | **5/5 E2E specs passed**, including a new `billing.spec.ts` proving the free-plan watchlist quota is genuinely enforced (402) and an operator's plan change via the Admin UI genuinely lifts it |
+| Live dev-server: filled the free-plan watchlist quota (10 items) via the real API, confirmed the 11th is refused `402` with the real "...Contact us to upgrade your plan." message, then `PATCH /admin/users/1/plan {"plan":"pro"}` and confirmed the same request that was just refused now succeeds | exact behavior verified end-to-end, screenshotted before/after on `/billing` |
+| Two real bugs found and fixed during verification: (1) a stale local `ven0x_dev.db` from an earlier manual run — missing the new `plan` column — broke a test that exercises the app's real lifespan (`TestClient(app)` directly, not the shared in-memory test fixture); (2) `test_admin_users.py`'s direct-DB user creation (not `/auth/register`) still counted toward `real_users` in `auth.py`'s bootstrap check, since that check counts any non-dev-email row regardless of how it was created — colliding with `test_auth.py`'s "first registration becomes operator" assumption | (1) fixed by deleting the stale dev DB file; (2) fixed by renaming the file to `test_user_plans.py`, which sorts after `test_auth.py` — same discipline established in Phase 11 for `test_platform_settings.py`, and the file's own prior docstring claim ("avoids it by never calling `/auth/register`") was corrected to reflect the real mechanism |
+| `git diff` scanned for secret-shaped strings | none found (only the standard `correct-horse-battery` test-fixture password already used throughout every other test file) |
+| `git diff \| grep -iE "broker\|crypto\|forex\|options_trading\|real.money\|live.trading"` | only the new Beta badge's own comment describing this as a "paper-trading-only" platform — no regression |
+
 ## Verification commands run (after Phase 12)
 
 | Command | Result |
@@ -910,7 +926,7 @@ Phase 9:
 - [x] Phase 10 — user alerts (genuinely new: `AlertRule`/`AlertEvent` models, condition types price/ai_score/manipulation_risk/signal_status, 1-hour cooldown against re-firing a persistently-true condition, evaluation piggybacked onto the existing `prediction_scheduler.py` cadence rather than a new worker, server-side rejection of rules on tickers outside the tracked Asset Universe — a real gap found via live testing — new `/alerts` CRUD + events API and frontend page with honest "in-app only, hourly cadence, never claims a delivery that didn't happen" copy)
 - [x] Phase 11 — Admin/Operator UI (audited first and found most of the surface already existed and was already operator-gated — provider health, schema readiness, full platform health report, model registry, asset universe CRUD; consolidated all of it into one `/admin` frontend page, client-side gated on role with server-side enforcement doing the real work. The one genuinely new backend capability: a DB-backed runtime Safe Mode override, since the env-only kill switch previously needed a redeploy to flip. `evaluate_risk()` gained an optional `db` param plus a `safe_mode` precomputed-flag escape hatch for the scanner's ThreadPoolExecutor path, where the same Session must never be touched from multiple worker threads)
 - [x] Phase 12 — frontend/E2E testing expansion (audited first: 2 pure-logic Vitest tests already existed but were never run in CI, and no component-rendering or E2E infra existed at all — genuinely new work, not just wiring. Set up Vitest + React Testing Library + jsdom per Next.js 16's own official guide (read from `node_modules/next/dist/docs` per AGENTS.md), with a `vitest.setup.ts` for RTL's automatic DOM cleanup between tests — its absence caused a real cross-test leakage bug in my first draft of the Sidebar test, caught immediately by a false-positive result. Added component tests for `ErrorState`, the Phase-11 Admin nav operator-gating, the `/admin` page's operator gate, and the `/alerts` page's create/validate/dismiss flow; added API contract tests for `lib/api.ts` against a mocked `fetch`, catching a stale-Response-object bug in the tests themselves along the way. Wired `npm test` into the CI workflow (previously absent — the two pre-existing tests were never actually run automatically). Formalized two of the many ad-hoc Playwright scratchpad scripts used throughout this whole project into permanent `e2e/` specs (alerts CRUD/tracked-universe validation; the Admin Safe Mode toggle genuinely blocking then un-blocking a live paper trade) — not wired into CI, since that honestly needs the backend + a seeded DB running as CI services too, a separate infra decision out of this phase's scope)
-- [ ] Phase 13 — commercial beta readiness (entitlements, disclosures)
+- [x] Phase 13 — commercial beta readiness (audited first: genuinely no plan/tier/entitlement/subscription/billing concept existed anywhere. Added `User.plan` (free | pro), server-enforced usage quotas on watchlist items and alert rules counted from real owned rows, and a `BillingProvider` abstraction whose only shipped implementation — `NullBillingProvider` — never collects or simulates a payment, only honestly reports itself unconfigured. No self-serve checkout exists during this beta; an operator grants/changes a user's plan directly and auditably via the new Admin "Users & plans" section — the same no-fake-payments discipline as every other unconfigured-capability pattern already in this codebase (mock vs. real market data, template vs. real chat backend). New `/billing` page shows real usage vs. limits with honest not-configured messaging; a Beta badge now sits next to the wordmark everywhere it appears, since this remains paper-trading-only. Found and fixed two real test-isolation bugs along the way — a stale local dev DB missing the new column, and a second instance of the "first real user becomes operator" bootstrap collision, this time from direct-DB user creation rather than `/auth/register`)
 
 ## Known blockers
 
@@ -919,37 +935,37 @@ Phase 9:
 
 ## Exact next action
 
-Start **Phase 13 — commercial beta readiness** (final implementation phase
-before the closing completion report):
-1. Scope per the original spec: feature entitlements / plan concepts
-   (e.g. free vs. paid tiers — audit first whether any plan/entitlement
-   concept already exists on `User`; it does not as of Phase 12), usage
-   limits (rate limiting infrastructure already exists per-endpoint via
-   `expensive_rate_limit`/`RATE_LIMIT_ENABLED` — decide whether plan-based
-   limits reuse or extend that), a safe billing-provider abstraction with
-   **NO fake payments** (never simulate a successful charge; either
-   integrate a real provider in test/sandbox mode with clearly-labeled
-   sandbox status, or build the entitlement/plan data model without any
-   payment collection UI and report that live billing integration needs
-   real provider credentials this environment may not have — same honest-
-   blocker discipline as Phase 1.2's market-data keys), and product
-   disclosures (the "Probabilistic research only — not financial advice"
-   footer already exists in `SidebarFooter` — audit whether beta-specific
-   disclosures, e.g. paper-trading-only / no real execution, already
-   appear prominently enough, or need strengthening).
-2. Audit first, as always: search for any existing `plan`/`tier`/
-   `entitlement`/`subscription`/`billing` concept in both `backend/app`
-   and `frontend` before assuming a blank slate.
-3. Do NOT activate real-money broker trading under any circumstance —
-   Paper Trading remains the platform's only execution mode, unconditionally,
-   regardless of what plan/entitlement work this phase adds.
-4. This phase likely needs a DB migration (plan/entitlement fields on
-   `User` or a new table) — same autogenerate-then-verify-empty-diff
-   discipline as every prior phase's schema change.
-5. Given this is the last of the 13 numbered phases, once it's complete
-   and verified, prepare the 27-item FINAL COMPLETION REPORT in Hebrew
-   per the standing instruction — only once the entire spec is genuinely
-   complete and verified, never before.
+**All 13 numbered phases are now complete and verified** — see each
+phase's checklist entry above and its own "Verification commands run"
+table. What remains is exactly one thing:
 
-Phase 12 (frontend/E2E testing expansion) is now complete — see its ledger
-entry above and the "Verification commands run (after Phase 12)" table.
+Prepare and deliver the **27-item FINAL COMPLETION REPORT in Hebrew**,
+per the standing instruction governing this whole engagement:
+1. Before writing it, do one last full-repository sanity pass: re-run the
+   complete backend suite (`cd backend && python3 -m pytest app/tests -q`)
+   and the complete frontend suite (`cd frontend && npx tsc --noEmit &&
+   npm run lint && npm test && npm run build`) one final time, back to
+   back, with nothing else touching the working tree in between — a
+   report claiming full verification must be backed by a verification run
+   that just happened, not one inferred from separate phase-by-phase runs
+   that could have drifted from each other.
+2. Confirm `git status` is clean (everything committed and pushed) and
+   `git log` shows all 13 phase commits present on
+   `claude/otc-ai-trading-platform-7i3zon`.
+3. Re-confirm the standing non-negotiables one more time before writing
+   the report: OTC is still not enabled in the primary application; no
+   crypto/options/forex/real-broker execution exists anywhere; Paper
+   Trading is still the only execution mode; no fabricated data, prices,
+   fills, or model performance exists anywhere; the ML model is still
+   inactive (HEURISTIC-only) unless a genuinely promoted challenger beat
+   the gate — it has not, per Phase 8/Phase 11's model registry being
+   empty in this environment.
+4. The report should honestly state the known, standing environment
+   blockers (documented under "Known blockers" above): no live market-
+   data API keys and no Anthropic API key are present in this sandbox, so
+   Phase 1.2's live-provider verification and the LLM chat backend's live
+   verification were never possible here — reported as blocked, not
+   faked, consistently across every phase that touched them.
+5. Do not silently skip any of the 27 items — if one genuinely doesn't
+   apply or was already covered by an earlier phase's work, say so
+   explicitly rather than omitting it.
