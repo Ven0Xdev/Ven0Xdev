@@ -43,6 +43,12 @@ services:
         condition: service_healthy
     volumes:
       - model_artifacts:/app/model_artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/ready', timeout=3).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # Optional OTC/micro-cap continuous scanner — not part of the mainstream
   # platform (see backend/app/services/otc/__init__.py). Opt-in only:

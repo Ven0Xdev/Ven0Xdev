@@ -25,6 +25,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 # does, which we never trigger here).
 BASE_ENV = {
     "PATH": os.environ.get("PATH", ""),
+    "SystemRoot": os.environ.get("SystemRoot", ""),
     "USE_SQLITE_FALLBACK": "true",
     "SQLITE_PATH": "sqlite:///:memory:",
     "CORS_ORIGINS": "http://localhost:3000",
