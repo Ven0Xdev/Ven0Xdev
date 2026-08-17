@@ -1,6 +1,8 @@
 """Dashboard market overview: every active asset in the Asset Universe
 Manager returns a usable entry (real provider or clearly labeled demo
 fallback), never random prices and never a crash for one bad symbol."""
+from app.services.data_providers.base import MarketDataProvider
+from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.data_providers.mock_provider import MockOTCProvider
 from app.services.market_overview import (
     _classify_failure,
@@ -10,13 +12,58 @@ from app.services.market_overview import (
 from app.services.universe.manager import SEED_UNIVERSE, seed_default_universe
 
 
-def test_mock_provider_falls_back_to_labeled_synthetic_for_large_caps(db_session):
-    # MockOTCProvider's universe is OTC-only synthetic tickers — none of
-    # the seeded assets are in it, so every one of these must hit the demo
-    # fallback path, clearly labeled, never silently blank.
+def test_mock_provider_serves_large_caps_directly_no_fallback_needed(db_session):
+    # Regression coverage for the Opportunities-scan bug (`Unknown symbol
+    # 'XLK'`): MockOTCProvider's canonical multi-asset profiles now cover
+    # every seed symbol directly, so the dashboard gets the *same*
+    # provider-backed price every other page (Opportunities, stock detail)
+    # sees for the same symbol — no more falling back to a second,
+    # independently-seeded synthetic generator that disagreed with it.
     seed_default_universe(db_session)
     provider = MockOTCProvider()
     results = get_market_overview(provider, db_session, ["AAPL", "NVDA"])
+    assert len(results) == 2
+    for r in results:
+        assert r["status"] == "ok"
+        assert r["data_mode"] == "synthetic"
+        assert r["data_source"] == "mock"
+        assert r["note"] is None
+        assert r["current_price"] > 0
+
+
+class _RefusesEverythingProvider(MarketDataProvider):
+    """Test-only stand-in for a real provider that is down/misconfigured —
+    exercises the demo-fallback path itself, still needed as a safety net
+    when the configured live provider can't serve a symbol."""
+
+    name = "broken-provider"
+    data_mode = "live"
+
+    def get_universe(self, limit=None):
+        return []
+
+    def get_ticker_meta(self, symbol):
+        raise ProviderDataUnavailable(f"{symbol}: provider unavailable")
+
+    def get_ohlcv(self, symbol, timeframe="1d", lookback_days=250):
+        raise ProviderDataUnavailable(f"{symbol}: provider unavailable")
+
+    def get_quote(self, symbol):
+        raise ProviderDataUnavailable(f"{symbol}: provider unavailable")
+
+    def get_fundamentals(self, symbol):
+        raise ProviderDataUnavailable(f"{symbol}: provider unavailable")
+
+    def get_news(self, symbol, limit=20):
+        raise ProviderDataUnavailable(f"{symbol}: provider unavailable")
+
+    def get_corporate_actions(self, symbol):
+        raise ProviderDataUnavailable(f"{symbol}: provider unavailable")
+
+
+def test_falls_back_to_labeled_synthetic_when_the_real_provider_cannot_serve_a_symbol(db_session):
+    seed_default_universe(db_session)
+    results = get_market_overview(_RefusesEverythingProvider(), db_session, ["AAPL", "NVDA"])
     assert len(results) == 2
     for r in results:
         assert r["status"] == "ok"

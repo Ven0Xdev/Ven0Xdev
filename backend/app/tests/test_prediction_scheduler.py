@@ -15,7 +15,7 @@ from app.db.models.alert import AlertEvent, AlertRule
 from app.db.models.prediction import Prediction
 from app.services.data_providers.mock_provider import MockOTCProvider
 from app.services.scoring.scorer import analyze_ticker
-from app.services.universe.manager import SEED_UNIVERSE, seed_default_universe
+from app.services.universe.manager import SEED_UNIVERSE, get_active_universe, seed_default_universe
 from app.workers.prediction_scheduler import run_prediction_cycle
 
 _SEED_SYMBOLS = {e["symbol"] for e in SEED_UNIVERSE}
@@ -75,11 +75,33 @@ def test_run_prediction_cycle_skips_deactivated_assets(db_session):
 
 
 def test_run_prediction_cycle_never_crashes_on_one_bad_symbol(db_session):
-    # The real (unmodified) MockOTCProvider refuses every one of the 20 seed
-    # symbols — this must degrade to "logged nothing," never raise.
+    # The real (unmodified) MockOTCProvider now recognizes every one of the
+    # 20 canonical seed symbols directly (see mock_provider.py's
+    # _MULTI_ASSET_PROFILES) — a genuinely unrecognized symbol must still
+    # degrade that one asset to "not logged," never raise or sink the cycle.
+    from app.db.models.asset import Asset
+    from app.services.data_providers.base import AssetType
+
     seed_default_universe(db_session)
+    db_session.add(Asset(
+        symbol="ZZZZNOTREAL", asset_type=AssetType.STOCK.value, name="Not A Real Company",
+        exchange="NASDAQ", currency="USD", provider="unassigned", is_active=True, tradable=True,
+        supported_timeframes=["1d"],
+    ))
+    db_session.commit()
+
+    # Determined at call time, not hardcoded to the full 20: an earlier test
+    # in this file (test_run_prediction_cycle_skips_deactivated_assets)
+    # deactivates TSLA in this same shared session-wide DB.
+    active_seed_symbols = {a.symbol for a in get_active_universe(db_session)} & _SEED_SYMBOLS
+
     logged = run_prediction_cycle(provider=MockOTCProvider(), db=db_session)
-    assert logged == 0
+
+    assert logged >= len(active_seed_symbols)
+    rows = db_session.query(Prediction).all()
+    logged_symbols = {r.ticker_symbol for r in rows}
+    assert "ZZZZNOTREAL" not in logged_symbols
+    assert active_seed_symbols <= logged_symbols
 
 
 def test_run_prediction_cycle_also_evaluates_alert_rules(db_session):

@@ -34,8 +34,10 @@ SEED_UNIVERSE: list[dict] = [
 
 # Display names are metadata, not tradable facts — used only for UI/demo
 # fallback labeling, never for pricing or analysis. Kept here (next to the
-# seed list) rather than invented per-provider.
-_SEED_NAMES = {
+# seed list) rather than invented per-provider. Public: also reused by
+# MockOTCProvider to keep its synthetic multi-asset metadata in sync with
+# this canonical universe (see mock_provider.py's _MULTI_ASSET_PROFILES).
+SEED_NAMES = {
     "AAPL": "Apple Inc.", "MSFT": "Microsoft Corporation", "NVDA": "NVIDIA Corporation",
     "AMZN": "Amazon.com, Inc.", "META": "Meta Platforms, Inc.", "GOOGL": "Alphabet Inc.",
     "TSLA": "Tesla, Inc.", "AMD": "Advanced Micro Devices, Inc.", "NFLX": "Netflix, Inc.",
@@ -62,7 +64,7 @@ def seed_default_universe(db: Session) -> int:
             Asset(
                 symbol=symbol,
                 asset_type=entry["asset_type"].value,
-                name=_SEED_NAMES[symbol],
+                name=SEED_NAMES[symbol],
                 exchange=entry["exchange"],
                 currency="USD",
                 provider="unassigned",
