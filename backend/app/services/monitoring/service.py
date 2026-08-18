@@ -12,7 +12,7 @@ miscalibrated model is a product-integrity incident, not a metric
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -31,7 +31,7 @@ EVALUATION_BACKLOG_ALERT = 200
 
 def build_health_report(db: Session) -> dict:
     report = {
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "drift": drift_report(db),
         "prediction_accuracy": _prediction_accuracy(db),
         "provider": _provider_health(),
@@ -50,7 +50,7 @@ def _prediction_accuracy(db: Session) -> dict:
     graded_ids = db.query(Outcome.prediction_id)
     backlog = (
         db.query(Prediction)
-        .filter(Prediction.created_at < datetime.utcnow() - timedelta(days=30))
+        .filter(Prediction.created_at < datetime.now(timezone.utc) - timedelta(days=30))
         .filter(~Prediction.id.in_(graded_ids))
         .count()
     )
@@ -82,7 +82,7 @@ def _scanner_health(db: Session) -> dict:
     latest = db.query(ScanCycle).order_by(ScanCycle.started_at.desc()).first()
     if latest is None:
         return {"status": "never_ran", "note": "No scan cycles recorded yet."}
-    age_min = (datetime.utcnow() - latest.started_at).total_seconds() / 60
+    age_min = (datetime.now(timezone.utc) - latest.started_at).total_seconds() / 60
     return {
         "status": "stale" if age_min > SCANNER_STALE_AFTER_MIN else "healthy",
         "last_cycle_id": latest.id,

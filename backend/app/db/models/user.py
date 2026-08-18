@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class User(Base):
@@ -32,4 +33,9 @@ class User(Base):
     plan: Mapped[str] = mapped_column(String(16), default="free")  # free | pro
     is_active: Mapped[bool] = mapped_column(default=True)
     token_version: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # IANA timezone name (e.g. "Asia/Jerusalem") or one of the synthetic
+    # preference values "device"/"exchange"/"utc". NULL means the client
+    # hasn't set a server-side preference yet and falls back to its own
+    # localStorage value (device detection wins by default).
+    timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, String
+from sqlalchemy import Boolean, CheckConstraint, Float, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 # Kept here (not on the model) so the API layer's request validation and
 # the evaluator's dispatch logic both import the exact same source of
@@ -38,11 +39,11 @@ class AlertRule(Base):
     # For signal_status conditions (e.g. "POSSIBLE_ENTRY"). NULL otherwise.
     target_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     # Cooldown bookkeeping: a rule that stays true every cycle must not
     # re-fire every cycle — see services/alerts/evaluator.py's
     # ALERT_COOLDOWN_SECONDS.
-    last_fired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_fired_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
 
 class AlertEvent(Base):
@@ -58,7 +59,7 @@ class AlertEvent(Base):
     rule_id: Mapped[int] = mapped_column(ForeignKey("alert_rules.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)
-    fired_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    fired_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
     # Human-readable, e.g. "AI score crossed above 70 (observed 72.4)" —
     # built once at fire time so the notification center never has to
     # reconstruct meaning from raw condition_type/comparison/threshold.

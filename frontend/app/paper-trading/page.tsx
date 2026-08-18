@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { StatTile } from "@/components/ui/StatTile";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 export default function PaperTradingPage() {
   const [account, setAccount] = useState<PaperAccount | null>(null);
@@ -241,7 +242,7 @@ export default function PaperTradingPage() {
                           {p.realized_pnl_dollars != null ? `${p.realized_pnl_dollars >= 0 ? "+" : ""}$${p.realized_pnl_dollars.toFixed(2)}` : "—"}
                         </td>
                         <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>
-                          {p.closed_at ? new Date(p.closed_at).toISOString().slice(0, 16).replace("T", " ") : "—"}
+                          <LocalTime iso={p.closed_at} options={{ style: "short" }} fallback="—" />
                         </td>
                       </tr>
                     ))}

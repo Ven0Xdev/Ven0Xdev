@@ -1,3 +1,8 @@
+"use client";
+
+import { useTimezone } from "@/components/providers/TimezoneProvider";
+import { formatInTimeZoneWithAbbr } from "@/lib/timezone";
+
 const MODE_STYLES: Record<string, { label: string; color: string }> = {
   synthetic: { label: "SYNTHETIC DATA", color: "var(--status-warning)" },
   delayed: { label: "DELAYED / EOD DATA", color: "var(--series-blue)" },
@@ -30,10 +35,11 @@ export function DataBadge({
   engineMode?: string;
   modelVersion?: string | null;
 }) {
+  const { effectiveTimeZone, ready } = useTimezone();
   const style = MODE_STYLES[mode] ?? MODE_STYLES.unspecified;
   const engineStyle = engineMode ? ENGINE_STYLES[engineMode] : undefined;
   const fmt = (iso?: string | null) =>
-    iso ? new Date(iso).toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
+    iso && ready ? formatInTimeZoneWithAbbr(iso, effectiveTimeZone, { style: "datetime" }) : null;
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs" title="Data provenance">
       <span

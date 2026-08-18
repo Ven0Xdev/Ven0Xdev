@@ -12,7 +12,7 @@ and never fabricated when no signal has ever been recorded for that symbol.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -78,7 +78,7 @@ def evaluate_rules_for_symbol(
 ) -> list[AlertEvent]:
     """Evaluates every active rule on `symbol` against one fresh analysis.
     Returns the events actually fired (already committed to `db`)."""
-    now = now or datetime.utcnow()
+    now = now or datetime.now(timezone.utc)
     rules = db.query(AlertRule).filter_by(ticker_symbol=symbol, is_active=True).all()
     fired: list[AlertEvent] = []
 

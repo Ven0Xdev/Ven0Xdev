@@ -1,12 +1,17 @@
 "use client";
 
+import { useTimezone } from "@/components/providers/TimezoneProvider";
+import { formatInTimeZoneWithAbbr } from "@/lib/timezone";
+
 /** Shown next to data that was served from the service worker's offline
  * cache (X-Nexora-Cache: offline-fallback) rather than a live network
  * response. Never render this alongside a "LIVE" claim for the same data. */
 export function CacheBadge({ cachedAt }: { cachedAt: string | null }) {
-  const label = cachedAt
-    ? `OFFLINE — cached data from ${new Date(cachedAt).toLocaleString()}`
-    : "OFFLINE — cached data";
+  const { effectiveTimeZone, ready } = useTimezone();
+  const label =
+    cachedAt && ready
+      ? `OFFLINE — cached data from ${formatInTimeZoneWithAbbr(cachedAt, effectiveTimeZone, { style: "datetime" })}`
+      : "OFFLINE — cached data";
   return (
     <span
       className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold tracking-wide"

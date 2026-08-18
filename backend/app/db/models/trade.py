@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class Trade(Base):
@@ -24,7 +25,7 @@ class Trade(Base):
     side: Mapped[str] = mapped_column(String(8))  # buy, sell
     quantity: Mapped[float] = mapped_column(Float)
     price: Mapped[float] = mapped_column(Float)
-    executed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    executed_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     prediction_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="filled")
     account_id: Mapped[int | None] = mapped_column(ForeignKey("paper_trading_accounts.id"), nullable=True, index=True)

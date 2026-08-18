@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -59,7 +59,7 @@ def run_scan_cycle(
     owns_session = db is None
     db = db or SessionLocal()
 
-    cycle = ScanCycle(provider_name=provider.name, started_at=datetime.utcnow())
+    cycle = ScanCycle(provider_name=provider.name, started_at=datetime.now(timezone.utc))
     db.add(cycle)
     db.flush()
 
@@ -126,7 +126,7 @@ def run_scan_cycle(
     cycle.accepted_count = len(accepted)
     cycle.rejected_count = len(results) - len(accepted)
     cycle.failed_count = len(failures)
-    cycle.finished_at = datetime.utcnow()
+    cycle.finished_at = datetime.now(timezone.utc)
     db.commit()
 
     if owns_session:

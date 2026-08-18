@@ -6,14 +6,18 @@ import {
   ColorType,
   HistogramSeries,
   LineSeries,
+  TickMarkType,
   createChart,
   type IChartApi,
   type IPriceLine,
   type ISeriesApi,
+  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { api } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
+import { useTimezone } from "@/components/providers/TimezoneProvider";
+import { formatInTimeZone, formatInTimeZoneWithAbbr } from "@/lib/timezone";
 import type { CandlesResponse, ChartTimeframe, IndicatorSeriesResponse, SignalPayload, StreamBar } from "@/lib/types";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -58,6 +62,41 @@ function toTime(iso: string): UTCTimestamp {
   return (Date.parse(iso) / 1000) as UTCTimestamp;
 }
 
+/** lightweight-charts' own tick-mark formatter, re-derived per selected
+ * timezone so the x-axis (and everything else on the chart) represents the
+ * same instant as the REST-backfilled and SSE-streamed bars — both of
+ * which are pushed as `UTCTimestamp` seconds via `toTime()` above, so a
+ * historical bar and a live tick for the same moment land on the exact
+ * same tick mark regardless of which feed produced them. */
+function makeTickMarkFormatter(timeZone: string) {
+  return (time: Time, tickMarkType: TickMarkType): string => {
+    const date = new Date((time as UTCTimestamp) * 1000);
+    switch (tickMarkType) {
+      case TickMarkType.Year:
+        return new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric" }).format(date);
+      case TickMarkType.Month:
+        return new Intl.DateTimeFormat("en-US", { timeZone, month: "short" }).format(date);
+      case TickMarkType.DayOfMonth:
+        return new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric" }).format(date);
+      case TickMarkType.TimeWithSeconds:
+        return new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(date);
+      case TickMarkType.Time:
+      default:
+        return new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+    }
+  };
+}
+
+/** Crosshair/tooltip time label — same source-of-truth conversion as the
+ * tick marks, with the zone abbreviation appended per the "abbreviation
+ * beside chart timestamps" requirement. */
+function makeTimeFormatter(timeZone: string) {
+  return (time: Time): string => {
+    const date = new Date((time as UTCTimestamp) * 1000);
+    return formatInTimeZoneWithAbbr(date.toISOString(), timeZone, { style: "datetime", seconds: true });
+  };
+}
+
 /** Drops null gaps (a rolling window not yet mature) rather than plotting
  * a fabricated 0 — lightweight-charts simply skips points not in the
  * array, leaving a genuine visual gap where the indicator isn't defined. */
@@ -86,6 +125,8 @@ export function TradingChart({
   tradePlan?: TradePlanLevel[];
   onSignal?: (signal: SignalPayload | null) => void;
 }) {
+  const { effectiveTimeZone, abbreviation, ready: tzReady } = useTimezone();
+
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -163,6 +204,13 @@ export function TradingChart({
       layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor },
       grid: { vertLines: { color: gridColor }, horzLines: { color: gridColor } },
       crosshair: { mode: 0 },
+      // Timezone-aware tick/tooltip formatters are applied by the effect
+      // just below, not here — it re-runs on every mount too (all effects
+      // run once after the initial render regardless of deps), so this
+      // avoids depending on `effectiveTimeZone` in an effect that must
+      // only ever run on [symbol] (re-running it on every timezone change
+      // would tear down and recreate the whole chart for a display-only
+      // change).
       timeScale: { timeVisible: true, secondsVisible: false },
       autoSize: true,
     });
@@ -203,6 +251,18 @@ export function TradingChart({
       priceLinesRef.current = [];
     };
   }, [symbol]);
+
+  // Re-derive the chart's axis/tooltip formatters whenever the resolved
+  // display timezone changes (device zone detected after mount, or the
+  // user switches modes in Settings) — updates the existing chart in
+  // place rather than tearing it down, since the underlying data/zoom
+  // state shouldn't reset just because the *display* zone changed.
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      timeScale: { tickMarkFormatter: makeTickMarkFormatter(effectiveTimeZone) },
+      localization: { timeFormatter: makeTimeFormatter(effectiveTimeZone) },
+    });
+  }, [effectiveTimeZone]);
 
   // Push candle/volume data whenever it (re)loads. A timeframe switch that
   // lands on zero bars (e.g. "1m" on a symbol just subscribed to
@@ -488,7 +548,9 @@ export function TradingChart({
               className="rounded-md px-2 py-0.5 font-semibold tracking-wide"
               style={{ color: statusColor, background: "color-mix(in srgb, currentColor 12%, transparent)" }}
               title={[
-                `Signal ${signal.status} · ${new Date(signal.created_at).toLocaleString()}`,
+                `Signal ${signal.status} · ${
+                  tzReady ? formatInTimeZoneWithAbbr(signal.created_at, effectiveTimeZone, { style: "datetime", seconds: true }) : signal.created_at
+                }`,
                 `confidence ${signal.confidence.toFixed(0)} · model ${signal.model_version} · ${signal.data_source} (${signal.data_mode})`,
                 ...(signal.rejection_reasons.length ? ["Rejections:", ...signal.rejection_reasons.map((r) => `· ${r}`)] : []),
                 ...(signal.bullish_reasons.length ? ["For:", ...signal.bullish_reasons.slice(0, 3).map((r) => `· ${r}`)] : []),
@@ -498,7 +560,11 @@ export function TradingChart({
             </span>
           )}
           <span style={{ color: "var(--text-muted)" }}>
-            {lastUpdate ? `last update ${new Date(lastUpdate).toLocaleTimeString()}` : "waiting for first tick…"}
+            {lastUpdate
+              ? `last update ${
+                  tzReady ? formatInTimeZone(lastUpdate, effectiveTimeZone, { style: "time", seconds: true }) : lastUpdate
+                } ${tzReady ? abbreviation : ""}`
+              : "waiting for first tick…"}
           </span>
         </div>
       )}

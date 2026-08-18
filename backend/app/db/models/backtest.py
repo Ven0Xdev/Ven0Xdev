@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class BacktestResult(Base):
@@ -12,9 +13,9 @@ class BacktestResult(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
     strategy_config: Mapped[dict] = mapped_column(JSON, default=dict)
-    start_date: Mapped[datetime] = mapped_column(DateTime)
-    end_date: Mapped[datetime] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    start_date: Mapped[datetime] = mapped_column(UTCDateTime)
+    end_date: Mapped[datetime] = mapped_column(UTCDateTime)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     sharpe_ratio: Mapped[float] = mapped_column(Float)
     sortino_ratio: Mapped[float] = mapped_column(Float)
@@ -35,8 +36,8 @@ class BacktestTrade(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     result_id: Mapped[int] = mapped_column(ForeignKey("backtest_results.id"), index=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16))
-    entry_ts: Mapped[datetime] = mapped_column(DateTime)
-    exit_ts: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    entry_ts: Mapped[datetime] = mapped_column(UTCDateTime)
+    exit_ts: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     entry_price: Mapped[float] = mapped_column(Float)
     exit_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     quantity: Mapped[float] = mapped_column(Float)

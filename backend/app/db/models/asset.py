@@ -5,10 +5,11 @@ modify `Ticker`, which remains the OTC-specific table). See
 """
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, JSON, String
+from sqlalchemy import Boolean, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class Asset(Base):
@@ -36,7 +37,7 @@ class Asset(Base):
     otc_disclosure_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     otc_reverse_split_count_3y: Mapped[int | None] = mapped_column(nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Asset {self.symbol} ({self.asset_type})>"

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pickle
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -136,7 +136,7 @@ def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
 
     out_dir = Path(artifact_dir or settings.model_artifact_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    version = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    version = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     model.version = version
     artifact_path = out_dir / f"ensemble_{version}.pkl"
     with open(artifact_path, "wb") as f:
@@ -151,7 +151,7 @@ def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
         n_tickers=len(provider.get_universe()),
         metrics=metrics,
         artifact_path=str(artifact_path),
-        trained_at=datetime.utcnow().isoformat(),
+        trained_at=datetime.now(timezone.utc).isoformat(),
     )
 
 

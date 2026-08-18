@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import JSON, CheckConstraint, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class Prediction(Base):
@@ -43,7 +44,7 @@ class Prediction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)
     model_version_id: Mapped[int | None] = mapped_column(ForeignKey("model_versions.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True, default=utcnow)
 
     # Provenance (matches StockAnalysis.engine_mode/.model_version from the
     # Phase 1 audit fix, and Signal.risk_policy_version from Phase 4) — the
@@ -104,7 +105,7 @@ class Outcome(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     prediction_id: Mapped[int] = mapped_column(ForeignKey("predictions.id"), unique=True)
-    evaluated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    evaluated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     horizon_days: Mapped[int] = mapped_column(Integer)
     realized_return_pct: Mapped[float] = mapped_column(Float)
     hit_take_profit_1: Mapped[bool] = mapped_column(default=False)

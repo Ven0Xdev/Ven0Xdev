@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import JSON, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class Signal(Base):
@@ -17,7 +18,7 @@ class Signal(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     status: Mapped[str] = mapped_column(String(24))  # NO_TRADE..SIGNAL_INVALIDATED
     ideal_entry: Mapped[float | None] = mapped_column(Float, nullable=True)
     entry_zone_low: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -63,7 +64,7 @@ class SignalEvent(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     signal_id: Mapped[int] = mapped_column(ForeignKey("signals.id"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     event_type: Mapped[str] = mapped_column(String(32))  # created | status_changed | invalidated | superseded
     from_status: Mapped[str | None] = mapped_column(String(24), nullable=True)
     to_status: Mapped[str | None] = mapped_column(String(24), nullable=True)

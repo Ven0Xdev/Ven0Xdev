@@ -1,5 +1,5 @@
 """Monitoring: PSI math, counters, health report shape, and alert rules."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
@@ -53,8 +53,8 @@ def test_stale_scanner_raises_critical_alert(db_session):
     counters.reset_for_tests()
     db_session.add(ScanCycle(
         provider_name="mock",
-        started_at=datetime.utcnow() - timedelta(minutes=SCANNER_STALE_AFTER_MIN + 30),
-        finished_at=datetime.utcnow() - timedelta(minutes=SCANNER_STALE_AFTER_MIN + 29),
+        started_at=datetime.now(timezone.utc) - timedelta(minutes=SCANNER_STALE_AFTER_MIN + 30),
+        finished_at=datetime.now(timezone.utc) - timedelta(minutes=SCANNER_STALE_AFTER_MIN + 29),
         universe_size=10, accepted_count=8, rejected_count=2,
     ))
     db_session.commit()

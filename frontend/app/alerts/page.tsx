@@ -8,6 +8,7 @@ import type { AlertComparison, AlertConditionType, AlertEvent, AlertRule } from 
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 const CONDITION_LABELS: Record<AlertConditionType, string> = {
   price: "Price",
@@ -250,7 +251,7 @@ export default function AlertsPage() {
                         </td>
                         <td className="px-4 py-3">{describeRule(rule)}</td>
                         <td className="px-4 py-3 tabular" style={{ color: "var(--text-muted)" }}>
-                          {rule.last_fired_at ? new Date(rule.last_fired_at).toISOString().slice(0, 16).replace("T", " ") : "never"}
+                          <LocalTime iso={rule.last_fired_at} options={{ style: "short" }} fallback="never" />
                         </td>
                         <td className="px-4 py-3">
                           <button onClick={() => toggleRule(rule)} className="btn btn-ghost btn-sm">
@@ -289,7 +290,7 @@ export default function AlertsPage() {
                     <div>
                       <p className="font-medium">{event.message}</p>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {new Date(event.fired_at).toISOString().slice(0, 16).replace("T", " ")} UTC
+                        <LocalTime iso={event.fired_at} options={{ style: "short" }} />
                       </p>
                     </div>
                     {!event.acknowledged && (

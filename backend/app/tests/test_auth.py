@@ -237,3 +237,51 @@ def test_login_rate_limit_recovers_after_reset(client, auth_rate_limit_on):
     reset_for_tests()  # simulates the bucket having refilled over time
 
     assert client.post("/api/v1/auth/login", json={"email": "recovers@example.com", "password": "wrong"}).status_code == 401
+
+
+# ---------- timezone preference (PATCH /auth/me) -----------------------------
+
+def test_me_reports_null_timezone_by_default(client, auth_on):
+    tokens = _register(client, "tz-default@example.com").json()
+    me = client.get("/api/v1/auth/me", headers=_auth_header(tokens["access_token"]))
+    assert me.json()["timezone"] is None
+
+
+def test_patch_me_persists_an_iana_timezone(client, auth_on):
+    tokens = _register(client, "tz-iana@example.com").json()
+    header = _auth_header(tokens["access_token"])
+    r = client.patch("/api/v1/auth/me", json={"timezone": "Asia/Jerusalem"}, headers=header)
+    assert r.status_code == 200
+    assert r.json()["timezone"] == "Asia/Jerusalem"
+    # Persisted, not just echoed — a fresh GET sees the same value.
+    assert client.get("/api/v1/auth/me", headers=header).json()["timezone"] == "Asia/Jerusalem"
+
+
+def test_patch_me_accepts_the_three_preset_modes(client, auth_on):
+    tokens = _register(client, "tz-presets@example.com").json()
+    header = _auth_header(tokens["access_token"])
+    for preset in ("device", "exchange", "utc"):
+        r = client.patch("/api/v1/auth/me", json={"timezone": preset}, headers=header)
+        assert r.status_code == 200
+        assert r.json()["timezone"] == preset
+
+
+def test_patch_me_rejects_unknown_timezone_name(client, auth_on):
+    tokens = _register(client, "tz-invalid@example.com").json()
+    r = client.patch(
+        "/api/v1/auth/me", json={"timezone": "Not/A_Real_Zone"}, headers=_auth_header(tokens["access_token"])
+    )
+    assert r.status_code == 422
+
+
+def test_patch_me_null_clears_the_stored_preference(client, auth_on):
+    tokens = _register(client, "tz-clear@example.com").json()
+    header = _auth_header(tokens["access_token"])
+    client.patch("/api/v1/auth/me", json={"timezone": "America/New_York"}, headers=header)
+    r = client.patch("/api/v1/auth/me", json={"timezone": None}, headers=header)
+    assert r.status_code == 200
+    assert r.json()["timezone"] is None
+
+
+def test_patch_me_requires_auth(client, auth_on):
+    assert client.patch("/api/v1/auth/me", json={"timezone": "UTC"}).status_code == 401

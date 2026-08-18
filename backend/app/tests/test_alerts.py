@@ -5,7 +5,7 @@ for real (not fabricated), then rule thresholds are set relative to its
 actual computed values, so triggering/not-triggering is a genuine
 computation, not a scripted stand-in.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.db.models.alert import AlertEvent, AlertRule
 from app.db.models.signal import Signal
@@ -107,11 +107,11 @@ def test_rule_fires_again_after_cooldown_elapses(db_session):
     db_session.add(rule)
     db_session.commit()
 
-    past = datetime.utcnow() - ALERT_COOLDOWN - timedelta(minutes=1)
+    past = datetime.now(timezone.utc) - ALERT_COOLDOWN - timedelta(minutes=1)
     fired_once = evaluate_rules_for_symbol(db_session, symbol, analysis, now=past)
     assert len(fired_once) == 1
 
-    fired_again = evaluate_rules_for_symbol(db_session, symbol, analysis, now=datetime.utcnow())
+    fired_again = evaluate_rules_for_symbol(db_session, symbol, analysis, now=datetime.now(timezone.utc))
     assert len(fired_again) == 1
 
 
@@ -264,7 +264,7 @@ def test_events_list_and_acknowledge(client, test_engine):
             db_rule = session.query(AlertRule).filter_by(id=rule_id).one()
             event = AlertEvent(
                 rule_id=db_rule.id, user_id=db_rule.user_id, ticker_symbol="ZALRT2",
-                fired_at=datetime.utcnow(), message="test fire", observed_value=1.0,
+                fired_at=datetime.now(timezone.utc), message="test fire", observed_value=1.0,
             )
             session.add(event)
             session.commit()

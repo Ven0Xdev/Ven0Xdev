@@ -228,7 +228,12 @@ export const api = {
     request<AuthTokens>(`/auth/login`, { method: "POST", body: JSON.stringify({ email, password }) }),
   register: (email: string, password: string) =>
     request<AuthTokens>(`/auth/register`, { method: "POST", body: JSON.stringify({ email, password }) }),
-  me: () => request<{ id: number; email: string; role: string; created_at: string }>(`/auth/me`),
+  me: () => request<{ id: number; email: string; role: string; created_at: string; timezone: string | null }>(`/auth/me`),
+  updateTimezone: (timezone: string | null) =>
+    request<{ id: number; email: string; role: string; created_at: string; timezone: string | null }>(`/auth/me`, {
+      method: "PATCH",
+      body: JSON.stringify({ timezone }),
+    }),
 
   universe: (limit = 100) => request<UniverseTicker[]>(`/stocks/universe?limit=${limit}`),
   search: (q: string) => request<SearchResponse>(`/stocks/search?q=${encodeURIComponent(q)}`),

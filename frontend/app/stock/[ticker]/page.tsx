@@ -18,6 +18,9 @@ import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
 import { AgentDeliberationSequence } from "@/components/dashboard/AgentDeliberationSequence";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { CacheBadge } from "@/components/pwa/CacheBadge";
+import { LocalTime } from "@/components/ui/LocalTime";
+import { useTimezone } from "@/components/providers/TimezoneProvider";
+import { formatInTimeZone } from "@/lib/timezone";
 
 export default function StockDetailPage() {
   const params = useParams<{ ticker: string }>();
@@ -30,6 +33,7 @@ export default function StockDetailPage() {
   const [watchlisted, setWatchlisted] = useState(false);
   const [analysisCachedAt, setAnalysisCachedAt] = useState<string | null>(null);
   const [liveSignal, setLiveSignal] = useState<SignalPayload | null>(null);
+  const { effectiveTimeZone, abbreviation, ready: tzReady } = useTimezone();
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -233,7 +237,7 @@ export default function StockDetailPage() {
                     {n.is_promotional && <Badge variant="serious">promotional</Badge>}
                   </div>
                   <div className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                    {n.source} · {n.published_at.slice(0, 10)}
+                    {n.source} · <LocalTime iso={n.published_at} options={{ style: "date" }} showAbbreviation={false} fallback={n.published_at.slice(0, 10)} />
                   </div>
                 </li>
               ))}
@@ -243,8 +247,11 @@ export default function StockDetailPage() {
 
         <p className="px-1 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
           Sources &amp; timestamps: market data from &quot;{a.data_source}&quot; ({a.data_mode}); analysis computed{" "}
-          {a.as_of ? new Date(a.as_of).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "at unknown time"}; last
-          price bar {a.price_as_of ? new Date(a.price_as_of).toISOString().slice(0, 10) : "unknown"}. Probabilities come
+          {a.as_of && tzReady
+            ? `${formatInTimeZone(a.as_of, effectiveTimeZone, { style: "datetime" })} ${abbreviation}`
+            : "at unknown time"}
+          ; last price bar{" "}
+          {a.price_as_of && tzReady ? formatInTimeZone(a.price_as_of, effectiveTimeZone, { style: "date" }) : "unknown"}. Probabilities come
           from {a.engine_mode === "TRAINED_ML" ? `a trained ML model (version ${a.model_version ?? "unknown"})` : "a heuristic feature formula, not a trained ML model"},
           and are estimates, never guarantees.
         </p>

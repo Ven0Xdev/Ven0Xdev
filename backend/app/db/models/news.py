@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Index, Integer, String
+from sqlalchemy import Float, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class NewsItem(Base):
@@ -15,7 +16,7 @@ class NewsItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)
-    published_at: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.utcnow)
+    published_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True, default=utcnow)
     source: Mapped[str] = mapped_column(String(64))
     headline: Mapped[str] = mapped_column(String(512))
     url: Mapped[str | None] = mapped_column(String(1024), nullable=True)

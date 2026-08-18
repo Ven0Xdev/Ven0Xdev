@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { PwaProvider } from "@/components/pwa/PwaProvider";
+import { TimezoneProvider } from "@/components/providers/TimezoneProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 const inter = Inter({
@@ -44,7 +45,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="min-h-full">
         <PwaProvider />
-        <AppShell>{children}</AppShell>
+        <TimezoneProvider>
+          <AppShell>{children}</AppShell>
+        </TimezoneProvider>
       </body>
     </html>
   );

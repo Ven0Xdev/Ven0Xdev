@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class PaperTradingAccount(Base):
@@ -19,7 +20,7 @@ class PaperTradingAccount(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
     cash_balance: Mapped[float] = mapped_column(Float)
     starting_balance: Mapped[float] = mapped_column(Float)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
 class PaperPosition(Base):
@@ -38,8 +39,8 @@ class PaperPosition(Base):
     ticker_symbol: Mapped[str] = mapped_column(String(16), index=True)
     quantity: Mapped[float] = mapped_column(Float)
     avg_entry_price: Mapped[float] = mapped_column(Float)
-    opened_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    opened_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     exit_price: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="open", index=True)  # open, closed
     realized_pnl_dollars: Mapped[float | None] = mapped_column(Float, nullable=True)

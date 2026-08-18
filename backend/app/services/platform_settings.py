@@ -7,7 +7,7 @@ value to take effect on the very next request, in every worker process.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -45,7 +45,7 @@ def is_safe_mode_active(db: Session | None, settings: Settings | None = None) ->
 def set_safe_mode_override(db: Session, override: bool | None, operator: User) -> PlatformSetting:
     row = get_platform_setting(db)
     row.safe_mode_override = override
-    row.updated_at = datetime.utcnow()
+    row.updated_at = datetime.now(timezone.utc)
     row.updated_by_user_id = operator.id
     db.add(row)
     db.commit()

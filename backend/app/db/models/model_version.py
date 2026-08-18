@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Integer, String
+from sqlalchemy import JSON, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class ModelVersion(Base):
@@ -15,7 +16,7 @@ class ModelVersion(Base):
     name: Mapped[str] = mapped_column(String(64))
     version: Mapped[str] = mapped_column(String(32))
     model_type: Mapped[str] = mapped_column(String(32))  # lightgbm, xgboost, catboost, ensemble, anomaly, forecast
-    trained_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    trained_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     artifact_path: Mapped[str] = mapped_column(String(255))
     training_metrics: Mapped[dict] = mapped_column(JSON, default=dict)
     hyperparameters: Mapped[dict] = mapped_column(JSON, default=dict)

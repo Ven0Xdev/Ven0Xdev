@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String
+from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class EdgarCompanyFacts(Base):
@@ -25,8 +26,8 @@ class EdgarCompanyFacts(Base):
     shares_outstanding_year_ago: Mapped[float | None] = mapped_column(Float, nullable=True)
     dilution_12m_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    last_filing_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_filing_date: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     last_periodic_form: Mapped[str | None] = mapped_column(String(16), nullable=True)  # 10-K / 10-Q / 20-F ...
     filing_delinquent: Mapped[bool | None] = mapped_column(nullable=True)
 
-    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    fetched_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)

@@ -172,4 +172,45 @@ def refresh(request: RefreshRequest, db: Session = Depends(db_session)):
 
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
-    return {"id": user.id, "email": user.email, "role": user.role, "created_at": user.created_at}
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "created_at": user.created_at,
+        "timezone": user.timezone,
+    }
+
+
+# Synthetic (non-IANA) preference values the frontend may send alongside a
+# real IANA zone — kept in sync with frontend/lib/timezone.ts's TimezoneMode.
+_TIMEZONE_PRESETS = {"device", "exchange", "utc"}
+
+
+class UpdateTimezoneRequest(BaseModel):
+    # Either one of _TIMEZONE_PRESETS or a real IANA zone name (e.g.
+    # "Asia/Jerusalem"), or null to clear the stored preference and fall
+    # back to the client's own localStorage value.
+    timezone: str | None = Field(default=None, max_length=64)
+
+
+@router.patch("/me")
+def update_me(request: UpdateTimezoneRequest, user: User = Depends(get_current_user), db: Session = Depends(db_session)):
+    if request.timezone is not None and request.timezone not in _TIMEZONE_PRESETS:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(request.timezone)
+        except ZoneInfoNotFoundError:
+            raise HTTPException(status_code=422, detail=f"Unknown timezone: {request.timezone!r}")
+
+    user.timezone = request.timezone
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "created_at": user.created_at,
+        "timezone": user.timezone,
+    }

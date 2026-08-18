@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import JSON, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.types import UTCDateTime, utcnow
 
 
 class ScanCycle(Base):
@@ -18,8 +19,8 @@ class ScanCycle(Base):
     __tablename__ = "scan_cycles"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    started_at: Mapped[datetime] = mapped_column(DateTime, index=True, default=datetime.utcnow)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True, default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     provider_name: Mapped[str] = mapped_column(String(32))
     universe_size: Mapped[int] = mapped_column(Integer, default=0)
     accepted_count: Mapped[int] = mapped_column(Integer, default=0)

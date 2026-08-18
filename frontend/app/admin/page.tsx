@@ -16,6 +16,7 @@ import type {
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 type Role = "operator" | "user" | "checking" | "anonymous";
 
@@ -188,7 +189,10 @@ function SafeModeCard({ status, onChange }: { status: SafeModeStatus; onChange: 
               <> · Operator override: <strong>{status.override ? "ON" : "OFF"}</strong></>
             )}
             {status.updated_at && (
-              <> · last changed {new Date(status.updated_at).toISOString().slice(0, 16).replace("T", " ")} UTC</>
+              <>
+                {" "}
+                · last changed <LocalTime iso={status.updated_at} options={{ style: "short" }} />
+              </>
             )}
           </p>
         </div>
@@ -405,7 +409,7 @@ function ModelRegistryCard({ models, onChange }: { models: ModelVersionOut[]; on
                   <td className="px-4 py-3 font-semibold">{m.version}</td>
                   <td className="px-4 py-3">{m.model_type}</td>
                   <td className="px-4 py-3 tabular" style={{ color: "var(--text-muted)" }}>
-                    {new Date(m.trained_at).toISOString().slice(0, 16).replace("T", " ")}
+                    <LocalTime iso={m.trained_at} options={{ style: "short" }} />
                   </td>
                   <td className="px-4 py-3">
                     {m.is_active ? (
