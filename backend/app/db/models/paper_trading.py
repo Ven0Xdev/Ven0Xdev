@@ -95,3 +95,24 @@ class PaperPosition(Base):
     # the provenance link back to the exact fired signal that triggered it.
     opened_by: Mapped[str] = mapped_column(String(16), default="manual")
     ncs_signal_id: Mapped[int | None] = mapped_column(ForeignKey("ncs_signals.id"), nullable=True)
+
+
+# Partial unique index — closes a real TOCTOU race an independent review
+# found in services/paper_trading/autonomous.py: two near-concurrent
+# autonomous evaluations for the same account/ticker (e.g. NCS firing on
+# two timeframes for the same symbol almost simultaneously) could each
+# read "no open position yet" before either had committed, and both open
+# one. Scoped to opened_by='autonomous' only — manual trading's existing
+# behavior (a user may already hold more than one open position on the
+# same ticker) is deliberately unchanged. This is the authoritative
+# backstop; autonomous.py's own pre-check plus an account-row lock
+# (see _evaluate_entry_for_account) make hitting this constraint rare in
+# practice rather than the primary defense.
+Index(
+    "ux_paper_positions_one_open_autonomous_per_account_ticker",
+    PaperPosition.account_id,
+    PaperPosition.ticker_symbol,
+    unique=True,
+    sqlite_where=(PaperPosition.status == "open") & (PaperPosition.opened_by == "autonomous"),
+    postgresql_where=(PaperPosition.status == "open") & (PaperPosition.opened_by == "autonomous"),
+)

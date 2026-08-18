@@ -247,6 +247,28 @@ def test_stats_compute_win_rate_and_averages_over_closed_positions(db_session):
     assert s.avg_pnl_pct == pytest.approx(0.03)
 
 
+def test_ncs_version_filter_excludes_a_track_record_built_under_a_different_algorithm(db_session):
+    """A track record built entirely under an old NCS scoring algorithm
+    must not count toward gating a newer, functionally different one —
+    an independent review's finding (services/paper_trading/autonomous.py
+    always passes the fired row's own version for exactly this reason)."""
+    old_row = _ncs_row(db_session, version="ncs-0.9.0")
+    closed = _open_position(db_session, ncs_row=old_row)
+    closed.status = "CLOSED"
+    closed.pnl_pct = 0.10
+    db_session.commit()
+
+    unfiltered = shadow_stats(db_session, ticker=SYMBOL)
+    assert unfiltered.count_closed == 1
+
+    same_version = shadow_stats(db_session, ticker=SYMBOL, ncs_version="ncs-0.9.0")
+    assert same_version.count_closed == 1
+
+    different_version = shadow_stats(db_session, ticker=SYMBOL, ncs_version=NCS_VERSION)
+    assert different_version.count_closed == 0
+    assert different_version.win_rate_pct is None
+
+
 # ---------- end-to-end: evaluate_ncs firing opens a real shadow position -
 
 

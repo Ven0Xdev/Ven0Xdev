@@ -207,19 +207,38 @@ class ShadowStats:
     count_open: int
 
 
-def shadow_stats(db: Session, ticker: str | None = None, timeframe: str | None = None) -> ShadowStats:
+def shadow_stats(
+    db: Session, ticker: str | None = None, timeframe: str | None = None, ncs_version: str | None = None,
+) -> ShadowStats:
     """Aggregate track record — the honest signal-quality readout this
     whole module exists to build. `None` stats (not 0) when there isn't
     a closed sample yet, never a fabricated zero that looks like a real
-    100%-loss track record."""
+    100%-loss track record.
+
+    `ncs_version`, when given, restricts the sample to shadow positions
+    whose *originating NCS signal* (joined via ncs_signal_id) was
+    computed under that exact NCS_VERSION. Without this, a track record
+    built entirely under an old scoring algorithm would still count
+    toward gating a NEW, functionally different algorithm the moment
+    NCS_VERSION changes — services/paper_trading/autonomous.py always
+    passes the fired row's own version here for exactly this reason.
+    """
     query = db.query(ShadowPosition)
     if ticker:
-        query = query.filter_by(ticker_symbol=ticker.upper())
+        query = query.filter(ShadowPosition.ticker_symbol == ticker.upper())
     if timeframe:
-        query = query.filter_by(timeframe=timeframe)
+        query = query.filter(ShadowPosition.timeframe == timeframe)
+    if ncs_version:
+        query = query.join(NcsSignal, ShadowPosition.ncs_signal_id == NcsSignal.id).filter(
+            NcsSignal.version == ncs_version
+        )
 
-    closed = query.filter_by(status="CLOSED").all()
-    count_open = query.filter_by(status="OPEN").count()
+    # Explicit ShadowPosition.status (not filter_by) — filter_by binds to
+    # the *most recently joined* entity, which would silently target
+    # NcsSignal (and raise, since it has no `status` column) whenever
+    # ncs_version triggered the join above.
+    closed = query.filter(ShadowPosition.status == "CLOSED").all()
+    count_open = query.filter(ShadowPosition.status == "OPEN").count()
 
     if not closed:
         return ShadowStats(0, None, None, None, None, count_open)

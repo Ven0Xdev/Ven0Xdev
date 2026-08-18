@@ -309,3 +309,207 @@ def test_evaluate_ncs_firing_can_open_a_real_autonomous_position(db_session):
         .all()
     )
     assert len(autonomous_positions) == 1
+
+
+# ---------- regressions found by an independent review ---------------------
+
+
+def test_db_rejects_a_second_open_autonomous_position_on_the_same_ticker(db_session):
+    """The authoritative backstop for the TOCTOU race below — proves the
+    partial unique index itself, independent of the application-level
+    checks that normally prevent ever reaching it."""
+    from sqlalchemy.exc import IntegrityError
+
+    account = _account(db_session)
+    ncs_row = _fired_row(db_session)
+
+    db_session.add(PaperPosition(
+        account_id=account.id, ticker_symbol=SYMBOL, quantity=1.0, avg_entry_price=10.0,
+        status="open", opened_by="autonomous", ncs_signal_id=ncs_row.id,
+        risk_policy_version=RiskPolicy.from_settings().version,
+    ))
+    db_session.commit()
+
+    db_session.add(PaperPosition(
+        account_id=account.id, ticker_symbol=SYMBOL, quantity=1.0, avg_entry_price=11.0,
+        status="open", opened_by="autonomous", ncs_signal_id=ncs_row.id,
+        risk_policy_version=RiskPolicy.from_settings().version,
+    ))
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+
+def test_gracefully_declines_when_it_loses_a_race_to_open_a_duplicate_position(db_session, monkeypatch):
+    """Simulates the TOCTOU window the account-row lock closes in
+    practice: a conflicting row already exists, but the pre-check (and,
+    to isolate this specific path, Red-Team's own independent
+    duplicate-exposure check — see the test above proving that one also
+    catches this scenario as defense-in-depth) are forced to not see
+    it — proving the DB constraint + IntegrityError handling is a real
+    backstop in its own right, not just theoretical, and that the
+    session recovers cleanly afterward."""
+    import app.services.paper_trading.autonomous as autonomous_module
+    from app.services.risk.red_team import RedTeamVerdict
+
+    account = _account(db_session)
+    _seed_shadow_track_record(db_session)  # occupies bar_ts 2026-01-01 .. 2026-01-20
+    winning_row = _fired_row(db_session, bar_ts=datetime(2026, 3, 1, tzinfo=timezone.utc))
+    db_session.add(PaperPosition(
+        account_id=account.id, ticker_symbol=SYMBOL, quantity=1.0, avg_entry_price=10.0,
+        status="open", opened_by="autonomous", ncs_signal_id=winning_row.id,
+        risk_policy_version=RiskPolicy.from_settings().version,
+    ))
+    db_session.commit()
+
+    monkeypatch.setattr(autonomous_module, "_has_any_open_position", lambda *a, **k: False)
+    monkeypatch.setattr(
+        autonomous_module.red_team, "review",
+        lambda *a, **k: RedTeamVerdict(vetoed=False, reason=None),
+    )
+
+    row = _fired_row(db_session, bar_ts=datetime(2026, 3, 2, tzinfo=timezone.utc))
+    decisions = on_ncs_fired_autonomous(db_session, row, MockOTCProvider())
+    assert len(decisions) == 1
+    assert decisions[0].approved is False
+    assert "race" in decisions[0].reason.lower()
+
+    # The session must have recovered from the aborted transaction — a
+    # normal query still works, and only the original position exists.
+    assert db_session.query(PaperPosition).filter_by(account_id=account.id, status="open").count() == 1
+
+
+def test_red_team_also_independently_catches_the_same_duplicate_exposure(db_session, monkeypatch):
+    """Defense-in-depth check: Red-Team's own duplicate-exposure gate
+    (services/risk/red_team.py), driven by a real DB read of open
+    positions, blocks a duplicate before the account-row lock or the DB
+    constraint even need to — this passing is a *good* sign, not a test
+    bug (see the test above for the isolated race-losing path)."""
+    import app.services.paper_trading.autonomous as autonomous_module
+
+    account = _account(db_session)
+    _seed_shadow_track_record(db_session)
+    winning_row = _fired_row(db_session, bar_ts=datetime(2026, 3, 1, tzinfo=timezone.utc))
+    db_session.add(PaperPosition(
+        account_id=account.id, ticker_symbol=SYMBOL, quantity=1.0, avg_entry_price=10.0,
+        status="open", opened_by="autonomous", ncs_signal_id=winning_row.id,
+        risk_policy_version=RiskPolicy.from_settings().version,
+    ))
+    db_session.commit()
+
+    monkeypatch.setattr(autonomous_module, "_has_any_open_position", lambda *a, **k: False)
+
+    row = _fired_row(db_session, bar_ts=datetime(2026, 3, 2, tzinfo=timezone.utc))
+    decisions = on_ncs_fired_autonomous(db_session, row, MockOTCProvider())
+
+    assert len(decisions) == 1
+    assert decisions[0].approved is False
+    assert "red-team veto" in decisions[0].reason.lower()
+
+
+def test_an_unexpected_error_in_the_close_path_is_recorded_not_raised(db_session, monkeypatch):
+    """The sell/close branch used to be unwrapped, unlike the buy/open
+    branch — any exception there escaped uncaught, violating this
+    module's own 'never raises' contract and skipping every other
+    account still left in the loop."""
+    import app.services.paper_trading.autonomous as autonomous_module
+
+    _account(db_session)
+    _seed_shadow_track_record(db_session)
+    buy_row = _fired_row(db_session, confirmed_verdict="STRONG_BUY")
+    opened = on_ncs_fired_autonomous(db_session, buy_row, MockOTCProvider())[0].position
+    assert opened is not None
+
+    def _boom(*a, **k):
+        raise RuntimeError("simulated failure")
+
+    monkeypatch.setattr(autonomous_module, "_close_reversed_positions", _boom)
+
+    sell_row = _fired_row(db_session, confirmed_verdict="STRONG_SELL", bar_ts=buy_row.bar_ts + timedelta(days=1))
+    decisions = on_ncs_fired_autonomous(db_session, sell_row, MockOTCProvider())  # must not raise
+    assert len(decisions) == 1
+    assert decisions[0].approved is False
+    assert "simulated failure" in decisions[0].reason
+
+
+def test_emergency_stop_takes_effect_immediately_even_mid_loop(db_session, monkeypatch):
+    """Proves the pause flag is re-read per-account, not just once before
+    the loop starts — an operator's emergency stop committed by a
+    concurrent request partway through a large fan-out must still take
+    effect for every account not yet processed."""
+    import app.services.paper_trading.autonomous as autonomous_module
+
+    _account(db_session, user_id=201)
+    _account(db_session, user_id=202)
+    _seed_shadow_track_record(db_session)
+    row = _fired_row(db_session)
+
+    original = autonomous_module._evaluate_entry_for_account
+    processed_accounts = []
+
+    def _side_effect(db, account, ncs_row, provider):
+        processed_accounts.append(account.id)
+        set_autonomous_trading_paused(db, True, _FakeOperator())
+        return original(db, account, ncs_row, provider)
+
+    monkeypatch.setattr(autonomous_module, "_evaluate_entry_for_account", _side_effect)
+    try:
+        decisions = on_ncs_fired_autonomous(db_session, row, MockOTCProvider())
+    finally:
+        set_autonomous_trading_paused(db_session, False, _FakeOperator())
+
+    assert len(processed_accounts) == 1  # only the first account reached before the pause took effect
+    assert len(decisions) == 1
+
+
+def test_a_dashboard_notification_failure_never_masks_an_already_committed_open(db_session, monkeypatch):
+    _account(db_session)
+    _seed_shadow_track_record(db_session)
+    row = _fired_row(db_session)
+
+    def _boom(*a, **k):
+        raise RuntimeError("event bus down")
+
+    monkeypatch.setattr("app.services.dashboard.events.publish_dashboard_event", _boom)
+
+    decisions = on_ncs_fired_autonomous(db_session, row, MockOTCProvider())
+    assert len(decisions) == 1
+    assert decisions[0].approved is True, decisions[0].reason
+    assert decisions[0].position is not None
+    assert engine.list_open_positions(101, db_session)[0].id == decisions[0].position.id
+
+
+def test_a_dashboard_notification_failure_never_masks_an_already_committed_close(db_session, monkeypatch):
+    _account(db_session)
+    _seed_shadow_track_record(db_session)
+    provider = MockOTCProvider()
+    buy_row = _fired_row(db_session, confirmed_verdict="STRONG_BUY")
+    on_ncs_fired_autonomous(db_session, buy_row, provider)
+
+    def _boom(*a, **k):
+        raise RuntimeError("event bus down")
+
+    monkeypatch.setattr("app.services.dashboard.events.publish_dashboard_event", _boom)
+
+    sell_row = _fired_row(db_session, confirmed_verdict="STRONG_SELL", bar_ts=buy_row.bar_ts + timedelta(days=1))
+    decisions = on_ncs_fired_autonomous(db_session, sell_row, provider)
+    assert len(decisions) == 1
+    assert decisions[0].approved is True, decisions[0].reason
+    assert decisions[0].position.status == "closed"
+    assert engine.list_open_positions(101, db_session) == []
+
+
+def test_shadow_track_record_under_a_different_ncs_version_never_counts(db_session):
+    """A track record built entirely under an old NCS scoring algorithm
+    must not clear the gate for a newer, functionally different one."""
+    _account(db_session)
+    _seed_shadow_track_record(db_session)  # stamped with the current NCS_VERSION by default
+
+    old_row = _fired_row(db_session)
+    old_row.version = "ncs-0.0.1-old"
+    db_session.add(old_row)
+    db_session.commit()
+
+    decisions = on_ncs_fired_autonomous(db_session, old_row, MockOTCProvider())
+    assert len(decisions) == 1
+    assert decisions[0].approved is False
+    assert "closed signals" in decisions[0].reason

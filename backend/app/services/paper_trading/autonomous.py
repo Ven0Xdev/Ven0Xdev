@@ -28,10 +28,16 @@ Every autonomous entry must clear ALL of, in order:
    AUTONOMOUS_RISK_BUDGET_FRACTION_OF_POLICY_MAX of RiskPolicy's own
    max_position_risk_pct ceiling, the same ceiling evaluate_risk() itself
    enforces on every call site, manual or autonomous).
-7. The live quote isn't stale (MAX_QUOTE_STALENESS_SECONDS) — a human
-   manually clicking "Buy" implicitly accepts whatever's on screen right
-   now; an autonomous system has no such implicit human check and must
-   refuse to fill against a quote that's no longer current.
+7. The quote used to *size* the order isn't stale
+   (MAX_QUOTE_STALENESS_SECONDS) — a human manually clicking "Buy"
+   implicitly accepts whatever's on screen right now; an autonomous
+   system has no such implicit human check and must refuse to size a
+   position off a quote that's no longer current. Note this protects the
+   sizing decision specifically, not the fill: the actual fill price
+   comes from engine.open_position()'s own independent, later quote
+   fetch (arguably the more honest choice — freshest price at the moment
+   of actual execution — but it means this gate does not, and cannot,
+   guarantee the fill itself was against a fresh quote too).
 
 The paper trading engine has no shorting (cash-only long positions — see
 its own module docstring). A fired SELL/STRONG_SELL NCS row therefore
@@ -46,9 +52,11 @@ the account owner placed themselves.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models.ncs_signal import NcsSignal
@@ -59,6 +67,8 @@ from app.services.paper_trading.engine import PaperTradingError
 from app.services.platform_settings import is_autonomous_trading_paused
 from app.services.risk import red_team
 from app.services.shadow.engine import shadow_stats
+
+logger = logging.getLogger(__name__)
 
 AUTONOMOUS_VERSION = "autonomous-v1"
 
@@ -96,7 +106,7 @@ class AutonomousDecision:
     position: PaperPosition | None = None
 
 
-def _eligible_accounts(db: Session, ticker_symbol: str) -> list[PaperTradingAccount]:
+def _eligible_accounts(db: Session) -> list[PaperTradingAccount]:
     return (
         db.query(PaperTradingAccount)
         .filter_by(is_active=True, autonomous_trading_enabled=True)
@@ -124,6 +134,20 @@ def _open_autonomous_position_count(db: Session, account_id: int) -> int:
 def _evaluate_entry_for_account(
     db: Session, account: PaperTradingAccount, ncs_row: NcsSignal, provider: MarketDataProvider,
 ) -> AutonomousDecision:
+    # Lock this account's row for the rest of this evaluation — closes the
+    # TOCTOU race between the open-position/position-count checks below
+    # and the actual insert further down (an independent review's
+    # finding): two concurrent autonomous evaluations for the same
+    # account (e.g. NCS firing on two timeframes for the same symbol
+    # near-simultaneously) now serialize on this lock instead of both
+    # reading "no open position yet" and both opening one. A no-op on
+    # SQLite (tests) — SQLite has no row-level locking and already
+    # serializes writes at the connection level, so nothing here changes
+    # test behavior. Plain reads of this account by other requests (e.g.
+    # a user viewing their account) are never blocked by this lock —
+    # only another writer trying to lock/update the same row is.
+    db.query(PaperTradingAccount).filter_by(id=account.id).with_for_update().one()
+
     if _has_any_open_position(db, account.id, ncs_row.ticker_symbol):
         return AutonomousDecision(account.id, False, "Account already has an open position on this ticker.")
 
@@ -132,7 +156,10 @@ def _evaluate_entry_for_account(
             account.id, False, f"Account already has {MAX_CONCURRENT_AUTONOMOUS_POSITIONS} open autonomous positions.",
         )
 
-    stats = shadow_stats(db, ticker=ncs_row.ticker_symbol, timeframe=ncs_row.timeframe)
+    # ncs_version=ncs_row.version: a track record built entirely under an
+    # older NCS scoring algorithm must not count toward gating a newer,
+    # functionally different one — see shadow_stats' own docstring.
+    stats = shadow_stats(db, ticker=ncs_row.ticker_symbol, timeframe=ncs_row.timeframe, ncs_version=ncs_row.version)
     if stats.count_closed < MIN_SHADOW_CLOSED_SAMPLE:
         return AutonomousDecision(
             account.id, False,
@@ -203,13 +230,29 @@ def _evaluate_entry_for_account(
         )
     except PaperTradingError as exc:
         return AutonomousDecision(account.id, False, f"Engine refused the order: {exc}")
+    except IntegrityError:
+        # Lost a race the account-row lock above should already have
+        # prevented (e.g. a concurrent process bypassing it) — the
+        # ux_paper_positions_one_open_autonomous_per_account_ticker
+        # constraint is the authoritative backstop either way. A failed
+        # commit leaves the session's transaction aborted; roll back so
+        # the next account in this same evaluation loop isn't broken by
+        # this one's failure.
+        db.rollback()
+        return AutonomousDecision(account.id, False, "Lost a race to open a duplicate autonomous position — refused.")
 
-    from app.services.dashboard.events import publish_dashboard_event
+    # A notification-publish failure must never retroactively turn an
+    # already-committed position into a "declined" decision — the trade
+    # happened; only the dashboard nudge about it may legitimately fail.
+    try:
+        from app.services.dashboard.events import publish_dashboard_event
 
-    publish_dashboard_event("autonomous.position_opened", {
-        "user_id": account.user_id, "ticker_symbol": position.ticker_symbol,
-        "quantity": position.quantity, "entry_price": position.avg_entry_price,
-    })
+        publish_dashboard_event("autonomous.position_opened", {
+            "user_id": account.user_id, "ticker_symbol": position.ticker_symbol,
+            "quantity": position.quantity, "entry_price": position.avg_entry_price,
+        })
+    except Exception:  # noqa: BLE001 — a dashboard-notification failure must never mask a real, committed trade
+        logger.exception("Failed to publish autonomous.position_opened dashboard event")
     return AutonomousDecision(account.id, True, "Opened.", position=position)
 
 
@@ -230,12 +273,17 @@ def _close_reversed_positions(
     except PaperTradingError as exc:
         return AutonomousDecision(account.id, False, f"Reversal close refused: {exc}")
 
-    from app.services.dashboard.events import publish_dashboard_event
+    # See the matching comment in _evaluate_entry_for_account above — a
+    # notification failure must never mask an already-committed close.
+    try:
+        from app.services.dashboard.events import publish_dashboard_event
 
-    publish_dashboard_event("autonomous.position_closed", {
-        "user_id": account.user_id, "ticker_symbol": closed.ticker_symbol,
-        "realized_pnl_dollars": closed.realized_pnl_dollars, "reason": "ncs_reversal",
-    })
+        publish_dashboard_event("autonomous.position_closed", {
+            "user_id": account.user_id, "ticker_symbol": closed.ticker_symbol,
+            "realized_pnl_dollars": closed.realized_pnl_dollars, "reason": "ncs_reversal",
+        })
+    except Exception:  # noqa: BLE001 — a dashboard-notification failure must never mask a real, committed trade
+        logger.exception("Failed to publish autonomous.position_closed dashboard event")
     return AutonomousDecision(account.id, True, "Closed on NCS reversal.", position=closed)
 
 
@@ -255,14 +303,22 @@ def on_ncs_fired_autonomous(db: Session, ncs_row: NcsSignal, provider: MarketDat
         return []
 
     decisions: list[AutonomousDecision] = []
-    for account in _eligible_accounts(db, ncs_row.ticker_symbol):
-        if bucket_is_sell:
-            decision = _close_reversed_positions(db, account, ncs_row, provider)
-            if decision is not None:
-                decisions.append(decision)
-            continue
+    for account in _eligible_accounts(db):
+        # Re-checked per account, not just once above: this loop does
+        # real I/O per account (analysis, Red-Team, a quote fetch), so an
+        # operator's emergency-stop toggle committed by a concurrent
+        # request mid-loop must still take effect for every account not
+        # yet processed, not just the next fired signal.
+        if is_autonomous_trading_paused(db):
+            break
         try:
-            decisions.append(_evaluate_entry_for_account(db, account, ncs_row, provider))
+            if bucket_is_sell:
+                decision = _close_reversed_positions(db, account, ncs_row, provider)
+                if decision is not None:
+                    decisions.append(decision)
+            else:
+                decisions.append(_evaluate_entry_for_account(db, account, ncs_row, provider))
         except Exception as exc:  # noqa: BLE001 — one account's failure never blocks another's or the caller's
+            db.rollback()  # an unexpected failure may have left this session's transaction aborted
             decisions.append(AutonomousDecision(account.id, False, f"Unexpected error: {exc}"))
     return decisions
