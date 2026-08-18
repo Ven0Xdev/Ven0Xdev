@@ -15,6 +15,38 @@ from app.services.streaming.service import get_stream_service
 router = APIRouter(prefix="/stream", tags=["stream"])
 
 
+@router.get("/dashboard")
+async def stream_dashboard(_user=Depends(get_current_user)):
+    """SSE stream of platform-wide dashboard events — new alerts firing,
+    autonomous paper trades opening/closing, and Safe Mode / the
+    autonomous-trading emergency stop being flipped. Registered before
+    the `/{symbol}` routes below so `dashboard` is never matched as a
+    ticker symbol. Reuses the same per-symbol EventBus with a reserved
+    channel key (services/dashboard/events.py) rather than a second
+    pub/sub mechanism — every event here is a "something changed, go
+    re-fetch" nudge, not authoritative data itself.
+    """
+    from app.services.dashboard.events import DASHBOARD_CHANNEL
+
+    service = get_stream_service()
+    queue = service.bus.subscribe(DASHBOARD_CHANNEL)
+
+    async def event_source():
+        try:
+            yield f"event: hello\ndata: {json.dumps({'type': 'hello', 'payload': {}})}\n\n"
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            service.bus.unsubscribe(DASHBOARD_CHANNEL, queue)
+
+    return StreamingResponse(event_source(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @router.get("/{symbol}/health")
 async def stream_health(symbol: str, _user=Depends(get_current_user)):
     return get_stream_service().health(symbol)

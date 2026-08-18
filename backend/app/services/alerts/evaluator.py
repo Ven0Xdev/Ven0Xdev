@@ -105,4 +105,11 @@ def evaluate_rules_for_symbol(
 
     if fired:
         db.commit()
+        from app.services.dashboard.events import publish_dashboard_event
+
+        for event in fired:
+            publish_dashboard_event("alert.fired", {
+                "id": event.id, "ticker_symbol": event.ticker_symbol, "message": event.message,
+                "user_id": event.user_id,
+            })
     return fired

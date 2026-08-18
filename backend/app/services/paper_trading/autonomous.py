@@ -204,6 +204,12 @@ def _evaluate_entry_for_account(
     except PaperTradingError as exc:
         return AutonomousDecision(account.id, False, f"Engine refused the order: {exc}")
 
+    from app.services.dashboard.events import publish_dashboard_event
+
+    publish_dashboard_event("autonomous.position_opened", {
+        "user_id": account.user_id, "ticker_symbol": position.ticker_symbol,
+        "quantity": position.quantity, "entry_price": position.avg_entry_price,
+    })
     return AutonomousDecision(account.id, True, "Opened.", position=position)
 
 
@@ -223,6 +229,13 @@ def _close_reversed_positions(
         closed = engine.close_position(account.user_id, position.id, db, provider)
     except PaperTradingError as exc:
         return AutonomousDecision(account.id, False, f"Reversal close refused: {exc}")
+
+    from app.services.dashboard.events import publish_dashboard_event
+
+    publish_dashboard_event("autonomous.position_closed", {
+        "user_id": account.user_id, "ticker_symbol": closed.ticker_symbol,
+        "realized_pnl_dollars": closed.realized_pnl_dollars, "reason": "ncs_reversal",
+    })
     return AutonomousDecision(account.id, True, "Closed on NCS reversal.", position=closed)
 
 

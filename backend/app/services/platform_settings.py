@@ -50,6 +50,12 @@ def set_safe_mode_override(db: Session, override: bool | None, operator: User) -
     db.add(row)
     db.commit()
     db.refresh(row)
+
+    from app.services.dashboard.events import publish_dashboard_event
+
+    publish_dashboard_event("platform.safe_mode_changed", {
+        "override": override, "effective": is_safe_mode_active(db), "updated_by_user_id": operator.id,
+    })
     return row
 
 
@@ -73,4 +79,10 @@ def set_autonomous_trading_paused(db: Session, paused: bool, operator: User) -> 
     db.add(row)
     db.commit()
     db.refresh(row)
+
+    from app.services.dashboard.events import publish_dashboard_event
+
+    publish_dashboard_event("platform.autonomous_trading_paused_changed", {
+        "paused": paused, "updated_by_user_id": operator.id,
+    })
     return row

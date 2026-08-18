@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, getFetchMeta } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 import { useResyncListener } from "@/lib/pwa";
 import type { DashboardSummary, SectorHeatmapEntry } from "@/lib/types";
 import { StatTile } from "@/components/ui/StatTile";
@@ -13,6 +14,10 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { SectorHeatmap } from "@/components/charts/SectorHeatmap";
 import { CacheBadge } from "@/components/pwa/CacheBadge";
 import { MarketOverview } from "@/components/dashboard/MarketOverview";
+import { PlatformStatusBar } from "@/components/dashboard/PlatformStatusBar";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+type LiveConnState = "connecting" | "live" | "disconnected";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -21,6 +26,8 @@ export default function DashboardPage() {
   const [error, setError] = useState<unknown>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [loadingTooLong, setLoadingTooLong] = useState(false);
+  const [liveConn, setLiveConn] = useState<LiveConnState>("connecting");
+  const [platformRefreshSignal, setPlatformRefreshSignal] = useState(0);
 
   // Kept free of any synchronous setState call so it's safe to hand
   // directly to useEffect below — every state update here happens inside
@@ -42,6 +49,31 @@ export default function DashboardPage() {
 
   useEffect(load, [load]);
   useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
+
+  // Live dashboard updates — a platform-wide SSE channel (new alerts
+  // firing, autonomous paper trades opening/closing, Safe Mode / the
+  // autonomous-trading emergency stop being flipped), distinct from the
+  // per-symbol chart stream. Every event here is a "something changed,
+  // go re-fetch" nudge (see services/dashboard/events.py), never treated
+  // as authoritative data itself — this always re-triggers the normal
+  // `load()` (or, for platform.* events, bumps a signal the compact
+  // status bar below re-fetches on) rather than trying to hand-merge a
+  // partial payload into state.
+  useEffect(() => {
+    const token = getAccessToken();
+    const url = `${API_BASE}/stream/dashboard${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    const es = new EventSource(url);
+
+    es.addEventListener("hello", () => setLiveConn("live"));
+    es.addEventListener("alert.fired", () => load());
+    es.addEventListener("autonomous.position_opened", () => load());
+    es.addEventListener("autonomous.position_closed", () => load());
+    es.addEventListener("platform.safe_mode_changed", () => setPlatformRefreshSignal((n) => n + 1));
+    es.addEventListener("platform.autonomous_trading_paused_changed", () => setPlatformRefreshSignal((n) => n + 1));
+    es.onerror = () => setLiveConn("disconnected");
+
+    return () => es.close();
+  }, [load]);
 
   // lib/api.ts's request timeout guarantees `error` eventually gets set for
   // an unreachable backend, but this is a second, independent ceiling so a
@@ -67,10 +99,31 @@ export default function DashboardPage() {
   // section below swaps between skeleton/error/content.
   return (
     <div className="flex flex-col gap-7">
-      <PageHeader
-        title="Dashboard"
-        description="Continuous AI scan across the tracked asset universe. All scores are probability-based, never certainty."
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageHeader
+          title="Dashboard"
+          description="Continuous AI scan across the tracked asset universe. All scores are probability-based, never certainty."
+        />
+        <span
+          className="inline-flex items-center gap-1.5 text-xs font-semibold"
+          style={{
+            color:
+              liveConn === "live" ? "var(--status-good)" : liveConn === "connecting" ? "var(--text-muted)" : "var(--status-warning)",
+          }}
+          title="Live updates for new alerts, autonomous trades, and platform-wide safety toggles"
+        >
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{
+              background:
+                liveConn === "live" ? "var(--status-good)" : liveConn === "connecting" ? "var(--text-muted)" : "var(--status-warning)",
+            }}
+          />
+          {liveConn === "live" ? "LIVE" : liveConn === "connecting" ? "CONNECTING…" : "RECONNECTING…"}
+        </span>
+      </div>
+
+      <PlatformStatusBar refreshSignal={platformRefreshSignal} />
 
       {cachedAt !== null && <CacheBadge cachedAt={cachedAt} />}
 
