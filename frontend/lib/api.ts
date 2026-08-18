@@ -19,6 +19,8 @@ import type {
   NewsArticle,
   NewsHealth,
   NewsPipelineArticle,
+  ShadowPosition,
+  ShadowStats,
   OhlcvBar,
   PaperAccount,
   PaperPosition,
@@ -363,6 +365,14 @@ export const api = {
   breakingNews: (limit = 20, windowHours = 24, minImpact = 0.4) =>
     request<{ count: number; articles: NewsPipelineArticle[] }>(
       `/news?limit=${limit}&window_hours=${windowHours}&min_impact=${minImpact}`,
+    ),
+
+  // Shadow observation (services/shadow) — passive, hypothetical NCS
+  // signal track record. Never the paper trading engine.
+  shadowStats: (ticker: string) => request<ShadowStats>(`/shadow/stats?ticker=${ticker}`),
+  shadowPositions: (ticker: string, status?: "OPEN" | "CLOSED", limit = 20) =>
+    request<{ count: number; positions: ShadowPosition[] }>(
+      `/shadow/positions?ticker=${ticker}&limit=${limit}${status ? `&status=${status}` : ""}`,
     ),
 
   // Admin/Operator — Phase 11. Reads are operator-only server-side; the

@@ -253,6 +253,7 @@ class NcsComputation:
     ticker_symbol: str
     timeframe: str
     bar_ts: datetime
+    close_price: float
     raw_verdict: str
     composite_score: float
     confidence_pct: float
@@ -355,6 +356,7 @@ def compute_ncs(
         ticker_symbol=symbol,
         timeframe=timeframe_label,
         bar_ts=bar_ts,
+        close_price=float(df["close"].iloc[-1]),
         raw_verdict=verdict,
         composite_score=composite_score,
         confidence_pct=confidence_pct,
@@ -452,6 +454,16 @@ def evaluate_ncs(
     db.add(row)
     db.commit()
     db.refresh(row)
+
+    # Shadow observation: a purely passive, hypothetical track record of
+    # what this signal would have returned — never the paper trading
+    # engine, never an execution of any kind (see services/shadow/engine.py).
+    from app.services.shadow import engine as shadow_engine
+
+    if row.fired:
+        shadow_engine.on_ncs_fired(db, row, computation.close_price)
+    shadow_engine.on_ncs_evaluated(db, row, computation.close_price)
+
     return row
 
 

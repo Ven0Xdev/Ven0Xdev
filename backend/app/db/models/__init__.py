@@ -12,6 +12,7 @@ from app.db.models.platform_setting import PlatformSetting
 from app.db.models.portfolio import PortfolioPosition, WatchlistItem
 from app.db.models.prediction import Outcome, Prediction
 from app.db.models.scan import ScanCycle, ScanDecision
+from app.db.models.shadow_position import ShadowPosition
 from app.db.models.signal import Signal, SignalEvent
 from app.db.models.trade import Trade
 from app.db.models.user import User
@@ -43,4 +44,5 @@ __all__ = [
     "AlertRule",
     "AlertEvent",
     "PlatformSetting",
+    "ShadowPosition",
 ]

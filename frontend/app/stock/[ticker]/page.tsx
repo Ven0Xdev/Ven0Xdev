@@ -14,6 +14,7 @@ import { SignalReveal } from "@/components/ui/SignalReveal";
 import { TradingChart } from "@/components/charts/TradingChart";
 import { NcsPanel } from "@/components/dashboard/NcsPanel";
 import { NewsPanel } from "@/components/dashboard/NewsPanel";
+import { ShadowTrackRecordPanel } from "@/components/dashboard/ShadowTrackRecordPanel";
 import { ProbabilityMatrix } from "@/components/dashboard/ProbabilityMatrix";
 import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
 import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
@@ -156,6 +157,7 @@ export default function StockDetailPage() {
         </div>
 
         <NcsPanel symbol={a.ticker} />
+        <ShadowTrackRecordPanel symbol={a.ticker} />
         <NewsPanel symbol={a.ticker} />
 
         <div className="card animate-in-stagger grid grid-cols-2 gap-5 p-5 sm:grid-cols-3 sm:p-6">

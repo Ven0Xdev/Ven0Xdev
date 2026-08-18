@@ -585,3 +585,34 @@ export interface NewsHealth {
   connected: boolean;
   note?: string;
 }
+
+/** A single shadow position — passive, hypothetical tracking of what a
+ * fired NCS signal would have returned, using real closed-bar prices
+ * only. Never the paper trading engine, never "NEXORA INTERNAL PAPER". */
+export interface ShadowPosition {
+  id: number;
+  ncs_signal_id: number;
+  ticker_symbol: string;
+  timeframe: string;
+  direction: "LONG" | "SHORT";
+  entry_bar_ts: string;
+  entry_price: number;
+  status: "OPEN" | "CLOSED";
+  holding_bars_elapsed: number;
+  mfe_pct: number;
+  mae_pct: number;
+  exit_bar_ts: string | null;
+  exit_price: number | null;
+  exit_reason: "max_holding_period" | "ncs_reversal" | null;
+  pnl_pct: number | null;
+  version: string;
+}
+
+export interface ShadowStats {
+  count_closed: number;
+  count_open: number;
+  win_rate_pct: number | null;
+  avg_pnl_pct: number | null;
+  avg_mfe_pct: number | null;
+  avg_mae_pct: number | null;
+}
