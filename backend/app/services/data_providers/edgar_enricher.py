@@ -116,9 +116,25 @@ class EdgarEnrichedProvider(MarketDataProvider):
 
     def __init__(self, inner: MarketDataProvider, session_factory):
         self.inner = inner
-        self.name = f"{inner.name}+edgar"
-        self.data_mode = inner.data_mode
         self._session_factory = session_factory
+
+    # `name`/`data_mode` are properties, not attributes snapshotted at
+    # construction: composites like FallbackMarketDataProvider/
+    # MixedSourceProvider mutate their own .name/.data_mode after every
+    # call specifically so callers see honest per-call provenance (which
+    # vendor actually answered, live vs cached vs delayed) — a one-time
+    # snapshot at __init__ (when get_data_provider()'s @lru_cache first
+    # builds this wrapper, before any real call has happened) would freeze
+    # every analysis at whatever the inner provider's initial default was
+    # ("unspecified") forever, silently hiding the real provenance behind
+    # this decorator.
+    @property
+    def name(self) -> str:
+        return f"{self.inner.name}+edgar"
+
+    @property
+    def data_mode(self) -> str:
+        return getattr(self.inner, "data_mode", "unspecified")
 
     # --- enriched call -----------------------------------------------------
     def get_fundamentals(self, symbol: str) -> Fundamentals:

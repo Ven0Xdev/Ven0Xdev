@@ -143,6 +143,39 @@ def test_refresh_and_overlay(db_session):
     assert fund.filing_delinquent is False
 
 
+class _MutableIdentityProvider(_StubProvider):
+    """Mimics FallbackMarketDataProvider/MixedSourceProvider: .name/.data_mode
+    change after a call, exactly like a real fallback composite reporting
+    which vendor actually answered."""
+
+    def __init__(self):
+        self.name = "alpaca"
+        self.data_mode = "unspecified"
+
+    def get_quote(self, symbol):
+        self.name = "twelvedata_only"  # simulates a fallback having occurred
+        self.data_mode = "delayed"
+        return None
+
+
+def test_name_and_data_mode_reflect_the_inner_providers_latest_state_not_a_construction_time_snapshot():
+    # Regression: name/data_mode used to be snapshotted once in __init__ —
+    # since get_data_provider() builds this wrapper once (via @lru_cache)
+    # before any real call has happened, every analysis would silently
+    # show the inner provider's initial default ("unspecified") forever,
+    # even after real calls updated the inner provider's actual state.
+    inner = _MutableIdentityProvider()
+    enriched = EdgarEnrichedProvider(inner, lambda: None)
+
+    assert enriched.name == "alpaca+edgar"
+    assert enriched.data_mode == "unspecified"
+
+    enriched.get_quote("AAPL")
+
+    assert enriched.name == "twelvedata_only+edgar"
+    assert enriched.data_mode == "delayed"
+
+
 def test_overlay_leaves_vendor_values_when_edgar_unknown(db_session):
     refresh_edgar_facts(db_session, ["MISSING"], client=_client())
     row = db_session.query(EdgarCompanyFacts).filter_by(ticker_symbol="MISSING").one()
