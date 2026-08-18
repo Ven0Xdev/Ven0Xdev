@@ -3,6 +3,17 @@ import os
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("USE_SQLITE_FALLBACK", "true")
 os.environ.setdefault("SQLITE_PATH", "sqlite:///./test_ven0x.db")
+# The test suite must never depend on whatever's in the developer's real
+# backend/.env — that file now legitimately holds live TWELVE_DATA_API_KEY/
+# ALPHA_VANTAGE_API_KEY credentials and MARKET_DATA_PROVIDER=twelvedata for
+# local live-data testing. Without this override, any test relying on the
+# implicit get_data_provider() singleton (FastAPI's `client` fixture, the
+# chat assistant, etc.) would silently make real vendor HTTP calls during
+# `pytest` — burning quota, flaky on network, and a real safety gap (MOCK
+# must never accidentally become LIVE just because `pytest` ran on a
+# machine with keys configured). Same setdefault pattern as the three
+# variables above.
+os.environ.setdefault("MARKET_DATA_PROVIDER", "mock")
 
 import pytest
 from fastapi.testclient import TestClient
