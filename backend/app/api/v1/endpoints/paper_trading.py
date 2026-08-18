@@ -2,9 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import data_provider, db_session, get_current_user
-from app.db.models.paper_trading import PaperPosition
+from app.db.models.paper_trading import PaperPosition, PaperTradingAccount
 from app.db.models.user import User
-from app.schemas.paper_trading import PaperAccountOut, PaperOpenRequest, PaperPositionOut
+from app.schemas.paper_trading import (
+    PaperAccountOut,
+    PaperOpenRequest,
+    PaperPositionOut,
+    PaperSimulationSummary,
+    PaperStartSimulationRequest,
+)
 from app.services.data_providers.base import MarketDataProvider
 from app.services.paper_trading import engine
 from app.services.paper_trading.engine import PaperTradingError
@@ -26,9 +32,68 @@ def _with_mark_to_market(position: PaperPosition, provider: MarketDataProvider) 
     return out
 
 
-@router.get("/account", response_model=PaperAccountOut)
-def get_account(db: Session = Depends(db_session), user: User = Depends(get_current_user)):
-    return engine.get_or_create_account(user.id, db)
+def _account_out(account: PaperTradingAccount, db: Session, provider: MarketDataProvider) -> PaperAccountOut:
+    out = PaperAccountOut.model_validate(account)
+    market_value = 0.0
+    for position in engine.list_open_positions_for_account(account, db):
+        try:
+            market_value += provider.get_quote(position.ticker_symbol).last * position.quantity
+        except Exception:  # noqa: BLE001 — one bad quote must never break the whole account summary
+            market_value += position.avg_entry_price * position.quantity
+    out.equity = account.cash_balance + market_value
+    out.unrealized_pnl_dollars = out.equity - account.starting_balance
+    return out
+
+
+@router.get("/account", response_model=PaperAccountOut | None)
+def get_account(
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
+):
+    """Null when the user has never started a paper simulation — the
+    frontend renders the "Start New Simulation" panel in that state,
+    never a fabricated zero-balance account."""
+    account = engine.get_active_account(user.id, db)
+    return _account_out(account, db, provider) if account is not None else None
+
+
+@router.get("/simulations", response_model=list[PaperSimulationSummary])
+def list_simulations(db: Session = Depends(db_session), user: User = Depends(get_current_user)):
+    summaries = []
+    for account in engine.list_simulations(user.id, db):
+        closed = db.query(PaperPosition).filter_by(account_id=account.id, status="closed").all()
+        realized = sum(p.realized_pnl_dollars or 0.0 for p in closed)
+        wins = sum(1 for p in closed if (p.realized_pnl_dollars or 0.0) > 0)
+        summaries.append(
+            PaperSimulationSummary(
+                id=account.id,
+                simulation_number=account.simulation_number,
+                label=account.label,
+                starting_balance=account.starting_balance,
+                is_active=account.is_active,
+                created_at=account.created_at,
+                archived_at=account.archived_at,
+                closed_trade_count=len(closed),
+                realized_pnl_dollars=realized,
+                win_rate_pct=(wins / len(closed) * 100) if closed else None,
+            )
+        )
+    return summaries
+
+
+@router.post("/simulations", response_model=PaperAccountOut)
+def start_simulation(
+    request: PaperStartSimulationRequest,
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
+):
+    try:
+        account = engine.start_new_simulation(user.id, request.starting_capital, db, label=request.label)
+    except PaperTradingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _account_out(account, db, provider)
 
 
 @router.get("/positions", response_model=list[PaperPositionOut])

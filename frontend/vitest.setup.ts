@@ -15,3 +15,21 @@ afterEach(() => {
 if (typeof Element !== "undefined" && !Element.prototype.scrollTo) {
   Element.prototype.scrollTo = () => {};
 }
+
+// jsdom doesn't implement window.matchMedia either — lib/motion.ts's
+// usePrefersReducedMotion (used by AnimatedNumber/StatTile, among others)
+// calls it unconditionally on mount. A stub that always reports "no
+// preference" and never fires change events is the honest default for a
+// test environment with no real display settings.
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }) as MediaQueryList;
+}

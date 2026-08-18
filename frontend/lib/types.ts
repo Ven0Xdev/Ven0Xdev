@@ -124,9 +124,29 @@ export interface PortfolioPosition {
 }
 
 export interface PaperAccount {
+  id: number;
+  simulation_number: number;
+  label: string | null;
   cash_balance: number;
   starting_balance: number;
+  is_active: boolean;
+  archived_at: string | null;
   created_at: string;
+  equity: number | null;
+  unrealized_pnl_dollars: number | null;
+}
+
+export interface PaperSimulationSummary {
+  id: number;
+  simulation_number: number;
+  label: string | null;
+  starting_balance: number;
+  is_active: boolean;
+  created_at: string;
+  archived_at: string | null;
+  closed_trade_count: number;
+  realized_pnl_dollars: number;
+  win_rate_pct: number | null;
 }
 
 export interface PaperPosition {

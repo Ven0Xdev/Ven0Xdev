@@ -18,6 +18,7 @@ import type {
   OhlcvBar,
   PaperAccount,
   PaperPosition,
+  PaperSimulationSummary,
   PlanCatalog,
   PlatformHealthReport,
   PortfolioPosition,
@@ -299,7 +300,13 @@ export const api = {
   acknowledgeAlertEvent: (eventId: number) =>
     request<AlertEvent>(`/alerts/events/${eventId}/acknowledge`, { method: "POST" }),
 
-  paperAccount: () => request<PaperAccount>(`/paper-trading/account`),
+  paperAccount: () => request<PaperAccount | null>(`/paper-trading/account`),
+  paperSimulations: () => request<PaperSimulationSummary[]>(`/paper-trading/simulations`),
+  startPaperSimulation: (starting_capital: number, label?: string) =>
+    request<PaperAccount>(`/paper-trading/simulations`, {
+      method: "POST",
+      body: JSON.stringify({ starting_capital, label }),
+    }),
   paperPositions: (status: "open" | "closed" = "open") =>
     request<PaperPosition[]>(`/paper-trading/positions?status=${status}`),
   openPaperPosition: (ticker_symbol: string, quantity: number) =>

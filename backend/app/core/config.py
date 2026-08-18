@@ -171,11 +171,11 @@ class Settings(BaseSettings):
     # operator (Phase 11's Admin UI) during a live incident.
     safe_mode_enabled: bool = False
 
-    # --- Paper Trading (services/paper_trading/engine.py) ---
-    # The platform's ONLY trading execution mode — no real-money broker
-    # integration exists. Cash-only, no margin, no shorting: an account
-    # starts with this balance and every position is sized within it.
-    paper_trading_starting_balance: float = 100_000.0
+    # Paper Trading (services/paper_trading/engine.py) has no starting-
+    # balance setting here on purpose — every simulation's starting
+    # capital is a manually entered amount at simulation-start time (see
+    # PaperStartSimulationRequest), never a hardcoded/env-configured
+    # default.
 
     # --- ML ---
     model_artifact_dir: str = "./model_artifacts"

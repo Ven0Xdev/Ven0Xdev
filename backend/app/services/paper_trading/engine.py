@@ -24,14 +24,24 @@ Phase 7 (which builds the periodic outcome-evaluation job this would
 otherwise duplicate) — this version closes only on an explicit user
 action, honestly reflected in `planned_stop_loss`/`planned_take_profit`
 being informational only, not enforced.
+
+Simulations: a user's paper trading history is a sequence of
+`PaperTradingAccount` rows ("simulations"), at most one `is_active` at a
+time (see the model's partial unique index). There is no implicit
+auto-created account with a hardcoded starting balance any more — a user
+explicitly starts each simulation with a manually chosen amount via
+`start_new_simulation`. `get_active_account` simply looks up whichever
+simulation is currently active and returns `None` if the user has never
+started one; every position-mutating call site below must handle that
+`None` explicitly rather than silently materializing one.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.db.models.paper_trading import PaperPosition, PaperTradingAccount
 from app.db.models.trade import Trade
 from app.services.data_providers.base import MarketDataProvider, Quote
@@ -39,21 +49,90 @@ from app.services.risk.engine import evaluate_risk
 from app.services.risk.policy import RiskPolicy
 from app.services.scoring.scorer import analyze_ticker
 
+# Server-side sanity bounds on a manually-entered starting capital — wide
+# enough to never get in a real user's way, narrow enough to catch an
+# obvious fat-fingered entry (e.g. a stray extra zero) before it silently
+# distorts every risk-limit calculation derived from equity.
+MIN_STARTING_CAPITAL = 100.0
+MAX_STARTING_CAPITAL = 10_000_000.0
+
 
 class PaperTradingError(Exception):
     """Any refusal to execute — failed risk gate, insufficient funds, no
-    such open position, invalid quantity. Always carries a plain-English
-    reason; never silently swallowed."""
+    such open position, invalid quantity, no active simulation. Always
+    carries a plain-English reason; never silently swallowed."""
 
 
-def get_or_create_account(user_id: int, db: Session) -> PaperTradingAccount:
-    account = db.query(PaperTradingAccount).filter_by(user_id=user_id).one_or_none()
-    if account is None:
-        starting = get_settings().paper_trading_starting_balance
-        account = PaperTradingAccount(user_id=user_id, cash_balance=starting, starting_balance=starting)
-        db.add(account)
+def get_active_account(user_id: int, db: Session) -> PaperTradingAccount | None:
+    """The user's current simulation, or None if they've never started
+    one. Never auto-creates — starting a simulation is always an explicit
+    action with a manually chosen amount (see `start_new_simulation`)."""
+    return db.query(PaperTradingAccount).filter_by(user_id=user_id, is_active=True).one_or_none()
+
+
+def list_simulations(user_id: int, db: Session) -> list[PaperTradingAccount]:
+    """Every simulation (active and archived) for this user, newest first
+    — the "Paper Simulations History" panel's data source. History is
+    never deleted, only archived."""
+    return (
+        db.query(PaperTradingAccount)
+        .filter_by(user_id=user_id)
+        .order_by(PaperTradingAccount.simulation_number.desc())
+        .all()
+    )
+
+
+def start_new_simulation(user_id: int, starting_capital: float, db: Session, label: str | None = None) -> PaperTradingAccount:
+    """Archives the current active simulation (if any) and starts a new
+    one with a manually chosen starting capital. Refuses if the current
+    simulation has open positions — those must be closed first, so no
+    simulation's outcome is ever left ambiguous mid-position. Cash and
+    equity both start exactly at `starting_capital`; realized/unrealized
+    P&L reset to zero simply because the new simulation's positions table
+    starts empty. Every risk-limit/position-size calculation downstream
+    already reads `account.cash_balance` live (see `open_position` below),
+    so nothing separate needs to "recalculate" against the new equity —
+    it's automatic the moment this new account becomes active.
+    """
+    if starting_capital != starting_capital or starting_capital in (float("inf"), float("-inf")):
+        raise PaperTradingError("Starting capital must be a real, finite number.")
+    if starting_capital < MIN_STARTING_CAPITAL or starting_capital > MAX_STARTING_CAPITAL:
+        raise PaperTradingError(
+            f"Starting capital must be between ${MIN_STARTING_CAPITAL:,.0f} and ${MAX_STARTING_CAPITAL:,.0f}."
+        )
+
+    current = get_active_account(user_id, db)
+    next_number = 1
+    if current is not None:
+        open_count = db.query(PaperPosition).filter_by(account_id=current.id, status="open").count()
+        if open_count > 0:
+            raise PaperTradingError(
+                f"You have {open_count} open paper position(s) in the current simulation — close them all "
+                "before starting a new one."
+            )
+        next_number = current.simulation_number + 1
+        current.is_active = False
+        current.archived_at = datetime.now(timezone.utc)
+        db.add(current)
+        db.flush()  # release the partial-unique-index slot before inserting the new active row
+
+    account = PaperTradingAccount(
+        user_id=user_id,
+        simulation_number=next_number,
+        label=label,
+        cash_balance=starting_capital,
+        starting_balance=starting_capital,
+        is_active=True,
+    )
+    db.add(account)
+    try:
         db.commit()
-        db.refresh(account)
+    except IntegrityError as exc:
+        # The partial unique index caught a race (e.g. a double-click
+        # double-submit) — never silently create two active simulations.
+        db.rollback()
+        raise PaperTradingError("A new simulation could not be started — please retry.") from exc
+    db.refresh(account)
     return account
 
 
@@ -73,7 +152,9 @@ def open_position(
     if quantity <= 0:
         raise PaperTradingError("Quantity must be positive.")
     symbol = symbol.upper()
-    account = get_or_create_account(user_id, db)
+    account = get_active_account(user_id, db)
+    if account is None:
+        raise PaperTradingError("No active paper simulation — start one from the Paper Trading page first.")
 
     analysis = analyze_ticker(symbol, provider=provider)
     quote = provider.get_quote(symbol)
@@ -139,7 +220,9 @@ def close_position(
     db: Session,
     provider: MarketDataProvider,
 ) -> PaperPosition:
-    account = get_or_create_account(user_id, db)
+    account = get_active_account(user_id, db)
+    if account is None:
+        raise PaperTradingError("No active paper simulation — start one from the Paper Trading page first.")
     position = (
         db.query(PaperPosition).filter_by(id=position_id, account_id=account.id, status="open").one_or_none()
     )
@@ -180,8 +263,11 @@ def close_position(
     return position
 
 
-def list_open_positions(user_id: int, db: Session) -> list[PaperPosition]:
-    account = get_or_create_account(user_id, db)
+def list_open_positions_for_account(account: PaperTradingAccount, db: Session) -> list[PaperPosition]:
+    """Same query as `list_open_positions`, but for a specific already-
+    resolved account rather than looking one up by user_id — used by the
+    account-summary endpoint, which already has the account row in hand
+    and needs its open positions to mark-to-market equity."""
     return (
         db.query(PaperPosition)
         .filter_by(account_id=account.id, status="open")
@@ -190,8 +276,17 @@ def list_open_positions(user_id: int, db: Session) -> list[PaperPosition]:
     )
 
 
+def list_open_positions(user_id: int, db: Session) -> list[PaperPosition]:
+    account = get_active_account(user_id, db)
+    if account is None:
+        return []
+    return list_open_positions_for_account(account, db)
+
+
 def list_closed_positions(user_id: int, db: Session, limit: int = 100) -> list[PaperPosition]:
-    account = get_or_create_account(user_id, db)
+    account = get_active_account(user_id, db)
+    if account is None:
+        return []
     return (
         db.query(PaperPosition)
         .filter_by(account_id=account.id, status="closed")

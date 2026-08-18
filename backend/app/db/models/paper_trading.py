@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -8,19 +8,49 @@ from app.db.types import UTCDateTime, utcnow
 
 
 class PaperTradingAccount(Base):
-    """One virtual cash account per user — the platform's only trading
+    """One virtual cash "simulation" per row — a user may have many over
+    time (see services/paper_trading/engine.py's start_new_simulation),
+    but at most one `is_active` at once. The platform's only trading
     execution mode (no real-money broker integration exists or is
     planned). Cash-only, no margin: every open position debits this
     balance by its fill cost, every close credits it back.
+
+    Starting a new simulation never deletes the old one — it's archived
+    (`is_active=False`, `archived_at` set) with all its positions/trades
+    intact, so simulation history is always inspectable and comparable.
+    The one-active-per-user invariant is enforced below by a partial
+    unique index (ux_paper_trading_accounts_one_active_per_user), not
+    just in application code.
     """
 
     __tablename__ = "paper_trading_accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    # Sequential per-user counter (1, 2, 3, ...) — the "Simulation ID" shown
+    # in the UI's history list; independent of the DB primary key so it
+    # reads as "simulation #3" rather than an opaque row id.
+    simulation_number: Mapped[int] = mapped_column(Integer, default=1)
+    label: Mapped[str | None] = mapped_column(String(64), nullable=True)
     cash_balance: Mapped[float] = mapped_column(Float)
     starting_balance: Mapped[float] = mapped_column(Float)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+# Partial unique index — only rows where is_active is true participate, so
+# archived rows never collide with each other or with the current active
+# one. Declared at module level (not inside __table_args__) because it
+# needs the already-built column object for the where-clause, which
+# doesn't exist yet during the class body's own evaluation.
+Index(
+    "ux_paper_trading_accounts_one_active_per_user",
+    PaperTradingAccount.user_id,
+    unique=True,
+    sqlite_where=PaperTradingAccount.is_active.is_(True),
+    postgresql_where=PaperTradingAccount.is_active.is_(True),
+)
 
 
 class PaperPosition(Base):
