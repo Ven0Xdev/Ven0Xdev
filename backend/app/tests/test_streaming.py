@@ -1,6 +1,9 @@
 """Streaming core: aggregation, dedupe, out-of-order, staleness,
-incremental-indicator equivalence, finnhub WS parsing, signal engine rules."""
+incremental-indicator equivalence, finnhub/alpaca WS parsing, signal
+engine rules."""
+import asyncio
 import time
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -8,7 +11,7 @@ import pytest
 
 from app.services.streaming.core import CandleAggregator, EventBus, TradeEvent
 from app.services.streaming.incremental import IncrementalEMA, IncrementalRSI, LiveIndicatorSet
-from app.services.streaming.service import FinnhubTradeSource
+from app.services.streaming.service import AlpacaTradeSource, FinnhubTradeSource, _parse_alpaca_ts
 
 
 def _trade(price, ts, seq=None, vol=100.0):
@@ -125,3 +128,134 @@ def test_finnhub_ws_parsing_and_schema_validation():
     assert t.source_ts == pytest.approx(1_700_000_000.0)
     assert FinnhubTradeSource.parse_message("not json", "AXNT") == []
     assert FinnhubTradeSource.parse_message('{"type":"ping"}', "AXNT") == []
+
+
+def test_parse_alpaca_ts_handles_nanosecond_precision():
+    expected = datetime(2024, 1, 1, 12, 0, 0, 123456, tzinfo=timezone.utc).timestamp()
+    assert _parse_alpaca_ts("2024-01-01T12:00:00.123456789Z") == pytest.approx(expected)
+
+
+def test_parse_alpaca_ts_handles_no_fractional_seconds():
+    expected = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp()
+    assert _parse_alpaca_ts("2024-01-01T12:00:00Z") == pytest.approx(expected)
+
+
+def test_parse_alpaca_ts_returns_none_for_garbage():
+    assert _parse_alpaca_ts("not-a-timestamp") is None
+    assert _parse_alpaca_ts("") is None
+
+
+def test_alpaca_ws_parsing_and_schema_validation():
+    # Alpaca sends a JSON *array* of messages per frame, unlike Finnhub.
+    trade_raw = '[{"T":"t","S":"AAPL","p":191.52,"s":100,"t":"2024-01-01T12:00:00.123456789Z","i":42,"c":["@"]}]'
+    trades = AlpacaTradeSource.parse_message(trade_raw, "AAPL")
+    assert len(trades) == 1
+    t = trades[0]
+    assert t.price == 191.52 and t.volume == 100 and t.seq == 42
+    assert t.data_mode == "live" and t.provider == "alpaca-ws"
+    assert t.source_ts == pytest.approx(datetime(2024, 1, 1, 12, 0, 0, 123456, tzinfo=timezone.utc).timestamp())
+
+    # wrong symbol, non-trade message types (quote/success), and malformed
+    # frames are all filtered, never mistaken for a trade.
+    assert AlpacaTradeSource.parse_message(trade_raw, "OTHER") == []
+    assert AlpacaTradeSource.parse_message('[{"T":"q","S":"AAPL","bp":1,"t":"2024-01-01T00:00:00Z"}]', "AAPL") == []
+    assert AlpacaTradeSource.parse_message('[{"T":"success","msg":"connected"}]', "AAPL") == []
+    assert AlpacaTradeSource.parse_message("not json", "AAPL") == []
+    assert AlpacaTradeSource.parse_message('{"T":"t","S":"AAPL","p":1,"t":"2024-01-01T00:00:00Z"}', "AAPL") != []  # bare object still accepted
+
+
+def test_alpaca_auth_reply_detection():
+    assert AlpacaTradeSource._auth_succeeded('[{"T":"success","msg":"authenticated"}]') is True
+    assert AlpacaTradeSource._auth_succeeded('[{"T":"error","msg":"auth failed"}]') is False
+    assert AlpacaTradeSource._auth_succeeded("not json") is False
+
+
+class _BoomWS:
+    """Simulates a connection that dies immediately on connect."""
+
+    async def __aenter__(self):
+        raise ConnectionRefusedError("simulated drop")
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakeAlpacaWS:
+    """Fully mocked WS: yields the given frames in order, then idles
+    forever (like a real open-but-quiet connection) rather than closing —
+    lets the test control exactly when to stop via task cancellation."""
+
+    def __init__(self, messages):
+        self._messages = list(messages)
+        self.sent = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def send(self, msg):
+        self.sent.append(msg)
+
+    async def recv(self):
+        return self._messages.pop(0)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._messages:
+            return self._messages.pop(0)
+        await asyncio.Future()  # never resolves
+
+
+def test_alpaca_ws_reconnects_after_a_drop_and_delivers_a_trade():
+    """Fully mocked HTTP/WebSocket: no real network. First connection
+    attempt fails outright; the source must back off and reconnect rather
+    than giving up, then successfully authenticate, subscribe, and deliver
+    a trade through the same on_trade callback the real path uses."""
+    import websockets
+
+    attempts = {"n": 0}
+
+    def fake_connect(url):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            return _BoomWS()
+        return _FakeAlpacaWS([
+            '[{"T":"success","msg":"connected"}]',
+            '[{"T":"success","msg":"authenticated"}]',
+            '[{"T":"t","S":"AAPL","p":100.0,"s":1,"t":"2024-01-01T00:00:00Z","i":1}]',
+        ])
+
+    async def run_test():
+        original_connect = websockets.connect
+        websockets.connect = fake_connect
+        try:
+            trades = []
+
+            async def on_trade(t):
+                trades.append(t)
+
+            source = AlpacaTradeSource("AAPL", "test-key", "test-secret")
+            task = asyncio.create_task(source.run(on_trade))
+            for _ in range(60):  # poll up to ~3s of real time for the 1s backoff + reconnect
+                await asyncio.sleep(0.05)
+                if trades:
+                    break
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            return trades
+        finally:
+            websockets.connect = original_connect
+
+    trades = asyncio.run(run_test())
+    assert attempts["n"] >= 2, "must have reconnected after the first attempt failed"
+    assert len(trades) == 1
+    assert trades[0].price == 100.0
+    assert trades[0].provider == "alpaca-ws"
+    assert trades[0].data_mode == "live"

@@ -57,6 +57,9 @@ class FallbackMarketDataProvider(MarketDataProvider):
         primary: MarketDataProvider | None,
         fallback: MarketDataProvider | None,
         primary_unavailable_reason: str | None = None,
+        name: str = "twelvedata",
+        primary_label: str = "Twelve Data",
+        fallback_label: str = "Alpha Vantage",
     ):
         # `primary` is None when TWELVE_DATA_API_KEY was never set — the
         # composite still works, it just goes straight to Alpha Vantage on
@@ -65,8 +68,16 @@ class FallbackMarketDataProvider(MarketDataProvider):
         self._primary = primary
         self._fallback = fallback
         self._primary_unavailable_reason = primary_unavailable_reason or "Twelve Data is not configured"
-        self.name = "twelvedata"
+        # `name` is this composite's own identity before any call has been
+        # made — every call immediately overwrites it with whichever real
+        # sub-provider actually answered (see _call() below), same as
+        # before. Parameterized so alpaca_provider.py can reuse this exact
+        # primary/fallback mechanism for its own price chain (Alpaca
+        # primary, Twelve Data fallback) under its own honest default name.
+        self.name = name
         self.data_mode = "unspecified"
+        self._primary_label = primary_label
+        self._fallback_label = fallback_label
 
     def _call(self, method: str, *args, **kwargs):
         if self._primary is None:
@@ -80,11 +91,13 @@ class FallbackMarketDataProvider(MarketDataProvider):
             except ProviderDataUnavailable as exc:
                 primary_error = exc
 
-        logger.warning("TwelveData.%s failed, trying Alpha Vantage fallback: %s", method, primary_error)
+        logger.warning(
+            "%s.%s failed, trying %s fallback: %s", self._primary_label, method, self._fallback_label, primary_error
+        )
         if self._fallback is None:
             raise ProviderDataUnavailable(
-                f"Twelve Data failed ({primary_error}) and no Alpha Vantage fallback is "
-                f"configured — set ALPHA_VANTAGE_API_KEY in .env."
+                f"{self._primary_label} failed ({primary_error}) and no {self._fallback_label} fallback is "
+                f"configured."
             )
         try:
             result = getattr(self._fallback, method)(*args, **kwargs)
@@ -94,7 +107,7 @@ class FallbackMarketDataProvider(MarketDataProvider):
         except ProviderDataUnavailable as fallback_error:
                 raise ProviderDataUnavailable(
                     f"Both market data providers failed for {method}: "
-                    f"Twelve Data: {primary_error} | Alpha Vantage: {fallback_error}"
+                    f"{self._primary_label}: {primary_error} | {self._fallback_label}: {fallback_error}"
                 )
 
     def get_universe(self, limit: int | None = None) -> list[TickerMeta]:
@@ -117,6 +130,79 @@ class FallbackMarketDataProvider(MarketDataProvider):
 
     def get_corporate_actions(self, symbol: str) -> list[CorporateAction]:
         return self._call("get_corporate_actions", symbol)
+
+
+class MixedSourceProvider(MarketDataProvider):
+    """Prices from one chain, fundamentals/news/corporate-actions from a
+    separate reference provider — for a primary (Alpaca) whose free tier
+    supplies real prices but no company data at all, paired with a
+    reference vendor (Alpha Vantage) that supplies the reverse.
+
+    `price_chain` is expected to be a FallbackMarketDataProvider (or
+    anything satisfying MarketDataProvider) — get_universe/get_ticker_meta/
+    get_ohlcv/get_quote all delegate to it unchanged, including whatever
+    primary/fallback behavior it already implements. `reference` (when
+    configured) is used exclusively for fundamentals/news/corporate
+    actions — no further fallback chain for those, matching Alpha
+    Vantage's role as "cached low-frequency data only," not another price
+    vendor.
+
+    Deliberately does NOT let reference-provider calls overwrite
+    self.name/self.data_mode: those exist to describe the PRICE data's
+    provenance (what StockAnalysis.data_source/data_mode show), which
+    must stay accurate to the price_chain's own identity regardless of
+    which reference vendor most recently answered a fundamentals/news
+    call.
+    """
+
+    def __init__(self, price_chain: MarketDataProvider, reference: MarketDataProvider | None):
+        self._price_chain = price_chain
+        self._reference = reference
+        self.name = getattr(price_chain, "name", "unspecified")
+        self.data_mode = getattr(price_chain, "data_mode", "unspecified")
+
+    def _sync_price_identity(self) -> None:
+        self.name = self._price_chain.name
+        self.data_mode = getattr(self._price_chain, "data_mode", "unspecified")
+
+    def get_universe(self, limit: int | None = None) -> list[TickerMeta]:
+        result = self._price_chain.get_universe(limit)
+        self._sync_price_identity()
+        return result
+
+    def get_ticker_meta(self, symbol: str) -> TickerMeta:
+        result = self._price_chain.get_ticker_meta(symbol)
+        self._sync_price_identity()
+        return result
+
+    def get_ohlcv(self, symbol: str, timeframe: str = "1d", lookback_days: int = 250) -> pd.DataFrame:
+        result = self._price_chain.get_ohlcv(symbol, timeframe, lookback_days)
+        self._sync_price_identity()
+        return result
+
+    def get_quote(self, symbol: str) -> Quote:
+        result = self._price_chain.get_quote(symbol)
+        self._sync_price_identity()
+        return result
+
+    def get_fundamentals(self, symbol: str) -> Fundamentals:
+        if self._reference is None:
+            raise ProviderDataUnavailable(
+                "No fundamentals provider configured — set ALPHA_VANTAGE_API_KEY in .env."
+            )
+        return self._reference.get_fundamentals(symbol)
+
+    def get_news(self, symbol: str, limit: int = 20) -> list[NewsArticle]:
+        if self._reference is None:
+            raise ProviderDataUnavailable("No news provider configured — set ALPHA_VANTAGE_API_KEY in .env.")
+        return self._reference.get_news(symbol, limit)
+
+    def get_corporate_actions(self, symbol: str) -> list[CorporateAction]:
+        if self._reference is None:
+            raise ProviderDataUnavailable(
+                "No corporate-actions provider configured — set ALPHA_VANTAGE_API_KEY in .env."
+            )
+        return self._reference.get_corporate_actions(symbol)
 
 
 from app.services.data_providers.registry import register_provider  # noqa: E402

@@ -17,11 +17,9 @@ in `http_base.RateLimitedHttpClient`, an adapter is only field mapping):
 - OTCMarketsProvider   https://www.otcmarkets.com/market-data — tier,
                        disclosure status, Level II; the authoritative OTC
                        source, licensing-gated.
-- AlpacaProvider       https://docs.alpaca.markets — market data API v2
-                       (bars/quotes/news); note OTC symbols require the
-                       paid data tier; auth is header-based
-                       (APCA-API-KEY-ID / APCA-API-SECRET-KEY), pass via
-                       `headers=` on RateLimitedHttpClient.
+
+Alpaca is implemented separately in alpaca_provider.py (registers
+"alpaca_only" and "alpaca") — not a stub here.
 
 SEC EDGAR is intentionally NOT here: it is a scheduled *facts ingester*
 (`edgar_client.py` + `edgar_enricher.py`, architecture D7), not a
@@ -101,17 +99,6 @@ class OTCMarketsProvider(_UnimplementedProvider):
         self.api_key = api_key
 
 
-class AlpacaProvider(_UnimplementedProvider):
-    name = "alpaca"
-
-    def __init__(self, api_key: str | None, api_secret: str | None):
-        super().__init__(
-            "Alpaca", "https://docs.alpaca.markets", has_key=bool(api_key and api_secret)
-        )
-        self.api_key = api_key
-        self.api_secret = api_secret
-
-
 @register_provider("polygon")
 def _build_polygon(settings) -> PolygonOTCProvider:
     return PolygonOTCProvider(settings.polygon_api_key)
@@ -120,8 +107,3 @@ def _build_polygon(settings) -> PolygonOTCProvider:
 @register_provider("otc_markets")
 def _build_otc_markets(settings) -> OTCMarketsProvider:
     return OTCMarketsProvider(settings.otc_markets_api_key)
-
-
-@register_provider("alpaca")
-def _build_alpaca(settings) -> AlpacaProvider:
-    return AlpacaProvider(settings.alpaca_api_key, settings.alpaca_api_secret)

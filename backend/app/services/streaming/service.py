@@ -21,7 +21,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
+from datetime import datetime
 
 import numpy as np
 
@@ -112,6 +114,102 @@ class FinnhubTradeSource:
         return out
 
 
+_ALPACA_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$")
+
+
+def _parse_alpaca_ts(raw: str) -> float | None:
+    """Alpaca's WS timestamps are RFC3339 with nanosecond precision (e.g.
+    "2024-01-01T12:00:00.123456789Z") — Python's datetime only supports
+    microseconds, so the fractional part is truncated to 6 digits before
+    parsing. Returns None (never raises) on any unrecognized shape so a
+    malformed timestamp drops that one message instead of killing the
+    stream."""
+    match = _ALPACA_TS_RE.match(raw or "")
+    if not match:
+        return None
+    base, frac, tz = match.groups()
+    frac6 = (frac or "").ljust(6, "0")[:6]
+    tz_norm = "+00:00" if tz == "Z" else tz
+    try:
+        return datetime.fromisoformat(f"{base}.{frac6}{tz_norm}").timestamp()
+    except ValueError:
+        return None
+
+
+class AlpacaTradeSource:
+    data_mode = "live"
+    provider = "alpaca-ws"
+
+    def __init__(self, symbol: str, api_key: str, api_secret: str):
+        self.symbol = symbol
+        self.api_key = api_key
+        self.api_secret = api_secret
+
+    async def run(self, on_trade) -> None:
+        import websockets
+
+        backoff = 1.0
+        while True:
+            try:
+                async with websockets.connect("wss://stream.data.alpaca.markets/v2/iex") as ws:
+                    await ws.recv()  # initial {"T":"success","msg":"connected"} — connection ack only
+                    await ws.send(json.dumps({"action": "auth", "key": self.api_key, "secret": self.api_secret}))
+                    auth_reply = await ws.recv()
+                    if not self._auth_succeeded(auth_reply):
+                        raise RuntimeError(f"Alpaca WS auth rejected: {auth_reply}")
+                    await ws.send(json.dumps({"action": "subscribe", "trades": [self.symbol]}))
+                    backoff = 1.0
+                    async for raw in ws:
+                        for t in self.parse_message(raw, self.symbol):
+                            await on_trade(t)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("alpaca ws error for %s: %s — reconnecting in %.0fs", self.symbol, exc, backoff)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 60.0)
+
+    @staticmethod
+    def _auth_succeeded(raw: str) -> bool:
+        try:
+            msgs = json.loads(raw)
+        except json.JSONDecodeError:
+            return False
+        if not isinstance(msgs, list):
+            msgs = [msgs]
+        return any(isinstance(m, dict) and m.get("T") == "success" and m.get("msg") == "authenticated" for m in msgs)
+
+    @staticmethod
+    def parse_message(raw: str, symbol: str) -> list[TradeEvent]:
+        """Alpaca WS schema: a JSON array of message objects (not a single
+        object per message, unlike Finnhub) — trade messages shaped
+        {"T":"t","S":symbol,"p":price,"s":size,"t":RFC3339-ns,"i":trade_id,
+        "c":[conditions]}. Non-trade messages (success/subscription/error/
+        quote) are skipped here, same schema-validation discipline as
+        FinnhubTradeSource.parse_message."""
+        now = time.time()
+        try:
+            msgs = json.loads(raw)
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(msgs, list):
+            msgs = [msgs]
+        out = []
+        for m in msgs:
+            if not isinstance(m, dict) or m.get("T") != "t" or m.get("S") != symbol or "p" not in m or "t" not in m:
+                continue
+            source_ts = _parse_alpaca_ts(m["t"])
+            if source_ts is None:
+                continue
+            out.append(TradeEvent(
+                symbol=symbol, price=float(m["p"]), volume=float(m.get("s") or 0),
+                source_ts=source_ts, received_ts=now,
+                provider="alpaca-ws", data_mode="live",
+                seq=m.get("i"), conditions=list(m.get("c") or []),
+            ))
+        return out
+
+
 class MarketStreamService:
     def __init__(self):
         self.bus = EventBus()
@@ -122,7 +220,10 @@ class MarketStreamService:
 
     def _make_source(self, symbol: str):
         settings = get_settings()
-        if settings.market_data_provider.startswith("finnhub") and settings.finnhub_api_key:
+        provider_name = settings.market_data_provider
+        if provider_name.startswith("alpaca") and settings.alpaca_api_key and settings.alpaca_api_secret:
+            return AlpacaTradeSource(symbol, settings.alpaca_api_key, settings.alpaca_api_secret)
+        if provider_name.startswith("finnhub") and settings.finnhub_api_key:
             return FinnhubTradeSource(symbol, settings.finnhub_api_key)
         return SyntheticTickSource(symbol)
 

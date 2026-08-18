@@ -95,6 +95,13 @@ class Settings(BaseSettings):
     twelve_data_api_key: str | None = None
     alpha_vantage_api_key: str | None = None
     otc_markets_api_key: str | None = None
+    # alpaca = primary for prices (IEX feed) with automatic fallback to
+    # Twelve Data — see services/data_providers/alpaca_provider.py.
+    # MUST be a PAPER account's key pair (paper-api.alpaca.markets), never
+    # live-trading keys — this app never calls Alpaca's order/account
+    # endpoints (Paper Trading here is fully simulated in-app), but the
+    # Data API accepts either kind of key identically, so this is an
+    # operator discipline, not something this code enforces.
     alpaca_api_key: str | None = None
     alpaca_api_secret: str | None = None
     sec_edgar_user_agent: str = "Nexora contact@nexora.dev"
