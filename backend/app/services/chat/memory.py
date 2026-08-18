@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class ChatTurn:
     role: str
     content: str
+    meta: dict | None = None
 
 
 def get_or_create_session(db: Session, session_key: str) -> ChatSession:
@@ -50,8 +51,8 @@ def get_or_create_session(db: Session, session_key: str) -> ChatSession:
     return session
 
 
-def append_message(db: Session, session: ChatSession, role: str, content: str) -> ChatMessage:
-    message = ChatMessage(session_id=session.id, role=role, content=content)
+def append_message(db: Session, session: ChatSession, role: str, content: str, meta: dict | None = None) -> ChatMessage:
+    message = ChatMessage(session_id=session.id, role=role, content=content, meta=meta)
     db.add(message)
     try:
         db.commit()
@@ -70,10 +71,10 @@ def get_history(db: Session, session: ChatSession, limit: int = 20) -> list[Chat
         .limit(limit)
         .all()
     )
-    return [ChatTurn(role=m.role, content=m.content) for m in reversed(messages)]
+    return [ChatTurn(role=m.role, content=m.content, meta=m.meta) for m in reversed(messages)]
 
 
-def set_session_ticker(db: Session, session: ChatSession, ticker: str) -> None:
+def set_session_ticker(db: Session, session: ChatSession, ticker: str | None) -> None:
     session.ticker_symbol = ticker
     db.add(session)
     db.commit()

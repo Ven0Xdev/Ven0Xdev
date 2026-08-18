@@ -59,30 +59,130 @@ instructions.
 """
 
 
-def _detect_ticker(message: str, known_symbols: list[str], fallback: str | None) -> str | None:
+# Strips trailing corporate/fund boilerplate (", Inc.", " Corporation",
+# ".com", " ETF Trust", ...) so a natural mention like "what about Apple?"
+# matches the canonical "Apple Inc." record without the user typing the
+# full legal name. Applied repeatedly (e.g. "Amazon.com, Inc." needs two
+# passes: strip ", Inc." then ".com") until a pass changes nothing.
+_SUFFIX_RE = re.compile(
+    r"(,?\s+(?:Inc(?:orporated)?|Corporation|Corp|Co|Ltd|plc|N\.V\.|LLC|L\.P\.|"
+    r"ETF Trust|ETF|Trust|Fund|Shares|Holdings|Group|Class [A-Z])\.?|\.com)$",
+    re.IGNORECASE,
+)
+
+
+def _core_company_name(name: str) -> str:
+    core = name.strip()
+    while True:
+        stripped = _SUFFIX_RE.sub("", core).rstrip(", ").strip()
+        if stripped == core:
+            return core
+        core = stripped
+
+
+def _detect_ticker(message: str, known: list[tuple[str, str]], fallback: str | None) -> tuple[str | None, str | None]:
+    """Returns (resolved_symbol, unsupported_mention). `unsupported_mention`
+    is set only when the message contains an explicit `$SYMBOL` cashtag
+    that isn't in the canonical universe — an unambiguous, deliberate
+    ticker reference the caller must surface plainly, never silently drop
+    or fall back to a stale prior ticker for. Bare uppercase words and
+    company-name mentions that match nothing known are treated as "no
+    ticker here", not "unsupported" — both are inherently ambiguous
+    (could be an acronym or unrelated capitalized word), so guessing wrong
+    would be worse than just falling back to whatever ticker was already
+    in context.
+    """
+    known_symbols = {s for s, _ in known}
+
     cashtag = re.search(r"\$([A-Za-z]{2,6})\b", message)
     if cashtag:
-        return cashtag.group(1).upper()
+        symbol = cashtag.group(1).upper()
+        return (symbol, None) if symbol in known_symbols else (None, symbol)
+
     upper_tokens = re.findall(r"\b[A-Z]{2,6}\b", message)
     for token in upper_tokens:
         if token in known_symbols:
-            return token
-    return fallback
+            return token, None
+
+    for symbol, name in known:
+        core = _core_company_name(name)
+        if len(core) >= 3 and re.search(rf"\b{re.escape(core)}\b", message, re.IGNORECASE):
+            return symbol, None
+
+    return fallback, None
 
 
-def resolve_ticker(message: str, current_ticker: str | None, db=None) -> str | None:
-    """Known symbols come from the Asset Universe Manager (the mainstream
-    platform's source of truth) when a DB session is available; falls back
-    to the configured provider's own universe (needed for OTC-module/demo
-    callers that don't have a DB session, e.g. tool-registry unit tests)."""
+def resolve_ticker(message: str, current_ticker: str | None, db=None) -> tuple[str | None, str | None]:
+    """Known symbols (with names, for natural-language matching) come from
+    the Asset Universe Manager (the mainstream platform's source of truth)
+    when a DB session is available; falls back to the configured
+    provider's own universe (needed for OTC-module/demo callers that don't
+    have a DB session, e.g. tool-registry unit tests). Returns (resolved,
+    unsupported_mention) — see `_detect_ticker`."""
     if db is not None:
         from app.services.universe.manager import get_active_universe
 
-        known = [a.symbol for a in get_active_universe(db)]
+        known = [(a.symbol, a.name) for a in get_active_universe(db)]
     else:
         provider = get_data_provider()
-        known = [t.symbol for t in provider.get_universe()]
+        known = [(t.symbol, getattr(t, "name", None) or getattr(t, "company_name", None) or "") for t in provider.get_universe()]
     return _detect_ticker(message, known, current_ticker)
+
+
+def _unsupported_symbol_reply(symbol: str) -> str:
+    return (
+        f"'{symbol}' isn't in Nexora's supported asset universe. I can only ground answers in the "
+        f"platform's canonical stocks, ETFs, indices, and commodities — use the ticker selector, or "
+        f"mention a supported symbol like $AAPL."
+    )
+
+
+def _build_metadata(analysis: StockAnalysis | None, db, backend: str, model: str | None) -> dict:
+    """Provenance for one answer — never invented. `backend`/`model` say
+    plainly whether this reply came from the deterministic template
+    assistant or an external LLM (never let template mode read as an LLM).
+    Safe-mode and drift status are platform-wide, so they're included even
+    when no ticker is in context; data source/mode/engine and confidence
+    are ticker-specific and stay null without a grounded analysis.
+    """
+    from app.services.monitoring.drift import drift_status_label
+    from app.services.platform_settings import is_safe_mode_active
+
+    safe_mode_active = is_safe_mode_active(db)
+    drift_status = drift_status_label(db) if db is not None else "insufficient_history"
+
+    if analysis is None:
+        return {
+            "backend": backend,
+            "model": model,
+            "data_source": None,
+            "data_mode": None,
+            "engine_mode": None,
+            "as_of": None,
+            "safe_mode_active": safe_mode_active,
+            "drift_status": drift_status,
+            "confidence_score": None,
+            "confidence_note": "No ticker in context — mention a symbol to ground answers in live analysis and probability estimates.",
+        }
+    return {
+        "backend": backend,
+        "model": model,
+        "data_source": analysis.data_source,
+        "data_mode": analysis.data_mode,
+        "engine_mode": analysis.engine_mode,
+        # Stored via the ChatMessage.meta JSON column, which (unlike the
+        # ChatResponse Pydantic model returned to the caller) does not
+        # serialize datetimes on its own — isoformat() here so this same
+        # dict is valid for both.
+        "as_of": analysis.as_of.isoformat() if analysis.as_of else None,
+        "safe_mode_active": safe_mode_active,
+        "drift_status": drift_status,
+        "confidence_score": analysis.confidence_score,
+        "confidence_note": (
+            f"Confidence ({analysis.confidence_score:.0f}/100) reflects model agreement, data quality, and "
+            f"liquidity for {analysis.ticker} — probabilities are calibrated estimates, never guarantees."
+        ),
+    }
 
 
 def generate_reply(
@@ -90,9 +190,17 @@ def generate_reply(
     ticker: str | None,
     history: list[ChatTurn],
     db=None,
-) -> tuple[str, str | None]:
-    """Returns (reply_text, resolved_ticker)."""
-    resolved_ticker = resolve_ticker(message, ticker, db)
+) -> tuple[str, str | None, dict]:
+    """Returns (reply_text, resolved_ticker, metadata)."""
+    resolved_ticker, unsupported_mention = resolve_ticker(message, ticker, db)
+    if unsupported_mention:
+        # An explicit but unsupported $SYMBOL mention short-circuits before
+        # analysis/LLM — deterministic and immediate, and resolved_ticker
+        # is None so the caller never persists a bogus symbol as session
+        # context or clobbers whatever ticker was already in scope.
+        metadata = _build_metadata(None, db, "template", None)
+        return _unsupported_symbol_reply(unsupported_mention), None, metadata
+
     analysis = None
     if resolved_ticker:
         try:
@@ -104,9 +212,11 @@ def generate_reply(
     if settings.chat_backend == "llm" and settings.anthropic_api_key:
         reply = _llm_reply(message, resolved_ticker, history, db)
         if reply is not None:
-            return reply, resolved_ticker
+            metadata = _build_metadata(analysis, db, "llm", settings.chat_model)
+            return reply, resolved_ticker, metadata
 
-    return _template_reply(message, analysis), resolved_ticker
+    metadata = _build_metadata(analysis, db, "template", None)
+    return _template_reply(message, analysis), resolved_ticker, metadata
 
 
 def _llm_reply(message: str, resolved_ticker: str | None, history: list[ChatTurn], db=None) -> str | None:

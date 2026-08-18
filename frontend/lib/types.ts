@@ -179,9 +179,23 @@ export interface BacktestResult {
   trades: BacktestTrade[];
 }
 
+export interface ChatMetadata {
+  backend: "template" | "llm";
+  model: string | null;
+  data_source: string | null;
+  data_mode: string | null;
+  engine_mode: "HEURISTIC" | "TRAINED_ML" | null;
+  as_of: string | null;
+  safe_mode_active: boolean;
+  drift_status: "insufficient_history" | "stable" | "moderate" | "significant";
+  confidence_score: number | null;
+  confidence_note: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  metadata?: ChatMetadata | null;
 }
 
 export interface MarketOverviewStock {

@@ -52,14 +52,34 @@ def send_message(
 
     memory.append_message(db, session, "user", request.message)
 
-    reply, resolved_ticker = generate_reply(request.message, request.ticker or session.ticker_symbol, history, db=db)
+    reply, resolved_ticker, metadata = generate_reply(
+        request.message, request.ticker or session.ticker_symbol, history, db=db
+    )
 
     if resolved_ticker and resolved_ticker != session.ticker_symbol:
         memory.set_session_ticker(db, session, resolved_ticker)
 
-    memory.append_message(db, session, "assistant", reply)
+    memory.append_message(db, session, "assistant", reply, meta=metadata)
 
-    return ChatResponse(reply=reply, ticker=resolved_ticker, session_key=request.session_key)
+    return ChatResponse(reply=reply, ticker=resolved_ticker, session_key=request.session_key, metadata=metadata)
+
+
+@router.delete("/sessions/{session_key}/ticker")
+def clear_session_ticker(
+    session_key: str,
+    db: Session = Depends(db_session),
+    user: User = Depends(get_current_user),
+):
+    """Explicitly clears the session's remembered ticker context — the
+    backend for the removable context chip. Distinct from just not passing
+    `ticker` on the next /chat/message: that falls back to whatever's
+    already remembered (session.ticker_symbol), so a chip the user
+    dismissed would otherwise keep silently grounding the next answer on
+    the old symbol.
+    """
+    session = _owned_session(db, session_key, user)
+    memory.set_session_ticker(db, session, None)
+    return {"session_key": session_key, "ticker": None}
 
 
 @router.get("/history/{session_key}", response_model=ChatHistoryResponse)
@@ -73,5 +93,5 @@ def get_history(
     return ChatHistoryResponse(
         session_key=session_key,
         ticker=session.ticker_symbol,
-        messages=[ChatHistoryTurn(role=t.role, content=t.content) for t in history],
+        messages=[ChatHistoryTurn(role=t.role, content=t.content, metadata=t.meta) for t in history],
     )

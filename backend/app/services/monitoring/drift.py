@@ -104,3 +104,14 @@ def drift_report(db: Session, window: int = 200) -> dict:
         "worst_model_psi": round(worst_model, 4),
         "worst_feature_psi": round(worst_feature, 4),
     }
+
+
+def drift_status_label(db: Session) -> str:
+    """One-word summary of `drift_report()` — "insufficient_history", or
+    the worse of the model/feature PSI bands. For call sites (e.g. the chat
+    assistant's per-answer provenance) that need a quick status, not the
+    full report."""
+    report = drift_report(db)
+    if report["status"] != "ok":
+        return "insufficient_history"
+    return _band(max(report["worst_model_psi"], report["worst_feature_psi"]))

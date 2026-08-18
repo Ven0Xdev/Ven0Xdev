@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
+const pathnameMock = vi.hoisted(() => vi.fn(() => "/"));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
+  usePathname: pathnameMock,
   useRouter: () => ({ push: vi.fn() }),
 }));
 
@@ -20,6 +21,7 @@ import { SidebarBody } from "./Sidebar";
 describe("SidebarBody — Admin nav visibility", () => {
   afterEach(() => {
     meMock.mockReset();
+    pathnameMock.mockReturnValue("/");
   });
 
   it("hides Admin for a regular user", async () => {
@@ -44,5 +46,30 @@ describe("SidebarBody — Admin nav visibility", () => {
 
     await waitFor(() => expect(meMock).toHaveBeenCalled());
     expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
+  });
+});
+
+describe("SidebarBody — AI Assistant carries stock-page ticker context", () => {
+  afterEach(() => {
+    meMock.mockReset();
+    pathnameMock.mockReturnValue("/");
+  });
+
+  it("plain /chat link when not on a stock page", async () => {
+    meMock.mockResolvedValue({ id: 1, email: "u@example.com", role: "user", created_at: "" });
+    pathnameMock.mockReturnValue("/opportunities");
+    render(<SidebarBody />);
+
+    await waitFor(() => expect(meMock).toHaveBeenCalled());
+    expect(screen.getByRole("link", { name: "AI Assistant" }).getAttribute("href")).toBe("/chat");
+  });
+
+  it("carries the ticker as a query param when opened from a stock page", async () => {
+    meMock.mockResolvedValue({ id: 1, email: "u@example.com", role: "user", created_at: "" });
+    pathnameMock.mockReturnValue("/stock/AAPL");
+    render(<SidebarBody />);
+
+    await waitFor(() => expect(meMock).toHaveBeenCalled());
+    expect(screen.getByRole("link", { name: "AI Assistant" }).getAttribute("href")).toBe("/chat?ticker=AAPL");
   });
 });

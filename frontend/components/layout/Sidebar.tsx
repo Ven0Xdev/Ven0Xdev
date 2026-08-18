@@ -85,6 +85,13 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.operatorOnly || isOperator);
 
+  // Opening the AI Assistant from a stock page must automatically carry
+  // that ticker into the chat's context, same as the embedded ChatWidget
+  // on the stock page itself already does via its initialTicker prop.
+  const stockPageTicker = pathname.match(/^\/stock\/([^/]+)/)?.[1];
+  const hrefFor = (item: (typeof NAV_ITEMS)[number]) =>
+    item.href === "/chat" && stockPageTicker ? `/chat?ticker=${encodeURIComponent(stockPageTicker)}` : item.href;
+
   const runSearch = async () => {
     const q = query.trim();
     if (!q || searching) return;
@@ -153,7 +160,7 @@ export function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={hrefFor(item)}
               onClick={onNavigate}
               className="group relative flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-sm font-medium"
               style={{

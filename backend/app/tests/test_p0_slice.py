@@ -60,6 +60,6 @@ def test_chat_footer_cites_source_and_timestamp():
 
     provider = MockOTCProvider()
     symbol = provider.get_universe(limit=1)[0].symbol
-    reply, _ = generate_reply(f"Should I buy {symbol}?", None, [])
+    reply, _, _ = generate_reply(f"Should I buy {symbol}?", None, [])
     assert "'mock'" in reply and "synthetic" in reply
     assert "UTC" in reply

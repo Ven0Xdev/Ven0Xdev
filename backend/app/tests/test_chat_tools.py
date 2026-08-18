@@ -47,7 +47,9 @@ def test_tool_failure_is_reported_not_raised():
 def test_template_reply_carries_epistemic_labels():
     provider = _provider()
     symbol = provider.get_universe(limit=1)[0].symbol
-    reply, resolved = generate_reply(f"Should I buy {symbol}?", None, [])
+    reply, resolved, metadata = generate_reply(f"Should I buy {symbol}?", None, [])
     assert resolved == symbol
     for label in ("Facts:", "Predictions:", "Assumptions:", "Missing:"):
         assert label in reply, f"missing epistemic label {label}"
+    assert metadata["backend"] == "template"
+    assert metadata["model"] is None

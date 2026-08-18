@@ -8,6 +8,7 @@ import type {
   BillingStatus,
   CalibrationReport,
   CandlesResponse,
+  ChatMetadata,
   DashboardSummary,
   Deliberation,
   IndicatorSeriesResponse,
@@ -362,12 +363,18 @@ export const api = {
     request<AdminUser>(`/admin/users/${userId}/plan`, { method: "PATCH", body: JSON.stringify({ plan }) }),
 
   sendChatMessage: (session_key: string, message: string, ticker?: string) =>
-    request<{ reply: string; ticker: string | null; session_key: string }>(`/chat/message`, {
+    request<{ reply: string; ticker: string | null; session_key: string; metadata: ChatMetadata }>(`/chat/message`, {
       method: "POST",
       body: JSON.stringify({ session_key, message, ticker }),
     }),
   chatHistory: (session_key: string) =>
-    request<{ session_key: string; ticker: string | null; messages: { role: string; content: string }[] }>(
-      `/chat/history/${session_key}`
-    ),
+    request<{
+      session_key: string;
+      ticker: string | null;
+      messages: { role: string; content: string; metadata: ChatMetadata | null }[];
+    }>(`/chat/history/${session_key}`),
+  clearChatSessionTicker: (session_key: string) =>
+    request<{ session_key: string; ticker: string | null }>(`/chat/sessions/${session_key}/ticker`, {
+      method: "DELETE",
+    }),
 };

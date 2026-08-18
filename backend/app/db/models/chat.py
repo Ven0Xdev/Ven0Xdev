@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, Integer, String
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -31,5 +31,11 @@ class ChatMessage(Base):
     role: Mapped[str] = mapped_column(String(16))  # user, assistant
     content: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # Provenance for assistant turns only (NULL on user turns): which
+    # backend answered, the grounding analysis's data source/mode/engine,
+    # drift/safe-mode status at answer time. Named `meta`, not `metadata` —
+    # SQLAlchemy's declarative Base reserves that attribute name for its own
+    # MetaData registry.
+    meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     session: Mapped["ChatSession"] = relationship(back_populates="messages")

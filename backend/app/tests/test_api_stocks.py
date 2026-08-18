@@ -73,7 +73,7 @@ def test_watchlist_add_list_remove(client):
     assert remove_response.status_code == 200
 
 
-def _ensure_test_symbol_in_universe(client, symbol):
+def _ensure_test_symbol_in_universe(client, symbol, name=None):
     # resolve_ticker() sources known symbols from the Asset Universe Manager
     # (services/universe/manager.py), which for `client`-fixture tests is a
     # fresh in-memory DB the app lifespan's own seed never touches (see
@@ -86,9 +86,16 @@ def _ensure_test_symbol_in_universe(client, symbol):
     # convention). Tolerates a 409 from an earlier test having added it.
     res = client.post(
         "/api/v1/universe",
-        json={"symbol": symbol, "asset_type": "STOCK", "name": symbol, "exchange": "NASDAQ"},
+        json={"symbol": symbol, "asset_type": "STOCK", "name": name or symbol, "exchange": "NASDAQ"},
     )
     assert res.status_code in (201, 409), res.text
+    if res.status_code == 409:
+        # Already exists from an earlier test that later deactivated it
+        # (_retire_test_symbol) — POST never reactivates (409 either way),
+        # so a symbol reused across more than one test-pair would
+        # otherwise stay permanently inactive from the second reuse on.
+        reactivate = client.patch(f"/api/v1/universe/{symbol}", json={"is_active": True})
+        assert reactivate.status_code == 200, reactivate.text
 
 
 def _retire_test_symbol(client, symbol):
@@ -124,6 +131,163 @@ def test_chat_history_persists(client):
         assert response.status_code == 200
         data = response.json()
         assert len(data["messages"]) >= 2
+    finally:
+        _retire_test_symbol(client, "ZCHTA")
+
+
+# ---------- ticker detection, unsupported symbols, context persistence -----
+
+def test_chat_detects_dollar_cashtag(client):
+    _ensure_test_symbol_in_universe(client, "ZCHTA")
+    try:
+        res = client.post("/api/v1/chat/message", json={"session_key": "cashtag-session", "message": "$ZCHTA to the moon?"})
+        assert res.status_code == 200
+        assert res.json()["ticker"] == "ZCHTA"
+    finally:
+        _retire_test_symbol(client, "ZCHTA")
+
+
+def test_chat_detects_bare_uppercase_symbol(client):
+    _ensure_test_symbol_in_universe(client, "ZCHTA")
+    try:
+        res = client.post("/api/v1/chat/message", json={"session_key": "bare-session", "message": "What about ZCHTA?"})
+        assert res.status_code == 200
+        assert res.json()["ticker"] == "ZCHTA"
+    finally:
+        _retire_test_symbol(client, "ZCHTA")
+
+
+def test_chat_detects_natural_language_company_name(client):
+    # "What about Apple?" (task's own example) works the same way as this:
+    # the canonical universe's own name, minus corporate boilerplate,
+    # matched as a natural phrase — never requiring the user to type the
+    # ticker or the full legal name.
+    _ensure_test_symbol_in_universe(client, "ZCHTB", name="Zeta Charting Inc.")
+    try:
+        res = client.post(
+            "/api/v1/chat/message",
+            json={"session_key": "company-name-session", "message": "What about Zeta Charting?"},
+        )
+        assert res.status_code == 200
+        assert res.json()["ticker"] == "ZCHTB"
+    finally:
+        _retire_test_symbol(client, "ZCHTB")
+
+
+def test_chat_unsupported_cashtag_symbol_is_reported_not_grounded(client):
+    res = client.post(
+        "/api/v1/chat/message",
+        json={"session_key": "unsupported-session", "message": "$ZZZZZZ what do you think?"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ticker"] is None
+    assert "ZZZZZZ" in data["reply"]
+    assert "supported" in data["reply"].lower()
+    # Never silently ground an unsupported mention — template mode, no
+    # analysis-derived fields to fabricate.
+    assert data["metadata"]["backend"] == "template"
+    assert data["metadata"]["data_source"] is None
+
+
+def test_chat_unsupported_symbol_does_not_clobber_prior_ticker_context(client):
+    _ensure_test_symbol_in_universe(client, "ZCHTA")
+    try:
+        session_key = "unsupported-preserve-session"
+        client.post("/api/v1/chat/message", json={"session_key": session_key, "message": "$ZCHTA how confident are you?"})
+        # An unsupported mention must not overwrite the session's existing,
+        # valid ticker context.
+        unsupported = client.post(
+            "/api/v1/chat/message", json={"session_key": session_key, "message": "$ZZZZZZ what about that one?"}
+        )
+        assert unsupported.json()["ticker"] is None
+
+        history = client.get(f"/api/v1/chat/history/{session_key}")
+        assert history.json()["ticker"] == "ZCHTA"
+    finally:
+        _retire_test_symbol(client, "ZCHTA")
+
+
+def test_chat_context_persists_across_turns_without_remention(client):
+    _ensure_test_symbol_in_universe(client, "ZCHTA")
+    try:
+        session_key = "persist-session"
+        client.post("/api/v1/chat/message", json={"session_key": session_key, "message": "$ZCHTA — should I buy?"})
+        follow_up = client.post(
+            "/api/v1/chat/message", json={"session_key": session_key, "message": "How confident are you?"}
+        )
+        assert follow_up.json()["ticker"] == "ZCHTA"
+    finally:
+        _retire_test_symbol(client, "ZCHTA")
+
+
+def test_chat_response_metadata_reflects_grounded_ticker(client):
+    # Analysis (data_source/mode/engine/confidence) needs a symbol the
+    # configured mock provider actually knows how to synthesize data for —
+    # AXNT, the suite's existing legacy-OTC test symbol (used the same way
+    # by test_alerts.py/test_paper_trading.py), NOT one of the real 20
+    # canonical multi-asset symbols (AAPL included): those are asserted
+    # exact-count elsewhere (test_universe_manager.py,
+    # test_market_overview.py, ...) against the *session-scoped, never
+    # rolled back* `client`-fixture DB, so deactivating one of them here
+    # would leak a permanently-"19 of 20 active" state into every later
+    # test in the run. AXNT has no such exact-count assertion anywhere.
+    _ensure_test_symbol_in_universe(client, "AXNT")
+    try:
+        res = client.post("/api/v1/chat/message", json={"session_key": "metadata-session", "message": "$AXNT outlook?"})
+        meta = res.json()["metadata"]
+        assert meta["backend"] == "template"
+        assert meta["model"] is None  # never claim template mode is an LLM
+        assert isinstance(meta["safe_mode_active"], bool)
+        assert meta["drift_status"] in ("insufficient_history", "stable", "moderate", "significant")
+        assert meta["data_source"] is not None
+        assert meta["data_mode"] is not None
+        assert meta["engine_mode"] in ("HEURISTIC", "TRAINED_ML")
+        assert meta["as_of"] is not None
+        assert meta["confidence_score"] is not None
+    finally:
+        _retire_test_symbol(client, "AXNT")
+
+
+def test_chat_clear_session_ticker_endpoint(client):
+    _ensure_test_symbol_in_universe(client, "ZCHTA")
+    try:
+        session_key = "clear-ticker-session"
+        client.post("/api/v1/chat/message", json={"session_key": session_key, "message": "$ZCHTA outlook?"})
+        assert client.get(f"/api/v1/chat/history/{session_key}").json()["ticker"] == "ZCHTA"
+
+        cleared = client.delete(f"/api/v1/chat/sessions/{session_key}/ticker")
+        assert cleared.status_code == 200
+        assert cleared.json()["ticker"] is None
+        assert client.get(f"/api/v1/chat/history/{session_key}").json()["ticker"] is None
+
+        # A follow-up with no ticker mention no longer silently grounds on
+        # the cleared symbol.
+        follow_up = client.post("/api/v1/chat/message", json={"session_key": session_key, "message": "how confident are you?"})
+        assert follow_up.json()["ticker"] is None
+    finally:
+        _retire_test_symbol(client, "ZCHTA")
+
+
+def test_chat_response_metadata_reflects_no_ticker_state(client):
+    res = client.post("/api/v1/chat/message", json={"session_key": "no-ticker-session", "message": "hello there"})
+    meta = res.json()["metadata"]
+    assert meta["data_source"] is None
+    assert meta["engine_mode"] is None
+    assert meta["confidence_score"] is None
+    assert "ticker" in meta["confidence_note"].lower()
+
+
+def test_chat_history_carries_metadata_for_assistant_turns(client):
+    _ensure_test_symbol_in_universe(client, "ZCHTA")
+    try:
+        session_key = "history-metadata-session"
+        client.post("/api/v1/chat/message", json={"session_key": session_key, "message": "$ZCHTA outlook?"})
+        history = client.get(f"/api/v1/chat/history/{session_key}").json()
+        assistant_turns = [m for m in history["messages"] if m["role"] == "assistant"]
+        user_turns = [m for m in history["messages"] if m["role"] == "user"]
+        assert assistant_turns and assistant_turns[0]["metadata"] is not None
+        assert user_turns and user_turns[0]["metadata"] is None
     finally:
         _retire_test_symbol(client, "ZCHTA")
 
