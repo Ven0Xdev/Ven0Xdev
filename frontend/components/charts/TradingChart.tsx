@@ -8,9 +8,13 @@ import {
   LineSeries,
   TickMarkType,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type IPriceLine,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type MouseEventParams,
+  type SeriesMarker,
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
@@ -18,13 +22,31 @@ import { api } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import { useTimezone } from "@/components/providers/TimezoneProvider";
 import { formatInTimeZone, formatInTimeZoneWithAbbr } from "@/lib/timezone";
-import type { CandlesResponse, ChartTimeframe, IndicatorSeriesResponse, SignalPayload, StreamBar } from "@/lib/types";
+import type {
+  CandlesResponse,
+  ChartRange,
+  ChartTimeframe,
+  IndicatorSeriesResponse,
+  NcsSignal,
+  NewsPipelineArticle,
+  SignalPayload,
+  StreamBar,
+} from "@/lib/types";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { DrawingToolbar, type DrawTool } from "@/components/charts/DrawingToolbar";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-const TIMEFRAMES: ChartTimeframe[] = ["1m", "5m", "15m", "1H", "1D", "1W", "1M", "1Y", "ALL"];
+// Interval (bar granularity) and Range (how far back the chart looks) are
+// independent controls — see backend bars_for_timeframe's docstring
+// (services/signals/engine.py) for the authoritative mapping this mirrors.
+// "1Y"/"ALL" used to be Interval buttons here; they're Range values now.
+const INTERVALS: ChartTimeframe[] = ["1m", "5m", "15m", "1H", "1D", "1W", "1M"];
+const INTRADAY_RANGES: ChartRange[] = ["1D", "5D", "1M"];
+const DAILY_RANGES: ChartRange[] = ["1M", "3M", "6M", "YTD", "1Y", "5Y", "ALL"];
+const DEFAULT_INTRADAY_RANGE: ChartRange = "1D";
+const DEFAULT_DAILY_RANGE: ChartRange = "1Y";
 
 const OVERLAYS = [
   { key: "sma_20", label: "SMA 20" },
@@ -116,6 +138,34 @@ function isDarkTheme(): boolean {
   );
 }
 
+function isIntradayRangeInterval(tf: ChartTimeframe): boolean {
+  return tf === "5m" || tf === "15m" || tf === "1H";
+}
+
+/** null for the live "1m" interval — Range doesn't apply while streaming. */
+function defaultRangeForInterval(tf: ChartTimeframe): ChartRange | null {
+  if (tf === "1m") return null;
+  return isIntradayRangeInterval(tf) ? DEFAULT_INTRADAY_RANGE : DEFAULT_DAILY_RANGE;
+}
+
+type Drawing =
+  | { id: string; type: "trendline"; p1: { time: UTCTimestamp; price: number }; p2: { time: UTCTimestamp; price: number } }
+  | { id: string; type: "hline"; price: number };
+
+function drawingsStorageKey(symbol: string): string {
+  return `nexora:chart-drawings:${symbol}`;
+}
+
+function loadDrawings(symbol: string): Drawing[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(drawingsStorageKey(symbol));
+    return raw ? (JSON.parse(raw) as Drawing[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function TradingChart({
   symbol,
   tradePlan,
@@ -136,12 +186,27 @@ export function TradingChart({
   const macdRefs = useRef<{ line?: ISeriesApi<"Line">; signal?: ISeriesApi<"Line">; hist?: ISeriesApi<"Histogram"> }>({});
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const pendingBar = useRef<StreamBar | null>(null);
+  const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const trendlineSeriesRef = useRef<Map<string, ISeriesApi<"Line">>>(new Map());
+  const hlinePriceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
 
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("1D");
+  const [range, setRange] = useState<ChartRange | null>(defaultRangeForInterval("1D"));
   const [activeOverlays, setActiveOverlays] = useState<Set<string>>(new Set(["sma_20"]));
   const [candles, setCandles] = useState<CandlesResponse | null>(null);
   const [indicators, setIndicators] = useState<IndicatorSeriesResponse | null>(null);
   const [error, setError] = useState<unknown>(null);
+
+  // NCS + news chart markers — annotations only, see the module docstring.
+  const [ncsHistory, setNcsHistory] = useState<NcsSignal[]>([]);
+  const [newsForMarkers, setNewsForMarkers] = useState<NewsPipelineArticle[]>([]);
+
+  // Drawing toolbar — trendline/horizontal-line, persisted per symbol in
+  // localStorage (client-side only: not shared across devices/sessions,
+  // which is an honest, explicitly scoped limitation, not a hidden one).
+  const [drawTool, setDrawTool] = useState<DrawTool>("none");
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [pendingPoint, setPendingPoint] = useState<{ time: UTCTimestamp; price: number } | null>(null);
 
   // Live-mode-only state (timeframe === LIVE_TIMEFRAME).
   const [conn, setConn] = useState<ConnState>("connecting");
@@ -170,12 +235,31 @@ export function TradingChart({
     }
   }
 
+  // Reset Range to that interval-class's default whenever Interval changes
+  // — same render-body pattern as the live-reset block above. Also resets
+  // whenever the symbol changes together with the interval (both land in
+  // one render), which is fine: `range` is re-derived identically either way.
+  const [prevIntervalForRange, setPrevIntervalForRange] = useState<ChartTimeframe>(timeframe);
+  if (timeframe !== prevIntervalForRange) {
+    setPrevIntervalForRange(timeframe);
+    setRange(defaultRangeForInterval(timeframe));
+  }
+
+  // Load this symbol's saved drawings (if any) whenever the symbol changes.
+  const [prevSymbolForDrawings, setPrevSymbolForDrawings] = useState<string | null>(null);
+  if (symbol !== prevSymbolForDrawings) {
+    setPrevSymbolForDrawings(symbol);
+    setDrawings(loadDrawings(symbol));
+    setDrawTool("none");
+    setPendingPoint(null);
+  }
+
   const [retryTick, setRetryTick] = useState(0);
   const retry = useCallback(() => setRetryTick((n) => n + 1), []);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.candles(symbol, timeframe), api.indicators(symbol, timeframe)])
+    Promise.all([api.candles(symbol, timeframe, range), api.indicators(symbol, timeframe, range)])
       .then(([c, i]) => {
         if (cancelled) return;
         setCandles(c);
@@ -186,7 +270,21 @@ export function TradingChart({
     return () => {
       cancelled = true;
     };
-  }, [symbol, timeframe, retryTick]);
+  }, [symbol, timeframe, range, retryTick]);
+
+  // NCS + news markers — fetched independently of the candle/indicator
+  // load above (different endpoints, no reason to block on either), keyed
+  // on [symbol, timeframe] only: NCS history and news don't have a Range
+  // dimension, they're just plotted wherever they land within whatever
+  // candles are currently visible.
+  useEffect(() => {
+    let cancelled = false;
+    api.ncsHistory(symbol, timeframe).then((r) => !cancelled && setNcsHistory(r.signals)).catch(() => !cancelled && setNcsHistory([]));
+    api.newsForSymbol(symbol).then((r) => !cancelled && setNewsForMarkers(r.articles)).catch(() => !cancelled && setNewsForMarkers([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, timeframe]);
 
   // Chart lifecycle — created once per symbol, torn down on unmount/symbol change.
   useEffect(() => {
@@ -221,6 +319,7 @@ export function TradingChart({
       borderVisible: false, priceFormat: { type: "price", precision: 4, minMove: 0.0001 },
     }, 0);
     candleRef.current = candleSeries;
+    markersPluginRef.current = createSeriesMarkers(candleSeries, []);
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceScaleId: "vol", priceFormat: { type: "volume" }, color: neutralLine,
@@ -240,6 +339,8 @@ export function TradingChart({
     macdRefs.current.signal = chart.addSeries(LineSeries, { color: bad, lineWidth: 1, priceLineVisible: false }, 2);
 
     const overlaySeries = overlaySeriesRef.current;
+    const trendlineSeries = trendlineSeriesRef.current;
+    const hlinePriceLines = hlinePriceLinesRef.current;
     return () => {
       chart.remove();
       chartRef.current = null;
@@ -249,6 +350,9 @@ export function TradingChart({
       rsiRef.current = null;
       macdRefs.current = {};
       priceLinesRef.current = [];
+      markersPluginRef.current = null;
+      trendlineSeries.clear();
+      hlinePriceLines.clear();
     };
   }, [symbol]);
 
@@ -282,6 +386,42 @@ export function TradingChart({
       chartRef.current?.timeScale().fitContent();
     }
   }, [candles]);
+
+  // NCS + news markers on the candle series — chart annotations only, see
+  // the module docstring: nothing here places, opens, or even proposes a
+  // paper order. NCS markers only for *confirmed* verdicts (non-repaint
+  // contract — see services/signals/ncs.py), never the raw/unconfirmed
+  // read, so a marker on the chart never shows something that could still
+  // flip on the next bar. News markers are small, sentiment-colored dots
+  // (lightweight-charts markers have no built-in hover tooltip) — the full
+  // article list with headline/source/link lives in NewsPanel below.
+  useEffect(() => {
+    const plugin = markersPluginRef.current;
+    if (!plugin) return;
+    const ncsMarkers: SeriesMarker<Time>[] = ncsHistory
+      .filter((s) => s.confirmed_verdict !== null && !s.vetoed)
+      .map((s) => {
+        const bullish = s.confirmed_verdict === "STRONG_BUY" || s.confirmed_verdict === "BUY";
+        return {
+          time: toTime(s.bar_ts),
+          position: bullish ? "belowBar" : "aboveBar",
+          shape: bullish ? "arrowUp" : "arrowDown",
+          color: bullish ? "#0bb981" : "#dc2626",
+          text: `NCS ${s.confirmed_verdict?.replace("_", " ")}`,
+          size: 1,
+        } satisfies SeriesMarker<Time>;
+      });
+    const newsMarkers: SeriesMarker<Time>[] = newsForMarkers.map((a) => ({
+      time: toTime(a.published_at),
+      position: "aboveBar",
+      shape: "circle",
+      color: a.sentiment_label === "positive" ? "#0bb981" : a.sentiment_label === "negative" ? "#dc2626" : "#8a919c",
+      text: "N",
+      size: 0.6,
+    }));
+    const combined = [...ncsMarkers, ...newsMarkers].sort((a, b) => (a.time as number) - (b.time as number));
+    plugin.setMarkers(combined);
+  }, [ncsHistory, newsForMarkers, candles]);
 
   // Push RSI/MACD sub-pane data — explicitly cleared (not left stale) when
   // the new response has no series for a pane, e.g. an intraday timeframe
@@ -396,6 +536,101 @@ export function TradingChart({
     }
   }, [tradePlan, candles, isLive, signal]);
 
+  // Render drawn trendlines/horizontal lines. Diffs against the previous
+  // render (removes series/price-lines whose id disappeared, adds new
+  // ones) rather than clearing everything every time — a trendline is
+  // just a 2-point LineSeries connecting its two clicked points.
+  useEffect(() => {
+    const chart = chartRef.current;
+    const candleSeries = candleRef.current;
+    if (!chart || !candleSeries) return;
+
+    const wantedIds = new Set(drawings.map((d) => d.id));
+    for (const [id, s] of trendlineSeriesRef.current) {
+      if (!wantedIds.has(id)) {
+        chart.removeSeries(s);
+        trendlineSeriesRef.current.delete(id);
+      }
+    }
+    for (const [id, line] of hlinePriceLinesRef.current) {
+      if (!wantedIds.has(id)) {
+        candleSeries.removePriceLine(line);
+        hlinePriceLinesRef.current.delete(id);
+      }
+    }
+
+    for (const d of drawings) {
+      if (d.type === "trendline") {
+        if (trendlineSeriesRef.current.has(d.id)) continue;
+        const s = chart.addSeries(LineSeries, { color: "#f59e0b", lineWidth: 2, priceLineVisible: false, lastValueVisible: false }, 0);
+        s.setData([
+          { time: d.p1.time, value: d.p1.price },
+          { time: d.p2.time, value: d.p2.price },
+        ]);
+        trendlineSeriesRef.current.set(d.id, s);
+      } else {
+        if (hlinePriceLinesRef.current.has(d.id)) continue;
+        const line = candleSeries.createPriceLine({
+          price: d.price, color: "#f59e0b", lineStyle: 0, lineWidth: 2, title: "drawn",
+        });
+        hlinePriceLinesRef.current.set(d.id, line);
+      }
+    }
+  }, [drawings]);
+
+  // Persist this symbol's drawings — client-side only (see the state
+  // declaration above for why that's an intentional, honest scope).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(drawingsStorageKey(symbol), JSON.stringify(drawings));
+  }, [symbol, drawings]);
+
+  // Drawing-tool click handling: trendline needs two clicks (first click
+  // stores a pending point, second click completes the drawing and clears
+  // the pending point + tool); horizontal line completes on one click.
+  // Disabled while `drawTool === "none"` so ordinary chart interaction
+  // (panning, the crosshair) is completely unaffected when no tool is active.
+  useEffect(() => {
+    const chart = chartRef.current;
+    const candleSeries = candleRef.current;
+    if (!chart || !candleSeries || drawTool === "none") return;
+
+    const handler = (param: MouseEventParams<Time>) => {
+      if (!param.point || param.time === undefined) return;
+      const price = candleSeries.coordinateToPrice(param.point.y);
+      if (price === null) return;
+      const time = param.time as UTCTimestamp;
+
+      if (drawTool === "hline") {
+        setDrawings((prev) => [...prev, { id: `hline-${Date.now()}`, type: "hline", price }]);
+        setDrawTool("none");
+        return;
+      }
+
+      // trendline
+      setPendingPoint((prev) => {
+        if (prev === null) return { time, price };
+        setDrawings((d) => [...d, { id: `trendline-${Date.now()}`, type: "trendline", p1: prev, p2: { time, price } }]);
+        setDrawTool("none");
+        return null;
+      });
+    };
+
+    chart.subscribeClick(handler);
+    return () => chart.unsubscribeClick(handler);
+  }, [drawTool]);
+
+  const handleSelectDrawTool = useCallback((tool: DrawTool) => {
+    setDrawTool(tool);
+    setPendingPoint(null);
+  }, []);
+
+  const handleClearDrawings = useCallback(() => {
+    setDrawings([]);
+    setDrawTool("none");
+    setPendingPoint(null);
+  }, []);
+
   // Live streaming — mounted only while timeframe === "1m". Paint throttled
   // to ~4fps (backend accuracy is preserved — only rendering is throttled).
   // EventSource cannot set an Authorization header (a browser platform
@@ -499,20 +734,39 @@ export function TradingChart({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Chart timeframe">
-          {TIMEFRAMES.map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className="rounded-md px-2.5 py-1 text-xs font-semibold"
-              style={{
-                background: timeframe === tf ? "var(--accent-soft)" : "transparent",
-                color: timeframe === tf ? "var(--accent)" : "var(--text-secondary)",
-              }}
-            >
-              {tf}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Chart interval">
+            {INTERVALS.map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className="rounded-md px-2.5 py-1 text-xs font-semibold"
+                style={{
+                  background: timeframe === tf ? "var(--accent-soft)" : "transparent",
+                  color: timeframe === tf ? "var(--accent)" : "var(--text-secondary)",
+                }}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+          {!isLive && (
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Chart range">
+              {(isIntradayRangeInterval(timeframe) ? INTRADAY_RANGES : DAILY_RANGES).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRange(r)}
+                  className="rounded px-2 py-0.5 text-[11px] font-medium"
+                  style={{
+                    background: range === r ? "var(--surface-2)" : "transparent",
+                    color: range === r ? "var(--text-primary)" : "var(--text-muted)",
+                  }}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {!isLive && candles?.data_mode && (
           <span
@@ -569,13 +823,22 @@ export function TradingChart({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        {OVERLAYS.map((o) => (
-          <label key={o.key} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
-            <input type="checkbox" checked={activeOverlays.has(o.key)} onChange={() => toggleOverlay(o.key)} />
-            {o.label}
-          </label>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3">
+          {OVERLAYS.map((o) => (
+            <label key={o.key} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
+              <input type="checkbox" checked={activeOverlays.has(o.key)} onChange={() => toggleOverlay(o.key)} />
+              {o.label}
+            </label>
+          ))}
+        </div>
+        <DrawingToolbar
+          activeTool={drawTool}
+          onSelectTool={handleSelectDrawTool}
+          onClear={handleClearDrawings}
+          hasDrawings={drawings.length > 0}
+          pendingFirstPoint={pendingPoint !== null}
+        />
       </div>
 
       {error ? (

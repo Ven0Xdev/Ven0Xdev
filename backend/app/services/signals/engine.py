@@ -54,6 +54,16 @@ _RESAMPLE_RULE = {"5m": "5min", "15m": "15min", "1H": "1h", "1W": "1W", "1M": "1
 _BASE_DAILY_LOOKBACK = 2000
 _DAILY_TAIL_BARS = {"1D": 250, "1Y": 260, "1W": 156, "1M": 60}  # bars kept AFTER any resample
 
+# Interval/range split: `timeframe` above picks bar *granularity*
+# (interval); `range_key` independently picks how far back the chart
+# looks, decoupled from it — e.g. Interval=1H with Range=5D. Omitting
+# range_key (the default everywhere it isn't explicitly passed) preserves
+# every existing caller's exact prior behavior — this is purely additive.
+_INTRADAY_RANGE_LOOKBACK_MINUTES = {"1D": 390, "5D": 1_950, "1M": 8_190}  # 1/5/21 sessions
+_DAILY_RANGE_TAIL_BARS = {"1M": 21, "3M": 63, "6M": 126, "1Y": 260, "5Y": 1_260}
+VALID_INTRADAY_RANGES = set(_INTRADAY_RANGE_LOOKBACK_MINUTES)
+VALID_DAILY_RANGES = set(_DAILY_RANGE_TAIL_BARS) | {"YTD", "ALL"}
+
 _SIGNAL_TYPE_FOR_STATUS = {
     "POSSIBLE_ENTRY": "BUY",
     "SETUP_FORMING": "BUY",
@@ -98,7 +108,9 @@ def _resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     return resampled.dropna(subset=["open"])
 
 
-def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider, closed_only: bool = False) -> pd.DataFrame:
+def _intraday_bars_with_backfill(
+    symbol: str, provider: MarketDataProvider, closed_only: bool = False, lookback_minutes: int = 390,
+) -> pd.DataFrame:
     """Real 1-minute-and-up bars for intraday timeframes: the streaming
     service's own live-accumulated bars, backfilled with the provider's
     real intraday REST history when it has one (currently only
@@ -116,15 +128,24 @@ def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider, clos
     excludes the stream's still-forming current bar entirely — a REST
     backfill can never itself return a bar that hasn't happened yet, so
     only the stream side needs the distinction.
+
+    `lookback_minutes` (chart Range control): how far back to backfill —
+    the stream side's own `limit` scales with it too, so a wider range
+    isn't silently capped at the stream's in-memory 500-bar default.
     """
     from app.services.streaming.service import get_stream_service
 
     service = get_stream_service()
-    raw_bars = service.closed_bars_only(symbol, limit=500) if closed_only else service.recent_bars(symbol, limit=500)
+    stream_limit = max(500, lookback_minutes)
+    raw_bars = (
+        service.closed_bars_only(symbol, limit=stream_limit)
+        if closed_only
+        else service.recent_bars(symbol, limit=stream_limit)
+    )
     stream_df = _bars_to_df(raw_bars)
 
     try:
-        backfill_df = provider.get_intraday_bars(symbol)
+        backfill_df = provider.get_intraday_bars(symbol, lookback_minutes=lookback_minutes)
     except ProviderDataUnavailable:
         return stream_df.sort_index()
 
@@ -136,7 +157,9 @@ def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider, clos
     return merged[~merged.index.duplicated(keep="first")].sort_index()
 
 
-def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str, closed_only: bool = False) -> pd.DataFrame:
+def bars_for_timeframe(
+    symbol: str, provider: MarketDataProvider, timeframe: str, closed_only: bool = False, range_key: str | None = None,
+) -> pd.DataFrame:
     """The single timeframe -> real-bars mapping shared by the signal
     engine and the /stocks/{symbol}/candles endpoint. Intraday timeframes
     read the streaming service's live-accumulated bars, backfilled with
@@ -153,11 +176,18 @@ def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str
     non-repaint guarantee rests on never computing from an unfinished bar;
     every other caller (charts, the existing Signal Engine) is unaffected,
     since this defaults to the prior always-include-the-latest behavior.
+
+    `range_key`: independently picks how far back to look (chart Range
+    control), decoupled from `timeframe`'s bar granularity — e.g.
+    Interval=1H with Range=5D. `None` (every caller that doesn't pass it)
+    reproduces the exact prior fixed-lookback-per-timeframe behavior,
+    unchanged.
     """
     timeframe = (timeframe or "1D").upper() if timeframe not in _INTRADAY_TIMEFRAMES else timeframe
 
     if timeframe in _INTRADAY_TIMEFRAMES:
-        df = _intraday_bars_with_backfill(symbol, provider, closed_only=closed_only)
+        lookback_minutes = _INTRADAY_RANGE_LOOKBACK_MINUTES.get(range_key, 390)
+        df = _intraday_bars_with_backfill(symbol, provider, closed_only=closed_only, lookback_minutes=lookback_minutes)
         if df.empty or timeframe == "1m":
             return df
         return _resample_ohlcv(df, _RESAMPLE_RULE[timeframe])
@@ -176,7 +206,17 @@ def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str
                 df = df.iloc[:-1]
     if timeframe in ("1W", "1M"):
         df = _resample_ohlcv(df, _RESAMPLE_RULE[timeframe])
-    elif timeframe == "ALL":
+
+    if range_key == "ALL":
+        return df
+    if range_key == "YTD":
+        year_start = pd.Timestamp(year=pd.Timestamp.now(tz="UTC").year, month=1, day=1, tz="UTC")
+        idx = df.index if df.index.tzinfo else df.index.tz_localize("UTC")
+        return df[idx >= year_start]
+    if range_key in _DAILY_RANGE_TAIL_BARS:
+        return df.tail(_DAILY_RANGE_TAIL_BARS[range_key])
+
+    if timeframe == "ALL":
         return df
     return df.tail(_DAILY_TAIL_BARS.get(timeframe, 250))
 

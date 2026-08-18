@@ -86,11 +86,23 @@ export interface OhlcvBar {
   volume: number;
 }
 
+/** Bar granularity (chart Interval control). "1Y"/"ALL" used to live here
+ * too, back when this array conflated interval and range — they're
+ * ChartRange values now (see below); kept in this union only so existing
+ * API calls built before the split still type-check unchanged. */
 export type ChartTimeframe = "1m" | "5m" | "15m" | "1H" | "1D" | "1W" | "1M" | "1Y" | "ALL";
+
+/** How far back the chart looks (chart Range control) — independent of
+ * ChartTimeframe. Valid values depend on the selected interval: intraday
+ * intervals (1m/5m/15m/1H) accept 1D/5D/1M; daily+ intervals (1D/1W/1M)
+ * accept 1M/3M/6M/YTD/1Y/5Y/ALL. See backend bars_for_timeframe's
+ * docstring (services/signals/engine.py) for the authoritative mapping. */
+export type ChartRange = "1D" | "5D" | "1M" | "3M" | "6M" | "YTD" | "1Y" | "5Y" | "ALL";
 
 export interface CandlesResponse {
   symbol: string;
   timeframe: string;
+  range?: string | null;
   bars: OhlcvBar[];
   bar_count: number;
   data_source: string;
@@ -103,6 +115,7 @@ export interface CandlesResponse {
 export interface IndicatorSeriesResponse {
   symbol: string;
   timeframe: string;
+  range?: string | null;
   timestamps: string[];
   series: Record<string, (number | null)[]>;
 }

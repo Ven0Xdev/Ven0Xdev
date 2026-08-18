@@ -148,6 +148,7 @@ _VALID_TIMEFRAMES = {"1m", "5m", "15m", "1H", "1D", "1W", "1M", "1Y", "ALL"}
 async def get_stock_candles(
     symbol: str,
     timeframe: str = "1D",
+    range: str | None = None,
     limit: int = 500,
     provider: MarketDataProvider = Depends(data_provider),
     db: Session = Depends(db_session),
@@ -158,14 +159,24 @@ async def get_stock_candles(
     honesty rules this follows (intraday timeframes read the streaming
     service's real accumulated bars, never fabricated history; 1W/1M are a
     lossless resample of real daily bars).
+
+    `range` (optional): independently picks how far back to look — see
+    bars_for_timeframe's docstring. Omitted = the prior fixed
+    lookback-per-timeframe default, unchanged.
     """
     from datetime import datetime, timezone
 
-    from app.services.signals.engine import _INTRADAY_TIMEFRAMES, bars_for_timeframe, candle_provenance
+    from app.services.signals.engine import (
+        VALID_DAILY_RANGES, VALID_INTRADAY_RANGES, _INTRADAY_TIMEFRAMES, bars_for_timeframe, candle_provenance,
+    )
 
     symbol = symbol.upper()
     if timeframe not in _VALID_TIMEFRAMES:
         raise HTTPException(status_code=400, detail=f"Unknown timeframe {timeframe!r}. Valid: {sorted(_VALID_TIMEFRAMES)}")
+    if range is not None:
+        valid_ranges = VALID_INTRADAY_RANGES if timeframe in _INTRADAY_TIMEFRAMES else VALID_DAILY_RANGES
+        if range not in valid_ranges:
+            raise HTTPException(status_code=400, detail=f"Unknown range {range!r} for timeframe {timeframe!r}. Valid: {sorted(valid_ranges)}")
 
     try:
         provider.get_ticker_meta(symbol)
@@ -181,7 +192,7 @@ async def get_stock_candles(
 
         await get_stream_service().ensure_symbol(symbol)
 
-    df = bars_for_timeframe(symbol, provider, timeframe)
+    df = bars_for_timeframe(symbol, provider, timeframe, range_key=range)
     data_source, data_mode = candle_provenance(symbol, provider, timeframe)
 
     bars = [
@@ -209,6 +220,7 @@ async def get_stock_candles(
     return {
         "symbol": symbol,
         "timeframe": timeframe,
+        "range": range,
         "bars": bars,
         "bar_count": len(bars),
         "data_source": data_source,
@@ -236,22 +248,28 @@ def _series_out(series) -> list[float | None]:
 def get_stock_indicators(
     symbol: str,
     timeframe: str = "1D",
+    range: str | None = None,
     indicators: str = "sma,ema,rsi,macd,bollinger,atr,vwap",
     provider: MarketDataProvider = Depends(data_provider),
     db: Session = Depends(db_session),
 ):
     """Per-bar technical indicator series, aligned 1:1 with
-    `/{symbol}/candles` at the same timeframe — chart overlay data. Reuses
-    the exact same indicator math `services/scoring/scorer.py` already
-    computes for scoring (`services/features/technical.py`), just returned
-    as a full series instead of collapsed to a single latest value.
+    `/{symbol}/candles` at the same timeframe (and `range`, if given) —
+    chart overlay data. Reuses the exact same indicator math
+    `services/scoring/scorer.py` already computes for scoring
+    (`services/features/technical.py`), just returned as a full series
+    instead of collapsed to a single latest value.
     """
     from app.services.features import technical
-    from app.services.signals.engine import bars_for_timeframe
+    from app.services.signals.engine import VALID_DAILY_RANGES, VALID_INTRADAY_RANGES, _INTRADAY_TIMEFRAMES, bars_for_timeframe
 
     symbol = symbol.upper()
     if timeframe not in _VALID_TIMEFRAMES:
         raise HTTPException(status_code=400, detail=f"Unknown timeframe {timeframe!r}. Valid: {sorted(_VALID_TIMEFRAMES)}")
+    if range is not None:
+        valid_ranges = VALID_INTRADAY_RANGES if timeframe in _INTRADAY_TIMEFRAMES else VALID_DAILY_RANGES
+        if range not in valid_ranges:
+            raise HTTPException(status_code=400, detail=f"Unknown range {range!r} for timeframe {timeframe!r}. Valid: {sorted(valid_ranges)}")
 
     requested = {name.strip() for name in indicators.split(",") if name.strip()}
     unknown = requested - _VALID_INDICATORS
@@ -267,7 +285,7 @@ def get_stock_indicators(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
 
-    df = bars_for_timeframe(symbol, provider, timeframe)
+    df = bars_for_timeframe(symbol, provider, timeframe, range_key=range)
     series: dict[str, list[float | None]] = {}
 
     if len(df) >= 2:
@@ -297,6 +315,7 @@ def get_stock_indicators(
     return {
         "symbol": symbol,
         "timeframe": timeframe,
+        "range": range,
         "timestamps": [ts.isoformat() for ts in df.index],
         "series": series,
     }

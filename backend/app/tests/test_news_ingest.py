@@ -34,9 +34,14 @@ def test_persists_a_new_article_with_full_classification(db_session):
 
 
 def test_returns_none_for_an_article_with_no_symbols(db_session):
-    row = persist_article(db_session, _article(symbols=[]))
+    row = persist_article(db_session, _article(external_id="no-symbols-1", symbols=[]))
     assert row is None
-    assert db_session.query(NewsItem).count() == 0
+    # Filtered by this test's own external_id, not a whole-table count —
+    # test_news_api.py seeds committed (non-rollback) rows into this same
+    # shared in-memory DB via its own client-fixture-style sessions, so a
+    # bare count() here would be polluted by whatever ran earlier in the
+    # same pytest session.
+    assert db_session.query(NewsItem).filter_by(external_id="no-symbols-1").count() == 0
 
 
 def test_deduplicates_by_provider_and_external_id(db_session):
@@ -73,9 +78,11 @@ def test_a_prompt_injection_attempt_in_the_headline_is_flagged_not_blocked(db_se
 
 
 def test_multi_symbol_story_persists_as_one_row_mapped_to_all_symbols(db_session):
-    row = persist_article(db_session, _article(symbols=["AAPL", "MSFT", "GOOGL"]))
+    row = persist_article(db_session, _article(external_id="multi-symbol-1", symbols=["AAPL", "MSFT", "GOOGL"]))
     assert row.symbols == ["AAPL", "MSFT", "GOOGL"]
-    assert db_session.query(NewsItem).count() == 1
+    # See test_returns_none_for_an_article_with_no_symbols above for why
+    # this filters by external_id instead of counting the whole table.
+    assert db_session.query(NewsItem).filter_by(external_id="multi-symbol-1").count() == 1
 
 
 def test_novelty_drops_for_a_near_duplicate_of_a_recently_persisted_story(db_session):
@@ -115,4 +122,6 @@ def test_backfill_persists_real_articles_from_mocked_rest(db_session):
 
     assert len(rows) == 1
     assert rows[0].headline == "AAPL beats earnings estimates"
-    assert db_session.query(NewsItem).count() == 1
+    # See test_returns_none_for_an_article_with_no_symbols above for why
+    # this filters by external_id instead of counting the whole table.
+    assert db_session.query(NewsItem).filter_by(external_id="500").count() == 1
