@@ -53,6 +53,12 @@ logger = logging.getLogger(__name__)
 
 MIN_TRAINING_ROWS = 40
 HOLDOUT_FRACTION = 0.25
+# Buffer immediately before the holdout's start, on top of the per-row
+# label-horizon purge below (services/ml/validation.py) — absorbs serial
+# correlation in engineered features (e.g. a multi-day RSI/ADX read
+# computed just before the boundary still encodes several days that
+# bleed into the embargo window).
+EMBARGO_DAYS = 5
 
 
 class NotEnoughHistory(RuntimeError):
@@ -64,6 +70,17 @@ class LabeledDataset:
     X: np.ndarray
     labels: dict[int, np.ndarray]   # threshold -> binary labels
     created_at: list[datetime]      # per-row prediction time (for temporal split)
+    # Each row's own holding_period_days (Outcome.horizon_days) — the
+    # purge step below uses this per-row, not one fixed horizon for
+    # every prediction, since predictions genuinely have different
+    # holding periods (see Prediction.holding_period_days).
+    horizon_days: list[float]
+    # snapshot_regime_proxy() read on each row's own frozen feature
+    # snapshot (services/ml/validation.py) — for the regime-breakdown
+    # metrics; never a fresh OHLCV read; see that function's docstring
+    # for why it's a proxy rather than features/regime.py's real
+    # detect_regime().
+    regimes: list[str]
 
 
 def build_labeled_dataset(db: Session) -> LabeledDataset:
@@ -72,6 +89,8 @@ def build_labeled_dataset(db: Session) -> LabeledDataset:
     reconstructed after the fact — that would leak information the model
     didn't have at decision time).
     """
+    from app.services.ml.validation import snapshot_regime_proxy
+
     rows = (
         db.query(Prediction, Outcome)
         .join(Outcome, Outcome.prediction_id == Prediction.id)
@@ -80,12 +99,20 @@ def build_labeled_dataset(db: Session) -> LabeledDataset:
     )
 
     X_rows, created, labels = [], [], {t: [] for t in HORIZON_THRESHOLDS}
+    horizon_days: list[float] = []
+    regimes: list[str] = []
     for prediction, outcome in rows:
         snapshot = prediction.feature_snapshot or {}
         if not all(name in snapshot for name in FEATURE_NAMES):
             continue
         X_rows.append([float(snapshot[name]) for name in FEATURE_NAMES])
         created.append(prediction.created_at)
+        horizon_days.append(float(outcome.horizon_days))
+        regimes.append(snapshot_regime_proxy(
+            adx=float(snapshot["adx"]),
+            historical_volatility_pct=float(snapshot["historical_volatility_pct"]),
+            price_vs_sma20_pct=float(snapshot["price_vs_sma20_pct"]),
+        ))
         for threshold in HORIZON_THRESHOLDS:
             labels[threshold].append(int(outcome.max_runup_pct >= threshold))
 
@@ -100,6 +127,8 @@ def build_labeled_dataset(db: Session) -> LabeledDataset:
         X=np.array(X_rows),
         labels={t: np.array(v) for t, v in labels.items()},
         created_at=created,
+        horizon_days=horizon_days,
+        regimes=regimes,
     )
 
 
@@ -182,7 +211,8 @@ def _evaluate_baselines(
     return baselines
 
 
-PRIMARY_THRESHOLD_KEY = "+10%"
+PRIMARY_THRESHOLD = 10
+PRIMARY_THRESHOLD_KEY = f"+{PRIMARY_THRESHOLD}%"
 
 
 def _primary_auc(per_threshold_metrics: dict) -> float | None:
@@ -214,10 +244,21 @@ def train_challenger(db: Session, artifact_dir: str | None = None) -> ModelVersi
     settings = get_settings()
     dataset = build_labeled_dataset(db)
 
-    split = int(len(dataset.X) * (1 - HOLDOUT_FRACTION))
-    X_train, X_hold = dataset.X[:split], dataset.X[split:]
-    y_train = {t: v[:split] for t, v in dataset.labels.items()}
-    y_hold = {t: v[split:] for t, v in dataset.labels.items()}
+    from app.services.ml.validation import purge_and_embargo_single_split, regime_breakdown_metrics
+
+    train_idx, hold_idx = purge_and_embargo_single_split(
+        dataset.created_at, dataset.horizon_days, holdout_fraction=HOLDOUT_FRACTION, embargo_days=EMBARGO_DAYS,
+    )
+    if len(train_idx) < MIN_TRAINING_ROWS:
+        raise NotEnoughHistory(
+            f"Only {len(train_idx)} training rows survive purging/embargo (need >= {MIN_TRAINING_ROWS}) — "
+            "the graded history is too tightly clustered in time to hold out a leakage-safe split yet."
+        )
+
+    X_train, X_hold = dataset.X[train_idx], dataset.X[hold_idx]
+    y_train = {t: v[train_idx] for t, v in dataset.labels.items()}
+    y_hold = {t: v[hold_idx] for t, v in dataset.labels.items()}
+    regimes_hold = np.array(dataset.regimes)[hold_idx]
 
     challenger = EnsembleModel(random_state=settings.random_seed)
     challenger.fit(X_train, y_train, FEATURE_NAMES)
@@ -235,15 +276,22 @@ def train_challenger(db: Session, artifact_dir: str | None = None) -> ModelVersi
     comparisons_to_beat = {"heuristic": heuristic_metrics, **baseline_metrics}
     beats: dict[str, bool] = {name: _beats(challenger_metrics, m) for name, m in comparisons_to_beat.items()}
 
+    challenger_preds_primary = np.array(
+        [challenger.predict(X_hold[i]).probabilities[PRIMARY_THRESHOLD] for i in range(len(X_hold))]
+    )
+    regime_breakdown = regime_breakdown_metrics(y_hold[PRIMARY_THRESHOLD], challenger_preds_primary, regimes_hold)
+
     comparison = {
         "holdout_rows": len(X_hold),
         "training_rows": len(X_train),
-        "temporal_split": "newest 25% held out",
+        "temporal_split": f"newest {HOLDOUT_FRACTION:.0%} held out, purged by each row's own holding period "
+                           f"and embargoed by {EMBARGO_DAYS} additional day(s) (services/ml/validation.py)",
         "primary_threshold": PRIMARY_THRESHOLD_KEY,
         "challenger": challenger_metrics,
         "champion": _evaluate(champion, X_hold, y_hold),
         "heuristic": heuristic_metrics,
         "baselines": baseline_metrics,
+        "challenger_regime_breakdown": regime_breakdown,
         # Decision-support only — promote_model() re-derives this from the
         # same stored metrics rather than trusting this cached bool, so it
         # can never be edited to bypass the gate.

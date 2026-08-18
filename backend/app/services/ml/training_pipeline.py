@@ -20,6 +20,22 @@ from app.services.data_providers.factory import get_data_provider
 from app.services.features import technical
 from app.services.ml.ensemble import HORIZON_THRESHOLDS, EnsembleModel
 from app.services.ml.feature_vector import FEATURE_NAMES
+from app.services.ml.validation import purged_walk_forward_splits, regime_breakdown_metrics
+
+# Walk-forward folds for the validation curve reported below (see
+# purged_walk_forward_splits) — the *last* fold (largest training set,
+# most recent test period) is what the saved production artifact is
+# actually fit on and scored against, matching this pipeline's prior
+# single-holdout shape while every fold's metrics are still reported for
+# transparency into how stable performance is across time.
+N_WALK_FORWARD_SPLITS = 5
+# Same buffer as the label horizon by default — a training sample's
+# label window can reach exactly to entry_ts + label_horizon_days, so an
+# embargo equal to that horizon absorbs the same serial-correlation risk
+# purging already targets, without arbitrarily picking a second number.
+EMBARGO_DAYS = 10
+LABEL_HORIZON_DAYS = 10
+MIN_FOLD_TRAIN_ROWS = 10
 
 
 @dataclass
@@ -27,6 +43,8 @@ class TrainingReport:
     n_samples: int
     n_tickers: int
     metrics: dict
+    walk_forward_folds: list[dict]
+    regime_breakdown: dict
     artifact_path: str
     trained_at: str
 
@@ -69,15 +87,33 @@ def _row_features(window: pd.DataFrame) -> np.ndarray | None:
     return np.array([row[name] for name in FEATURE_NAMES])
 
 
+@dataclass
+class TrainingSet:
+    X: np.ndarray
+    y: dict[int, np.ndarray]
+    # Entry-bar timestamp per row — the purged walk-forward split's
+    # ordering key (services/ml/validation.py). Never used as a feature.
+    timestamps: np.ndarray
+    # Real detect_regime() read on each row's own window (this pipeline
+    # has the actual OHLCV history, unlike champion_challenger.py's
+    # frozen-feature-snapshot case, which uses the cruder
+    # snapshot_regime_proxy instead) — for the regime-breakdown metrics.
+    regimes: np.ndarray
+
+
 def build_training_set(
     provider: MarketDataProvider,
     lookback_days: int = 400,
     step: int = 5,
-    label_horizon_days: int = 10,
+    label_horizon_days: int = LABEL_HORIZON_DAYS,
     min_history: int = 60,
-) -> tuple[np.ndarray, dict[int, np.ndarray]]:
+) -> TrainingSet:
+    from app.services.features.regime import detect_regime
+
     X_rows: list[np.ndarray] = []
     labels: dict[int, list[int]] = {t: [] for t in HORIZON_THRESHOLDS}
+    timestamps: list = []
+    regimes: list[str] = []
 
     for meta in provider.get_universe():
         df = provider.get_ohlcv(meta.symbol, lookback_days=lookback_days)
@@ -95,37 +131,32 @@ def build_training_set(
             max_forward_return = (forward_prices.max() / entry_price - 1) * 100
 
             X_rows.append(features)
+            timestamps.append(df.index[end_idx])
+            try:
+                regimes.append(detect_regime(window).regime)
+            except ValueError:
+                regimes.append("ranging")  # window too short for a regime read — never fabricate; default is neutral
             for threshold in HORIZON_THRESHOLDS:
                 labels[threshold].append(int(max_forward_return >= threshold))
 
     X = np.vstack(X_rows) if X_rows else np.empty((0, len(FEATURE_NAMES)))
     y = {t: np.array(v) for t, v in labels.items()}
-    return X, y
+    return TrainingSet(X=X, y=y, timestamps=np.array(timestamps), regimes=np.array(regimes))
 
 
-def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
-    settings = get_settings()
-    provider = get_data_provider()
-    X, y = build_training_set(provider)
-
-    if len(X) < 30:
-        raise RuntimeError("Not enough training samples generated from the data provider")
-
-    n = len(X)
-    split = int(n * 0.8)
-    idx = np.random.default_rng(settings.random_seed).permutation(n)
-    train_idx, test_idx = idx[:split], idx[split:]
-
-    model = EnsembleModel(random_state=settings.random_seed)
-    model.fit(X[train_idx], {t: v[train_idx] for t, v in y.items()}, FEATURE_NAMES)
-
+def _score_thresholds(model: EnsembleModel, X: np.ndarray, y: dict[int, np.ndarray], idx: np.ndarray) -> dict:
+    """Per-threshold AUC + positive rate for `model` on rows `idx` — the
+    one scoring routine every fold (walk-forward validation curve) and
+    the final held-out test set below both use, so "the metrics" always
+    means the same computation regardless of which split produced them.
+    """
     metrics = {}
     for threshold in HORIZON_THRESHOLDS:
-        y_test = y[threshold][test_idx]
+        y_test = y[threshold][idx]
         if len(np.unique(y_test)) < 2:
-            metrics[str(threshold)] = {"note": "insufficient class balance in holdout"}
+            metrics[str(threshold)] = {"note": "insufficient class balance in this split"}
             continue
-        preds = [model.predict(X[i]).probabilities[threshold] for i in test_idx]
+        preds = [model.predict(X[i]).probabilities[threshold] for i in idx]
         try:
             from sklearn.metrics import roc_auc_score
 
@@ -133,6 +164,76 @@ def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
         except Exception:
             auc = None
         metrics[str(threshold)] = {"auc": auc, "positive_rate": float(y_test.mean())}
+    return metrics
+
+
+def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
+    """Purged walk-forward validation (services/ml/validation.py), not a
+    random/single split: samples are entry-bar-level windows with
+    overlapping forward-return label horizons (see build_training_set),
+    so a plain random split would train and test on samples whose labels
+    were computed from overlapping future price action — direct leakage.
+
+    N_WALK_FORWARD_SPLITS folds are each independently trained/scored to
+    report a real validation curve (is performance stable across time,
+    not just one lucky split); the production artifact this actually
+    saves is fit on the LAST fold's training set (the largest, most
+    recent-history expanding window) and scored on that fold's held-out
+    test rows — the same single-holdout shape this pipeline always had,
+    now leakage-safe. A regime breakdown of that final holdout catches a
+    model that's only accurate in whichever regime happens to dominate
+    the sample.
+    """
+    settings = get_settings()
+    provider = get_data_provider()
+    dataset = build_training_set(provider)
+    X, y, timestamps, regimes = dataset.X, dataset.y, dataset.timestamps, dataset.regimes
+
+    if len(X) < 30:
+        raise RuntimeError("Not enough training samples generated from the data provider")
+
+    n = len(X)
+    folds = purged_walk_forward_splits(
+        timestamps, n_splits=N_WALK_FORWARD_SPLITS, label_horizon_days=LABEL_HORIZON_DAYS, embargo_days=EMBARGO_DAYS,
+    )
+
+    walk_forward_report = []
+    for fold in folds:
+        if len(fold.train_idx) < MIN_FOLD_TRAIN_ROWS:
+            # Purging/embargo can legitimately empty out an early fold's
+            # small training set — report that honestly instead of
+            # attempting to fit a GBM trio on too few rows.
+            walk_forward_report.append({
+                "fold": fold.fold_index, "train_rows": int(len(fold.train_idx)), "test_rows": int(len(fold.test_idx)),
+                "metrics": {"note": f"fewer than {MIN_FOLD_TRAIN_ROWS} training rows survived purging/embargo for this fold"},
+            })
+            continue
+        fold_model = EnsembleModel(random_state=settings.random_seed)
+        fold_model.fit(X[fold.train_idx], {t: v[fold.train_idx] for t, v in y.items()}, FEATURE_NAMES)
+        walk_forward_report.append({
+            "fold": fold.fold_index,
+            "train_rows": int(len(fold.train_idx)),
+            "test_rows": int(len(fold.test_idx)),
+            "metrics": _score_thresholds(fold_model, X, y, fold.test_idx),
+        })
+
+    final_fold = folds[-1]
+    train_idx, test_idx = final_fold.train_idx, final_fold.test_idx
+    if len(train_idx) < MIN_FOLD_TRAIN_ROWS:
+        raise RuntimeError(
+            f"The final walk-forward fold has only {len(train_idx)} training rows after purging/embargo "
+            f"(need >= {MIN_FOLD_TRAIN_ROWS}) — not enough chronological spread in this data to train safely."
+        )
+
+    model = EnsembleModel(random_state=settings.random_seed)
+    model.fit(X[train_idx], {t: v[train_idx] for t, v in y.items()}, FEATURE_NAMES)
+    metrics = _score_thresholds(model, X, y, test_idx)
+
+    regime_report = {}
+    for threshold in HORIZON_THRESHOLDS:
+        y_test = y[threshold][test_idx]
+        preds = np.array([model.predict(X[i]).probabilities[threshold] for i in test_idx])
+        regime_report[str(threshold)] = regime_breakdown_metrics(y_test, preds, regimes[test_idx])
 
     out_dir = Path(artifact_dir or settings.model_artifact_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -150,6 +251,8 @@ def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
         n_samples=n,
         n_tickers=len(provider.get_universe()),
         metrics=metrics,
+        walk_forward_folds=walk_forward_report,
+        regime_breakdown=regime_report,
         artifact_path=str(artifact_path),
         trained_at=datetime.now(timezone.utc).isoformat(),
     )

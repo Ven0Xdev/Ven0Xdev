@@ -19,9 +19,18 @@ from app.services.ml.ensemble import EnsembleModel
 from app.services.ml.feature_vector import FEATURE_NAMES
 
 
-def _seed_history(db, n=60, seed=7):
+def _seed_history(db, n=100, seed=7):
     """Synthetic graded history where high catalyst+technical features
-    correlate with runups — enough signal for training to converge."""
+    correlate with runups — enough signal for training to converge.
+
+    One row per day (not per hour): every row's holding_period_days=10
+    below feeds train_challenger's purge step (services/ml/validation.py),
+    which drops any training row whose 10-day label-resolution window
+    reaches into the holdout's time range. Rows need real day-scale
+    spread for a realistic number of training rows to survive that —
+    100 rows one day apart, 75/25 split, leaves ~65 rows before the
+    label horizon's exclusion zone, comfortably above MIN_TRAINING_ROWS.
+    """
     rng = np.random.default_rng(seed)
     base_time = datetime(2026, 1, 1)
     for i in range(n):
@@ -33,7 +42,7 @@ def _seed_history(db, n=60, seed=7):
         runup = signal * 25 + rng.normal(0, 4)  # signal-linked label
 
         prediction = Prediction(
-            ticker_symbol=f"T{i % 7}", created_at=base_time + timedelta(hours=i),
+            ticker_symbol=f"T{i % 7}", created_at=base_time + timedelta(days=i),
             current_price=1.0, liquidity_score=50, manipulation_risk=features["manipulation_risk"],
             fundamental_score=50, technical_score=50, sentiment_score=50, catalyst_score=features["catalyst_score"],
             overall_ai_score=50, confidence_score=60,
