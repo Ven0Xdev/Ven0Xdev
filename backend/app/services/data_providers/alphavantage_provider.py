@@ -96,6 +96,9 @@ class AlphaVantageProvider(MarketDataProvider):
                 "ALPHA_VANTAGE_API_KEY is not set. Get a free key at "
                 "https://www.alphavantage.co/support/#api-key and add it to .env."
             )
+        from app.core.logging import register_secret
+
+        register_secret(api_key)
         self._http = RateLimitedHttpClient(
             vendor="AlphaVantage",
             base_url=_BASE_URL,

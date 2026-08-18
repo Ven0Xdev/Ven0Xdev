@@ -87,6 +87,9 @@ class TwelveDataProvider(MarketDataProvider):
                 "TWELVE_DATA_API_KEY is not set. Get a free key at "
                 "https://twelvedata.com/pricing and add it to .env."
             )
+        from app.core.logging import register_secret
+
+        register_secret(api_key)
         self._http = RateLimitedHttpClient(
             vendor="TwelveData",
             base_url=_BASE_URL,
