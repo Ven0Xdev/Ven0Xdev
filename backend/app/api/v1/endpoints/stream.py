@@ -121,15 +121,29 @@ def evaluate_ncs_now(
     more — nothing here places, opens, or even proposes a paper order;
     autonomous paper trading is a fully separate decision that must clear
     its own safety gates independently (see services/paper_trading/engine.py).
+
+    Red-Team review runs on every evaluation (final veto authority, per
+    the platform's safety-gate checklist) — a vetoed setup is still
+    computed and shown (never hidden), just marked distinctly and unable
+    to confirm/fire a marker (see services/signals/ncs.py).
     """
     from app.services.paper_trading.engine import list_open_positions
+    from app.services.risk import red_team
+    from app.services.scoring.scorer import analyze_ticker
     from app.services.signals.ncs import NcsInputs, NcsInsufficientData, evaluate_ncs
 
     portfolio_open_symbols = {p.ticker_symbol for p in list_open_positions(user.id, db)}
+    health = get_stream_service().health(symbol)
+    analysis = analyze_ticker(symbol, provider=provider)
+    red_team_verdict = red_team.review(
+        symbol, analysis, db,
+        portfolio_open_symbols=portfolio_open_symbols,
+        provider_healthy=not health.get("stale", False),
+    )
     try:
         row = evaluate_ncs(
             symbol, provider, db, timeframe=timeframe,
-            inputs=NcsInputs(portfolio_open_symbols=portfolio_open_symbols),
+            inputs=NcsInputs(portfolio_open_symbols=portfolio_open_symbols, red_team_veto=red_team_verdict),
             cooldown_minutes=cooldown_minutes,
         )
     except NcsInsufficientData as exc:
