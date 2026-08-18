@@ -95,6 +95,7 @@ export interface CandlesResponse {
   bar_count: number;
   data_source: string;
   data_mode: string;
+  market_status: string;
   as_of: string;
   note: string | null;
 }

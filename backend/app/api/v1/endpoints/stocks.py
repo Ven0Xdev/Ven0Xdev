@@ -199,9 +199,12 @@ async def get_stock_candles(
     note = None
     if timeframe in _INTRADAY_TIMEFRAMES and len(bars) < 30:
         note = (
-            f"Only {len(bars)} bars of real live history accumulated on {symbol} so far this session — "
-            "intraday history is not backfilled, only what has actually streamed."
+            f"Only {len(bars)} intraday bars available for {symbol} — real REST backfill plus whatever has "
+            "actually streamed this session, no fabricated history. A symbol just subscribed to streaming, "
+            "or with no intraday backfill available from the active provider, may be this sparse."
         )
+
+    from app.services.market_overview import market_status
 
     return {
         "symbol": symbol,
@@ -210,6 +213,7 @@ async def get_stock_candles(
         "bar_count": len(bars),
         "data_source": data_source,
         "data_mode": data_mode,
+        "market_status": market_status(),
         "as_of": datetime.now(timezone.utc).isoformat(),
         "note": note,
     }

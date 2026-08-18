@@ -27,7 +27,7 @@ const BUCKET_STYLE: Record<Bucket, { label: string; color: string; icon: string 
 };
 
 /** Elegant, once-per-status reveal card for the Signal Engine's current
- * verdict. Keyed by `status` at the call site (see LiveChart/stock page)
+ * verdict. Keyed by `status` at the call site (see TradingChart/stock page)
  * so the entrance animation fires exactly when the real status changes —
  * never on every SSE reaffirmation of the same status. Renders nothing for
  * statuses that don't map to a real verdict yet (NO_SIGNAL_YET). */

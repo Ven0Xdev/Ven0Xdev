@@ -172,6 +172,9 @@ class EdgarEnrichedProvider(MarketDataProvider):
     def get_ohlcv(self, symbol: str, timeframe: str = "1d", lookback_days: int = 250):
         return self.inner.get_ohlcv(symbol, timeframe, lookback_days)
 
+    def get_intraday_bars(self, symbol: str, lookback_minutes: int = 390):
+        return self.inner.get_intraday_bars(symbol, lookback_minutes)
+
     def get_quote(self, symbol: str) -> Quote:
         return self.inner.get_quote(symbol)
 

@@ -12,7 +12,6 @@ import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SignalReveal } from "@/components/ui/SignalReveal";
 import { TradingChart } from "@/components/charts/TradingChart";
-import { LiveChart } from "@/components/charts/LiveChart";
 import { ProbabilityMatrix } from "@/components/dashboard/ProbabilityMatrix";
 import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
 import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
@@ -133,14 +132,13 @@ export default function StockDetailPage() {
         )}
 
         <div className="card animate-in p-5 sm:p-6">
-          <SectionLabel>Live intraday (1m) — streamed from backend, with Signal Engine levels</SectionLabel>
-          <LiveChart symbol={a.ticker} onSignal={setLiveSignal} />
-        </div>
-
-        <div className="card animate-in p-5 sm:p-6">
-          <SectionLabel>Price chart — timeframes, indicators, and trade-plan levels</SectionLabel>
+          <SectionLabel>
+            Price chart — timeframes, indicators, and trade-plan levels · &quot;1m&quot; streams live from the backend
+            with Signal Engine levels
+          </SectionLabel>
           <TradingChart
             symbol={a.ticker}
+            onSignal={setLiveSignal}
             tradePlan={[
               { label: "Entry", price: a.ideal_entry_price },
               { label: "Stop", price: a.stop_loss },

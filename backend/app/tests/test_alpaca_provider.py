@@ -3,7 +3,7 @@ mirror Alpaca's documented Data API v2 response shapes exactly, so these
 tests verify our field mapping and failure handling — no live API, no key
 needed, matching the Twelve Data/Alpha Vantage provider test conventions.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -118,6 +118,81 @@ def test_ohlcv_no_data_raises():
     provider = _provider({"/v2/stocks/AAA/bars": {"symbol": "AAA", "bars": []}})
     with pytest.raises(ProviderDataUnavailable):
         provider.get_ohlcv("AAA")
+
+
+def _recent_bars_fixture():
+    now = datetime.now(timezone.utc)
+    t1 = (now - timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:00Z")
+    t2 = (now - timedelta(minutes=4)).strftime("%Y-%m-%dT%H:%M:00Z")
+    return {
+        "symbol": "AAA",
+        "bars": [
+            {"t": t1, "o": 1.00, "h": 1.02, "l": 0.99, "c": 1.01, "v": 500},
+            {"t": t2, "o": 1.01, "h": 1.03, "l": 1.00, "c": 1.02, "v": 400},
+        ],
+        "next_page_token": None,
+    }
+
+
+def test_intraday_bars_mapping():
+    provider = _provider({"/v2/stocks/AAA/bars": _recent_bars_fixture()})
+    df = provider.get_intraday_bars("AAA", lookback_minutes=390)
+    assert list(df.columns) == ["open", "high", "low", "close", "volume"]
+    assert len(df) == 2
+    assert df["close"].iloc[-1] == 1.02
+
+
+def test_intraday_bars_no_data_raises():
+    provider = _provider({"/v2/stocks/AAA/bars": {"symbol": "AAA", "bars": []}})
+    with pytest.raises(ProviderDataUnavailable):
+        provider.get_intraday_bars("AAA")
+
+
+def test_intraday_bars_survive_a_pre_market_gap_to_the_prior_session():
+    # Regression test for a real bug found live: during pre-market, before
+    # today's session has any bars yet, the most recent real data is
+    # necessarily from yesterday's close — more than `lookback_minutes`
+    # calendar-minutes in the past despite being exactly the right data to
+    # backfill with. A wall-clock "no older than N minutes ago" cutoff
+    # discarded these entirely; confirmed live via AAPL returning 392 real
+    # bars from Alpaca that all got filtered out to zero.
+    now = datetime.now(timezone.utc)
+    yesterday_close = now - timedelta(hours=15)  # older than the 390-minute lookback window
+    fixture = {
+        "symbol": "AAA",
+        "bars": [
+            {"t": yesterday_close.strftime("%Y-%m-%dT%H:%M:00Z"), "o": 1.0, "h": 1.0, "l": 1.0, "c": 1.0, "v": 100},
+        ],
+        "next_page_token": None,
+    }
+    provider = _provider({"/v2/stocks/AAA/bars": fixture})
+    df = provider.get_intraday_bars("AAA", lookback_minutes=390)
+    assert len(df) == 1
+    assert df["close"].iloc[0] == 1.0
+
+
+def test_intraday_bars_tail_limited_to_lookback_minutes_by_count():
+    now = datetime.now(timezone.utc)
+    bars = [
+        {"t": (now - timedelta(minutes=m)).strftime("%Y-%m-%dT%H:%M:00Z"), "o": 1, "h": 1, "l": 1, "c": float(m), "v": 1}
+        for m in range(10, 0, -1)
+    ]
+    provider = _provider({"/v2/stocks/AAA/bars": {"symbol": "AAA", "bars": bars, "next_page_token": None}})
+    df = provider.get_intraday_bars("AAA", lookback_minutes=3)
+    assert len(df) == 3
+    assert df["close"].iloc[-1] == 1.0  # the most recent bar, not an older one
+
+
+def test_intraday_bars_uses_1min_timeframe_param():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["timeframe"] = request.url.params.get("timeframe")
+        return httpx.Response(200, json=_recent_bars_fixture())
+
+    provider = AlpacaProvider(api_key="k", api_secret="s", transport=httpx.MockTransport(handler), calls_per_minute=10_000)
+    provider.get_intraday_bars("AAA")
+    assert captured["timeframe"] == "1Min"
 
 
 def test_ticker_meta_is_honest_placeholder_never_fabricated():

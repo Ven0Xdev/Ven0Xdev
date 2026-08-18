@@ -39,11 +39,12 @@ def test_intraday_timeframe_starts_the_stream_and_returns_honest_note(client):
     assert res.status_code == 200
     body = res.json()
     assert body["timeframe"] == "1m"
-    # Freshly (re)started stream — sparse/no history yet, honestly noted
-    # rather than silently claiming a full chart's worth of data.
+    # Freshly (re)started stream with no REST intraday backfill available
+    # (the mock provider under test) — sparse/no history yet, honestly
+    # noted rather than silently claiming a full chart's worth of data.
     if body["bar_count"] < 30:
         assert body["note"] is not None
-        assert "real live history" in body["note"]
+        assert "intraday bars available" in body["note"]
 
 
 def test_unknown_symbol_returns_honest_error_not_fabricated_candles(client):

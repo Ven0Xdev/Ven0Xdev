@@ -11,7 +11,25 @@ import pytest
 
 from app.services.streaming.core import CandleAggregator, EventBus, TradeEvent
 from app.services.streaming.incremental import IncrementalEMA, IncrementalRSI, LiveIndicatorSet
-from app.services.streaming.service import AlpacaTradeSource, FinnhubTradeSource, _parse_alpaca_ts
+from app.services.streaming import service as streaming_service
+from app.services.streaming.service import (
+    AlpacaStreamManager,
+    AlpacaTradeSource,
+    FinnhubTradeSource,
+    _alpaca_auth_succeeded,
+    _parse_alpaca_trades,
+    _parse_alpaca_ts,
+)
+
+
+@pytest.fixture(autouse=True)
+def _reset_alpaca_manager_singleton():
+    # get_alpaca_stream_manager() is a per-process singleton by design (the
+    # whole point is ONE shared connection) — reset it between tests so
+    # one test's manager/callbacks never leak into another's.
+    streaming_service._alpaca_manager = None
+    yield
+    streaming_service._alpaca_manager = None
 
 
 def _trade(price, ts, seq=None, vol=100.0):
@@ -147,27 +165,39 @@ def test_parse_alpaca_ts_returns_none_for_garbage():
 
 def test_alpaca_ws_parsing_and_schema_validation():
     # Alpaca sends a JSON *array* of messages per frame, unlike Finnhub.
+    # Unfiltered by symbol — the shared connection multiplexes every
+    # subscribed symbol, so the parser reports whatever "S" each message
+    # actually carries; the caller (AlpacaStreamManager) routes by that.
     trade_raw = '[{"T":"t","S":"AAPL","p":191.52,"s":100,"t":"2024-01-01T12:00:00.123456789Z","i":42,"c":["@"]}]'
-    trades = AlpacaTradeSource.parse_message(trade_raw, "AAPL")
+    trades = _parse_alpaca_trades(trade_raw)
     assert len(trades) == 1
     t = trades[0]
+    assert t.symbol == "AAPL"
     assert t.price == 191.52 and t.volume == 100 and t.seq == 42
     assert t.data_mode == "live" and t.provider == "alpaca-ws"
     assert t.source_ts == pytest.approx(datetime(2024, 1, 1, 12, 0, 0, 123456, tzinfo=timezone.utc).timestamp())
 
-    # wrong symbol, non-trade message types (quote/success), and malformed
-    # frames are all filtered, never mistaken for a trade.
-    assert AlpacaTradeSource.parse_message(trade_raw, "OTHER") == []
-    assert AlpacaTradeSource.parse_message('[{"T":"q","S":"AAPL","bp":1,"t":"2024-01-01T00:00:00Z"}]', "AAPL") == []
-    assert AlpacaTradeSource.parse_message('[{"T":"success","msg":"connected"}]', "AAPL") == []
-    assert AlpacaTradeSource.parse_message("not json", "AAPL") == []
-    assert AlpacaTradeSource.parse_message('{"T":"t","S":"AAPL","p":1,"t":"2024-01-01T00:00:00Z"}', "AAPL") != []  # bare object still accepted
+    # A single frame can carry trades for multiple symbols at once — the
+    # whole point of one shared, multiplexed connection.
+    multi_raw = (
+        '[{"T":"t","S":"AAPL","p":191.52,"s":100,"t":"2024-01-01T12:00:00Z","i":1},'
+        '{"T":"t","S":"XLK","p":190.0,"s":50,"t":"2024-01-01T12:00:00Z","i":2}]'
+    )
+    multi = _parse_alpaca_trades(multi_raw)
+    assert {t.symbol for t in multi} == {"AAPL", "XLK"}
+
+    # non-trade message types (quote/success) and malformed frames are all
+    # filtered, never mistaken for a trade.
+    assert _parse_alpaca_trades('[{"T":"q","S":"AAPL","bp":1,"t":"2024-01-01T00:00:00Z"}]') == []
+    assert _parse_alpaca_trades('[{"T":"success","msg":"connected"}]') == []
+    assert _parse_alpaca_trades("not json") == []
+    assert _parse_alpaca_trades('{"T":"t","S":"AAPL","p":1,"t":"2024-01-01T00:00:00Z"}') != []  # bare object still accepted
 
 
 def test_alpaca_auth_reply_detection():
-    assert AlpacaTradeSource._auth_succeeded('[{"T":"success","msg":"authenticated"}]') is True
-    assert AlpacaTradeSource._auth_succeeded('[{"T":"error","msg":"auth failed"}]') is False
-    assert AlpacaTradeSource._auth_succeeded("not json") is False
+    assert _alpaca_auth_succeeded('[{"T":"success","msg":"authenticated"}]') is True
+    assert _alpaca_auth_succeeded('[{"T":"error","msg":"auth failed"}]') is False
+    assert _alpaca_auth_succeeded("not json") is False
 
 
 class _BoomWS:
@@ -259,3 +289,137 @@ def test_alpaca_ws_reconnects_after_a_drop_and_delivers_a_trade():
     assert trades[0].price == 100.0
     assert trades[0].provider == "alpaca-ws"
     assert trades[0].data_mode == "live"
+
+
+def test_alpaca_two_symbols_share_a_single_websocket_connection():
+    """Regression test for the actual production bug: Alpaca's free plan
+    allows exactly one concurrent market-data WS connection per account —
+    confirmed live via {"T":"error","code":406,"msg":"connection limit
+    exceeded"} the moment a second per-symbol connection was attempted.
+    Two symbols streaming simultaneously must open exactly one socket."""
+    import websockets
+
+    connect_calls = {"n": 0}
+
+    def fake_connect(url):
+        connect_calls["n"] += 1
+        return _FakeAlpacaWS([
+            '[{"T":"success","msg":"connected"}]',
+            '[{"T":"success","msg":"authenticated"}]',
+            '[{"T":"t","S":"AAPL","p":100.0,"s":1,"t":"2024-01-01T00:00:00Z","i":1},'
+            '{"T":"t","S":"XLK","p":200.0,"s":2,"t":"2024-01-01T00:00:00Z","i":2}]',
+        ])
+
+    async def run_test():
+        original_connect = websockets.connect
+        websockets.connect = fake_connect
+        try:
+            aapl_trades, xlk_trades = [], []
+
+            async def on_aapl(t):
+                aapl_trades.append(t)
+
+            async def on_xlk(t):
+                xlk_trades.append(t)
+
+            source_a = AlpacaTradeSource("AAPL", "test-key", "test-secret")
+            source_x = AlpacaTradeSource("XLK", "test-key", "test-secret")
+            task_a = asyncio.create_task(source_a.run(on_aapl))
+            task_x = asyncio.create_task(source_x.run(on_xlk))
+            for _ in range(60):
+                await asyncio.sleep(0.05)
+                if aapl_trades and xlk_trades:
+                    break
+            task_a.cancel()
+            task_x.cancel()
+            for t in (task_a, task_x):
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass
+            return aapl_trades, xlk_trades
+        finally:
+            websockets.connect = original_connect
+
+    aapl_trades, xlk_trades = asyncio.run(run_test())
+    assert connect_calls["n"] == 1, "two symbols must share exactly one WebSocket connection, not one each"
+    assert len(aapl_trades) == 1 and aapl_trades[0].price == 100.0
+    assert len(xlk_trades) == 1 and xlk_trades[0].price == 200.0
+
+
+def test_alpaca_reconnect_resubscribes_every_previously_wanted_symbol():
+    """After a drop mid-stream, the manager must re-subscribe to every
+    symbol that was previously wanted — not just the one active when the
+    connection happened to fail."""
+    import websockets
+
+    sent_subscribes = []
+
+    class _DropAfterOneMessage(_FakeAlpacaWS):
+        async def __anext__(self):
+            if self._messages:
+                return self._messages.pop(0)
+            raise ConnectionError("simulated mid-stream drop")
+
+    attempts = {"n": 0}
+
+    def fake_connect(url):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            ws = _DropAfterOneMessage([
+                '[{"T":"success","msg":"connected"}]',
+                '[{"T":"success","msg":"authenticated"}]',
+                '[{"T":"t","S":"AAPL","p":1.0,"s":1,"t":"2024-01-01T00:00:00Z","i":1}]',
+            ])
+        else:
+            ws = _FakeAlpacaWS([
+                '[{"T":"success","msg":"connected"}]',
+                '[{"T":"success","msg":"authenticated"}]',
+                '[{"T":"t","S":"AAPL","p":2.0,"s":1,"t":"2024-01-01T00:00:01Z","i":2},'
+                '{"T":"t","S":"XLK","p":200.0,"s":1,"t":"2024-01-01T00:00:01Z","i":3}]',
+            ])
+        original_send = ws.send
+
+        async def tracking_send(msg):
+            sent_subscribes.append(msg)
+            await original_send(msg)
+
+        ws.send = tracking_send
+        return ws
+
+    async def run_test():
+        original_connect = websockets.connect
+        websockets.connect = fake_connect
+        try:
+            xlk_trades = []
+
+            async def on_xlk(t):
+                xlk_trades.append(t)
+
+            source_a = AlpacaTradeSource("AAPL", "test-key", "test-secret")
+            task_a = asyncio.create_task(source_a.run(lambda t: asyncio.sleep(0)))
+            await asyncio.sleep(0.1)  # let AAPL's connection establish and then drop
+            source_x = AlpacaTradeSource("XLK", "test-key", "test-secret")
+            task_x = asyncio.create_task(source_x.run(on_xlk))
+            for _ in range(60):
+                await asyncio.sleep(0.05)
+                if xlk_trades:
+                    break
+            task_a.cancel()
+            task_x.cancel()
+            for t in (task_a, task_x):
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass
+            return xlk_trades
+        finally:
+            websockets.connect = original_connect
+
+    xlk_trades = asyncio.run(run_test())
+    assert attempts["n"] >= 2, "must have reconnected after the mid-stream drop"
+    assert len(xlk_trades) == 1
+    # The reconnect's subscribe message must include AAPL (wanted before
+    # the drop) even though XLK joined after the drop already happened.
+    subscribe_msgs = [s for s in sent_subscribes if '"action": "subscribe"' in s or '"action":"subscribe"' in s]
+    assert any("AAPL" in s for s in subscribe_msgs)

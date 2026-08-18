@@ -119,6 +119,9 @@ class FallbackMarketDataProvider(MarketDataProvider):
     def get_ohlcv(self, symbol: str, timeframe: str = "1d", lookback_days: int = 250) -> pd.DataFrame:
         return self._call("get_ohlcv", symbol, timeframe, lookback_days)
 
+    def get_intraday_bars(self, symbol: str, lookback_minutes: int = 390) -> pd.DataFrame:
+        return self._call("get_intraday_bars", symbol, lookback_minutes)
+
     def get_quote(self, symbol: str) -> Quote:
         return self._call("get_quote", symbol)
 
@@ -177,6 +180,11 @@ class MixedSourceProvider(MarketDataProvider):
 
     def get_ohlcv(self, symbol: str, timeframe: str = "1d", lookback_days: int = 250) -> pd.DataFrame:
         result = self._price_chain.get_ohlcv(symbol, timeframe, lookback_days)
+        self._sync_price_identity()
+        return result
+
+    def get_intraday_bars(self, symbol: str, lookback_minutes: int = 390) -> pd.DataFrame:
+        result = self._price_chain.get_intraday_bars(symbol, lookback_minutes)
         self._sync_price_identity()
         return result
 

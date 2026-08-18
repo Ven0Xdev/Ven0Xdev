@@ -77,6 +77,23 @@ def _check_errors(payload, vendor: str, context: str) -> None:
         raise ProviderDataUnavailable(f"{vendor} {context}: {payload['message']}")
 
 
+def _bars_to_df(bars: list[dict]) -> pd.DataFrame:
+    """Shared mapping for both /bars (daily) and /bars?timeframe=1Min
+    (intraday backfill) responses — identical field shape either way."""
+    index = pd.to_datetime([b["t"] for b in bars], utc=True)
+    return pd.DataFrame(
+        {
+            "open": [float(b["o"]) for b in bars],
+            "high": [float(b["h"]) for b in bars],
+            "low": [float(b["l"]) for b in bars],
+            "close": [float(b["c"]) for b in bars],
+            "volume": [float(b["v"]) for b in bars],
+        },
+        # No bid/ask columns: bars are trade-derived, not quote depth.
+        index=pd.DatetimeIndex(index, name="ts"),
+    )
+
+
 class AlpacaProvider(MarketDataProvider):
     name = "alpaca"
     data_mode = "live"  # real-time IEX-direct data, not an EOD/delayed feed
@@ -96,6 +113,10 @@ class AlpacaProvider(MarketDataProvider):
                 "https://alpaca.markets, generate a paper key pair (never a live-trading key pair), "
                 "and add both to .env."
             )
+        from app.core.logging import register_secret
+
+        register_secret(api_key)
+        register_secret(api_secret)
         self._http = RateLimitedHttpClient(
             vendor="Alpaca",
             base_url=_BASE_URL,
@@ -175,20 +196,47 @@ class AlpacaProvider(MarketDataProvider):
         bars = payload.get("bars")
         if not bars:
             raise ProviderDataUnavailable(f"Alpaca has no daily bars for {symbol} on the {_FEED} feed")
+        return _bars_to_df(bars).tail(lookback_days)
 
-        index = pd.to_datetime([b["t"] for b in bars], utc=True)
-        df = pd.DataFrame(
+    # --- intraday backfill ---------------------------------------------------
+    def get_intraday_bars(self, symbol: str, lookback_minutes: int = 390) -> pd.DataFrame:
+        """Real 1-minute bars for chart backfill (services/signals/engine.py
+        merges these with whatever the live stream has accumulated so far).
+        390 minutes is one regular NYSE session (9:30-16:00 ET).
+
+        Returns the most recent `lookback_minutes` real trading bars by
+        COUNT, not a wall-clock cutoff — a wall-clock "no older than N
+        minutes ago" filter is wrong across any gap longer than N minutes
+        (every weekend, holiday, and every overnight before the next
+        session opens): during pre-market, the most recent real data is
+        necessarily from the prior session's close, which is always more
+        than a few hundred *calendar* minutes in the past despite being
+        exactly the right data to backfill with. Same reasoning get_ohlcv
+        above already applies via `.tail(lookback_days)`.
+        """
+        symbol = symbol.upper()
+        now = datetime.now(timezone.utc)
+        # 4 calendar days of padding safely covers a long weekend/holiday
+        # combo — the feed itself only ever returns real trading minutes,
+        # and the .tail() below trims to the actually-requested count.
+        start = now - timedelta(minutes=lookback_minutes) - timedelta(days=4)
+        payload = self._get(
+            f"/v2/stocks/{symbol}/bars",
             {
-                "open": [float(b["o"]) for b in bars],
-                "high": [float(b["h"]) for b in bars],
-                "low": [float(b["l"]) for b in bars],
-                "close": [float(b["c"]) for b in bars],
-                "volume": [float(b["v"]) for b in bars],
+                "timeframe": "1Min",
+                "start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "feed": _FEED,
+                "limit": "10000",
+                "adjustment": "split",
             },
-            index=pd.DatetimeIndex(index, name="ts"),
+            ("intraday_bars", symbol, lookback_minutes),
+            "bars",
         )
-        # No bid/ask columns: bars are trade-derived, not quote depth.
-        return df.tail(lookback_days)
+        bars = payload.get("bars")
+        if not bars:
+            raise ProviderDataUnavailable(f"Alpaca has no intraday bars for {symbol} on the {_FEED} feed")
+        return _bars_to_df(bars).tail(lookback_minutes)
 
     # --- quotes -----------------------------------------------------------------
     def get_quote(self, symbol: str) -> Quote:

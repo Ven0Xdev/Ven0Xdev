@@ -136,16 +136,118 @@ def _parse_alpaca_ts(raw: str) -> float | None:
         return None
 
 
-class AlpacaTradeSource:
+def _alpaca_auth_succeeded(raw: str) -> bool:
+    try:
+        msgs = json.loads(raw)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(msgs, list):
+        msgs = [msgs]
+    return any(isinstance(m, dict) and m.get("T") == "success" and m.get("msg") == "authenticated" for m in msgs)
+
+
+def _parse_alpaca_trades(raw: str) -> list[TradeEvent]:
+    """Alpaca WS schema: a JSON array of message objects (not a single
+    object per message, unlike Finnhub) — trade messages shaped
+    {"T":"t","S":symbol,"p":price,"s":size,"t":RFC3339-ns,"i":trade_id,
+    "c":[conditions]}. Non-trade messages (success/subscription/error/
+    quote) are skipped, same schema-validation discipline as
+    FinnhubTradeSource.parse_message. Unfiltered by symbol — the shared
+    connection multiplexes every subscribed symbol over one socket, so the
+    caller routes each event by its own "S" field."""
+    now = time.time()
+    try:
+        msgs = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(msgs, list):
+        msgs = [msgs]
+    out = []
+    for m in msgs:
+        if not isinstance(m, dict) or m.get("T") != "t" or "S" not in m or "p" not in m or "t" not in m:
+            continue
+        source_ts = _parse_alpaca_ts(m["t"])
+        if source_ts is None:
+            continue
+        out.append(TradeEvent(
+            symbol=m["S"], price=float(m["p"]), volume=float(m.get("s") or 0),
+            source_ts=source_ts, received_ts=now,
+            provider="alpaca-ws", data_mode="live",
+            seq=m.get("i"), conditions=list(m.get("c") or []),
+        ))
+    return out
+
+
+class AlpacaStreamManager:
+    """One shared Alpaca IEX WebSocket connection for the whole process,
+    multiplexing every subscribed symbol over it.
+
+    Alpaca's free/Basic plan allows exactly ONE concurrent market-data WS
+    connection per account — a connection-per-symbol design (the naive
+    pattern FinnhubTradeSource uses, fine for Finnhub's higher limit) gets
+    every symbol beyond the first rejected with
+    {"T":"error","code":406,"msg":"connection limit exceeded"}, confirmed
+    live. This manager is a per-process singleton (see
+    get_alpaca_stream_manager below); every symbol registers a callback
+    here instead of opening its own socket.
+    """
+
     data_mode = "live"
     provider = "alpaca-ws"
 
-    def __init__(self, symbol: str, api_key: str, api_secret: str):
-        self.symbol = symbol
+    def __init__(self, api_key: str, api_secret: str):
+        from app.core.logging import register_secret
+
+        # This class is the confirmed leak site: `websockets`'s own
+        # DEBUG-level frame logging printed the raw auth JSON
+        # ({"action":"auth","key":...,"secret":...}) sent below to
+        # `docker logs` in plaintext — register both values for redaction
+        # here, right where they first enter this manager, rather than
+        # trusting every future call site to remember.
+        register_secret(api_key)
+        register_secret(api_secret)
         self.api_key = api_key
         self.api_secret = api_secret
+        self._callbacks: dict[str, list] = {}
+        self._ws = None
+        self._task: asyncio.Task | None = None
+        self._lock = asyncio.Lock()
 
-    async def run(self, on_trade) -> None:
+    async def subscribe(self, symbol: str, on_trade) -> None:
+        symbol = symbol.upper()
+        async with self._lock:
+            is_new_symbol = symbol not in self._callbacks
+            self._callbacks.setdefault(symbol, []).append(on_trade)
+            if self._task is None or self._task.done():
+                self._task = asyncio.create_task(self._run())
+            elif is_new_symbol and self._ws is not None:
+                # Connection already live — add just this symbol rather
+                # than waiting for the next reconnect cycle.
+                try:
+                    await self._ws.send(json.dumps({"action": "subscribe", "trades": [symbol]}))
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("alpaca ws: failed to subscribe %s on the live connection: %s", symbol, exc)
+
+    def unsubscribe(self, symbol: str, on_trade) -> None:
+        symbol = symbol.upper()
+        callbacks = self._callbacks.get(symbol)
+        if not callbacks:
+            return
+        if on_trade in callbacks:
+            callbacks.remove(on_trade)
+        if not callbacks:
+            self._callbacks.pop(symbol, None)
+            ws = self._ws
+            if ws is not None:
+                asyncio.ensure_future(self._safe_send_unsubscribe(ws, symbol))
+
+    async def _safe_send_unsubscribe(self, ws, symbol: str) -> None:
+        try:
+            await ws.send(json.dumps({"action": "unsubscribe", "trades": [symbol]}))
+        except Exception:  # noqa: BLE001
+            pass  # connection already gone — nothing to clean up
+
+    async def _run(self) -> None:
         import websockets
 
         backoff = 1.0
@@ -155,59 +257,60 @@ class AlpacaTradeSource:
                     await ws.recv()  # initial {"T":"success","msg":"connected"} — connection ack only
                     await ws.send(json.dumps({"action": "auth", "key": self.api_key, "secret": self.api_secret}))
                     auth_reply = await ws.recv()
-                    if not self._auth_succeeded(auth_reply):
+                    if not _alpaca_auth_succeeded(auth_reply):
                         raise RuntimeError(f"Alpaca WS auth rejected: {auth_reply}")
-                    await ws.send(json.dumps({"action": "subscribe", "trades": [self.symbol]}))
+                    self._ws = ws
+                    # Re-subscribe to everything wanted so far — covers both
+                    # the first connection and every reconnect after a drop.
+                    wanted = sorted(self._callbacks.keys())
+                    if wanted:
+                        await ws.send(json.dumps({"action": "subscribe", "trades": wanted}))
                     backoff = 1.0
                     async for raw in ws:
-                        for t in self.parse_message(raw, self.symbol):
-                            await on_trade(t)
+                        for t in _parse_alpaca_trades(raw):
+                            for cb in list(self._callbacks.get(t.symbol, [])):
+                                await cb(t)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001
-                logger.warning("alpaca ws error for %s: %s — reconnecting in %.0fs", self.symbol, exc, backoff)
+                logger.warning("alpaca ws error: %s — reconnecting in %.0fs", exc, backoff)
+                self._ws = None
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60.0)
 
-    @staticmethod
-    def _auth_succeeded(raw: str) -> bool:
-        try:
-            msgs = json.loads(raw)
-        except json.JSONDecodeError:
-            return False
-        if not isinstance(msgs, list):
-            msgs = [msgs]
-        return any(isinstance(m, dict) and m.get("T") == "success" and m.get("msg") == "authenticated" for m in msgs)
 
-    @staticmethod
-    def parse_message(raw: str, symbol: str) -> list[TradeEvent]:
-        """Alpaca WS schema: a JSON array of message objects (not a single
-        object per message, unlike Finnhub) — trade messages shaped
-        {"T":"t","S":symbol,"p":price,"s":size,"t":RFC3339-ns,"i":trade_id,
-        "c":[conditions]}. Non-trade messages (success/subscription/error/
-        quote) are skipped here, same schema-validation discipline as
-        FinnhubTradeSource.parse_message."""
-        now = time.time()
+_alpaca_manager: AlpacaStreamManager | None = None
+
+
+def get_alpaca_stream_manager(api_key: str, api_secret: str) -> AlpacaStreamManager:
+    global _alpaca_manager
+    if _alpaca_manager is None:
+        _alpaca_manager = AlpacaStreamManager(api_key, api_secret)
+    return _alpaca_manager
+
+
+class AlpacaTradeSource:
+    """Per-symbol facade satisfying the same `run(on_trade)` contract as
+    SyntheticTickSource/FinnhubTradeSource, so MarketStreamService's
+    per-symbol task/aggregator/watchdog machinery below needs no changes —
+    but instead of opening its own socket, it registers with the single
+    shared AlpacaStreamManager."""
+
+    data_mode = "live"
+    provider = "alpaca-ws"
+
+    def __init__(self, symbol: str, api_key: str, api_secret: str):
+        self.symbol = symbol.upper()
+        self.api_key = api_key
+        self.api_secret = api_secret
+
+    async def run(self, on_trade) -> None:
+        manager = get_alpaca_stream_manager(self.api_key, self.api_secret)
+        await manager.subscribe(self.symbol, on_trade)
         try:
-            msgs = json.loads(raw)
-        except json.JSONDecodeError:
-            return []
-        if not isinstance(msgs, list):
-            msgs = [msgs]
-        out = []
-        for m in msgs:
-            if not isinstance(m, dict) or m.get("T") != "t" or m.get("S") != symbol or "p" not in m or "t" not in m:
-                continue
-            source_ts = _parse_alpaca_ts(m["t"])
-            if source_ts is None:
-                continue
-            out.append(TradeEvent(
-                symbol=symbol, price=float(m["p"]), volume=float(m.get("s") or 0),
-                source_ts=source_ts, received_ts=now,
-                provider="alpaca-ws", data_mode="live",
-                seq=m.get("i"), conditions=list(m.get("c") or []),
-            ))
-        return out
+            await asyncio.Future()  # blocks until this task is cancelled
+        finally:
+            manager.unsubscribe(self.symbol, on_trade)
 
 
 class MarketStreamService:

@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from app.db.models.signal import Signal, SignalEvent
 from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
+from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.risk.engine import evaluate_risk
 from app.services.risk.policy import RiskPolicy
 from app.services.scoring.scorer import analyze_ticker
@@ -97,21 +98,52 @@ def _resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     return resampled.dropna(subset=["open"])
 
 
+def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider) -> pd.DataFrame:
+    """Real 1-minute-and-up bars for intraday timeframes: the streaming
+    service's own live-accumulated bars, backfilled with the provider's
+    real intraday REST history when it has one (currently only
+    AlpacaProvider — see base.py's get_intraday_bars default, which every
+    other adapter inherits unchanged and which honestly raises
+    ProviderDataUnavailable). Merged by timestamp, REST wins on any
+    overlap (an official closed bar is more reliable than one this
+    process may have only partially observed after subscribing
+    mid-minute); the stream's still-open current bar and anything newer
+    than the backfill's last timestamp always survives, since only the
+    stream can possibly know about it. Never fabricated: with neither
+    source available, this returns the same empty frame it always did.
+    """
+    from app.services.streaming.service import get_stream_service
+
+    stream_df = _bars_to_df(get_stream_service().recent_bars(symbol, limit=500))
+
+    try:
+        backfill_df = provider.get_intraday_bars(symbol)
+    except ProviderDataUnavailable:
+        return stream_df.sort_index()
+
+    if backfill_df.empty:
+        return stream_df.sort_index()
+    if stream_df.empty:
+        return backfill_df.sort_index()
+    merged = pd.concat([backfill_df, stream_df])
+    return merged[~merged.index.duplicated(keep="first")].sort_index()
+
+
 def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str) -> pd.DataFrame:
     """The single timeframe -> real-bars mapping shared by the signal
     engine and the /stocks/{symbol}/candles endpoint. Intraday timeframes
-    never call the provider — they read whatever the streaming service has
-    actually accumulated (real trades, resampled up), which may be sparse
-    or empty for a symbol that was never subscribed. Daily+ timeframes are
-    always real provider history; 1W/1M are a lossless resample of it.
+    read the streaming service's live-accumulated bars, backfilled with
+    real REST intraday history when the provider has one (see
+    _intraday_bars_with_backfill) — still real data only, never
+    fabricated, and may be sparse/empty for a symbol whose provider has no
+    intraday endpoint and was never subscribed to streaming either. Daily+
+    timeframes are always real provider history; 1W/1M are a lossless
+    resample of it.
     """
     timeframe = (timeframe or "1D").upper() if timeframe not in _INTRADAY_TIMEFRAMES else timeframe
 
     if timeframe in _INTRADAY_TIMEFRAMES:
-        from app.services.streaming.service import get_stream_service
-
-        bars = get_stream_service().recent_bars(symbol, limit=500)
-        df = _bars_to_df(bars)
+        df = _intraday_bars_with_backfill(symbol, provider)
         if df.empty or timeframe == "1m":
             return df
         return _resample_ohlcv(df, _RESAMPLE_RULE[timeframe])
@@ -126,16 +158,24 @@ def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str
 
 def candle_provenance(symbol: str, provider: MarketDataProvider, timeframe: str) -> tuple[str, str]:
     """(data_source, data_mode) for the /candles endpoint's honesty badge.
-    Intraday timeframes are served by the streaming service, which may be a
-    different vendor/mode than the REST provider (e.g. synthetic ticks
-    while REST daily history is real) — never assume they match."""
+    Intraday timeframes prefer the streaming service's own latest bar
+    (the freshest possible read); when nothing has streamed yet but REST
+    backfill supplied history, that provider's identity is reported
+    instead of a bare "stream"/"unspecified" — the chart IS showing real
+    data, just not yet anything from the live feed itself. Only when
+    neither source has anything does this fall back to the honest
+    unknown state."""
     if timeframe in _INTRADAY_TIMEFRAMES:
         from app.services.streaming.service import get_stream_service
 
         bars = get_stream_service().recent_bars(symbol, limit=1)
-        if not bars:
+        if bars:
+            return bars[-1].provider, bars[-1].data_mode
+        try:
+            provider.get_intraday_bars(symbol, lookback_minutes=1)
+        except ProviderDataUnavailable:
             return "stream", "unspecified"
-        return bars[-1].provider, bars[-1].data_mode
+        return provider.name, getattr(provider, "data_mode", "unspecified")
     return provider.name, getattr(provider, "data_mode", "unspecified")
 
 

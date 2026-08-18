@@ -15,6 +15,8 @@ from enum import Enum
 
 import pandas as pd
 
+from app.services.data_providers.http_base import ProviderDataUnavailable
+
 
 class AssetType(str, Enum):
     """The platform's unified asset taxonomy (multi-asset expansion,
@@ -216,3 +218,21 @@ class MarketDataProvider(ABC):
     @abstractmethod
     def get_corporate_actions(self, symbol: str) -> list[CorporateAction]:
         ...
+
+    def get_intraday_bars(self, symbol: str, lookback_minutes: int = 390) -> pd.DataFrame:
+        """Real minute-level history for intraday chart backfill (see
+        services/signals/engine.py::bars_for_timeframe, which merges this
+        with whatever the live stream has accumulated so a chart isn't
+        empty just because a symbol was only just subscribed).
+
+        Deliberately NOT abstract: most free-tier vendors here (mock,
+        Twelve Data, Alpha Vantage, Finnhub) have no minute-bar endpoint on
+        their free plan, and requiring every adapter to implement this
+        would mean either fabricating minute bars or duplicating this same
+        raise everywhere. The default here IS the honest answer for all of
+        them; only AlpacaProvider overrides it with a real fetch.
+        """
+        raise ProviderDataUnavailable(
+            f"{self.name} does not provide intraday minute-bar history — the chart falls back to "
+            f"whatever has actually streamed, with no fabricated backfill."
+        )
