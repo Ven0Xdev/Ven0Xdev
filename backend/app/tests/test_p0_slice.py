@@ -14,7 +14,7 @@ def test_mock_never_fabricates_unknown_symbols():
 
 def test_analysis_of_unknown_symbol_fails_cleanly():
     provider = MockOTCProvider()
-    with pytest.raises(Exception):
+    with pytest.raises(ProviderDataUnavailable, match="Unknown symbol"):
         analyze_ticker("NOTREAL", provider=provider)
 
 

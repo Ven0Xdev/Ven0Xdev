@@ -9,11 +9,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from app.services.streaming import service as streaming_service
 from app.services.streaming.core import CandleAggregator, EventBus, TradeEvent
 from app.services.streaming.incremental import IncrementalEMA, IncrementalRSI, LiveIndicatorSet
-from app.services.streaming import service as streaming_service
 from app.services.streaming.service import (
-    AlpacaStreamManager,
     AlpacaTradeSource,
     FinnhubTradeSource,
     _alpaca_auth_succeeded,
@@ -118,7 +117,7 @@ def test_incremental_ema_matches_pandas():
 
 def test_incremental_rsi_reasonable_and_warm_gated():
     inc = IncrementalRSI(14)
-    for i, c in enumerate([1.0 + 0.01 * i for i in range(10)]):
+    for c in [1.0 + 0.01 * i for i in range(10)]:
         r = inc.update(c)
     assert r.warm is False and r.value is None  # not enough history yet
     for i in range(20):

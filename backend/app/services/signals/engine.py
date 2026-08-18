@@ -186,7 +186,7 @@ def bars_for_timeframe(
     timeframe = (timeframe or "1D").upper() if timeframe not in _INTRADAY_TIMEFRAMES else timeframe
 
     if timeframe in _INTRADAY_TIMEFRAMES:
-        lookback_minutes = _INTRADAY_RANGE_LOOKBACK_MINUTES.get(range_key, 390)
+        lookback_minutes = _INTRADAY_RANGE_LOOKBACK_MINUTES.get(range_key or "", 390)
         df = _intraday_bars_with_backfill(symbol, provider, closed_only=closed_only, lookback_minutes=lookback_minutes)
         if df.empty or timeframe == "1m":
             return df

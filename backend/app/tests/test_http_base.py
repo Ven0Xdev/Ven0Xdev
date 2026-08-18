@@ -5,8 +5,6 @@ absence/failure is exactly the fallback path these tests exercise.
 """
 import time
 
-import pytest
-
 from app.services.data_providers.http_base import (
     LOW_FREQUENCY_TTL_SECONDS,
     SharedCache,

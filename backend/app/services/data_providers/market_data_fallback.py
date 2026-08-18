@@ -105,10 +105,10 @@ class FallbackMarketDataProvider(MarketDataProvider):
             self.data_mode = getattr(self._fallback, "data_mode", "unspecified")
             return result
         except ProviderDataUnavailable as fallback_error:
-                raise ProviderDataUnavailable(
-                    f"Both market data providers failed for {method}: "
-                    f"{self._primary_label}: {primary_error} | {self._fallback_label}: {fallback_error}"
-                )
+            raise ProviderDataUnavailable(
+                f"Both market data providers failed for {method}: "
+                f"{self._primary_label}: {primary_error} | {self._fallback_label}: {fallback_error}"
+            ) from fallback_error
 
     def get_universe(self, limit: int | None = None) -> list[TickerMeta]:
         return self._call("get_universe", limit)
@@ -213,9 +213,9 @@ class MixedSourceProvider(MarketDataProvider):
         return self._reference.get_corporate_actions(symbol)
 
 
+from app.services.data_providers.alphavantage_provider import AlphaVantageProvider  # noqa: E402
 from app.services.data_providers.registry import register_provider  # noqa: E402
 from app.services.data_providers.twelvedata_provider import TwelveDataProvider  # noqa: E402
-from app.services.data_providers.alphavantage_provider import AlphaVantageProvider  # noqa: E402
 
 
 @register_provider("twelvedata")

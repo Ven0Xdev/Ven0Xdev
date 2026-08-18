@@ -15,7 +15,7 @@ def test_walk_forward_produces_folds_and_calibration():
 
     aggregate = report["aggregate_out_of_sample"]
     assert aggregate, "aggregate out-of-sample section must exist"
-    for threshold_key, entry in aggregate.items():
+    for entry in aggregate.values():
         assert entry["test_rows"] > 0
         assert 0 <= entry["positive_rate"] <= 1
         buckets = entry["calibration"]

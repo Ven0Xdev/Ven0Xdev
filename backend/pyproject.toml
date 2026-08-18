@@ -1,0 +1,57 @@
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+# A focused, correctness-first selection — not ruff's full opinionated
+# rule catalog. Picked to catch real bugs (F, B, unused/broken code) and
+# match conventions this codebase already leans on hard (DTZ: every
+# timestamp here is meant to be UTC-aware, see app/db/types.py's
+# UTCDateTime), not to retroactively enforce a house style across 170+
+# files that predate this config.
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "RUF", "DTZ"]
+ignore = [
+    "E501",   # line length — many intentionally long comment/docstring lines predate this config; not a correctness signal
+    "UP017",  # datetime.timezone.utc -> datetime.UTC: this codebase consistently uses timezone.utc (100+ call sites); a
+              # purely cosmetic Python-3.11-alias preference, not a bug — not worth a mechanical rewrite across every site
+    "RUF001", "RUF002", "RUF003",  # ambiguous-unicode-character: flags the em dashes ("—") this codebase's prose style
+                                    # uses deliberately and extensively in comments/docstrings, not a real ambiguity risk
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test fixtures deliberately construct naive datetimes in a few places to
+# exercise UTCDateTime's own handling of naive input — that's the point
+# of the test, not a bug to fix.
+"app/tests/*" = ["DTZ001"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection pattern (Depends(...)/Query(...) as a
+# parameter default) is the framework's own required idiom, not the
+# mutable-default-argument footgun B008 exists to catch.
+extend-immutable-calls = [
+    "fastapi.Depends", "fastapi.Query", "fastapi.Body", "fastapi.Path", "fastapi.Header", "fastapi.Security",
+]
+
+[tool.mypy]
+python_version = "3.11"
+# A starting baseline, not --strict: this codebase has type hints
+# throughout but was never checked before this config existed. Catching
+# real errors (undefined names, wrong types passed to typed functions)
+# without demanding every third-party-untyped call site get annotated
+# first is the actual goal — strictness can ratchet up later.
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+# The ML/data stack (pandas, numpy, lightgbm, xgboost, catboost, shap,
+# sklearn) and a few smaller libs either ship no stubs or ship
+# incomplete ones — never a reason to fail CI on missing third-party
+# type information this project doesn't control.
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Tests trade type rigor for fixture flexibility throughout this
+# codebase already (loosely-typed dict/kwargs fixtures, monkeypatch);
+# holding them to the same bar as application code would mean annotating
+# hundreds of test helpers for no correctness benefit.
+module = "app.tests.*"
+ignore_errors = true

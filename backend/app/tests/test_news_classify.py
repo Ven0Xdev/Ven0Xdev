@@ -30,7 +30,7 @@ def test_headline_with_no_lexicon_hits_is_neutral_not_fabricated():
 
 
 def test_mixed_signals_with_uncertainty_words_is_uncertain_not_neutral():
-    score, label = classify_sentiment("Results could be mixed as outlook remains uncertain despite a gain and a loss")
+    _score, label = classify_sentiment("Results could be mixed as outlook remains uncertain despite a gain and a loss")
     assert label == "uncertain"
 
 

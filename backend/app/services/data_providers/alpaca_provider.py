@@ -254,6 +254,8 @@ class AlpacaProvider(MarketDataProvider):
             raise ProviderDataUnavailable(f"Alpaca has no live trade for {symbol} on the {_FEED} feed")
         ts_raw = trade.get("t")
         try:
+            if not isinstance(ts_raw, str):
+                raise TypeError(ts_raw)
             timestamp = datetime.strptime(ts_raw[:26], "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=timezone.utc)
         except (TypeError, ValueError):
             timestamp = datetime.now(timezone.utc)

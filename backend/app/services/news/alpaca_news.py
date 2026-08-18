@@ -21,13 +21,17 @@ import asyncio
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 import httpx
 
 from app.services.data_providers.http_base import ProviderDataUnavailable, RateLimitedHttpClient
+
+if TYPE_CHECKING:
+    from websockets.asyncio.client import ClientConnection
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +134,7 @@ def fetch_news_rest(
     return articles
 
 
-def _alpaca_auth_succeeded(raw: str) -> bool:
+def _alpaca_auth_succeeded(raw: str | bytes) -> bool:
     try:
         msgs = json.loads(raw)
     except json.JSONDecodeError:
@@ -140,7 +144,7 @@ def _alpaca_auth_succeeded(raw: str) -> bool:
     return any(isinstance(m, dict) and m.get("T") == "success" and m.get("msg") == "authenticated" for m in msgs)
 
 
-def _parse_news_ws_messages(raw: str) -> list[NewsArticleRaw]:
+def _parse_news_ws_messages(raw: str | bytes) -> list[NewsArticleRaw]:
     try:
         msgs = json.loads(raw)
     except json.JSONDecodeError:
@@ -177,7 +181,7 @@ class AlpacaNewsStreamManager:
         self.api_secret = api_secret
         self._callbacks: list[NewsCallback] = []
         self._symbols: list[str] = []
-        self._ws = None
+        self._ws: ClientConnection | None = None
         self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
         self.connected: bool = False
@@ -213,7 +217,7 @@ class AlpacaNewsStreamManager:
                     await ws.send(json.dumps({"action": "auth", "key": self.api_key, "secret": self.api_secret}))
                     auth_reply = await ws.recv()
                     if not _alpaca_auth_succeeded(auth_reply):
-                        raise RuntimeError(f"Alpaca News WS auth rejected: {auth_reply}")
+                        raise RuntimeError(f"Alpaca News WS auth rejected: {auth_reply!r}")
                     self._ws = ws
                     self.connected = True
                     subscribe_to = self._symbols or ["*"]
@@ -225,12 +229,12 @@ class AlpacaNewsStreamManager:
                             for cb in list(self._callbacks):
                                 try:
                                     await cb(article)
-                                except Exception:  # noqa: BLE001 — one bad callback must never kill the stream
+                                except Exception:
                                     logger.exception("alpaca news ws: callback failed for article %s", article.external_id)
             except asyncio.CancelledError:
                 self.connected = False
                 raise
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("alpaca news ws error: %s — reconnecting in %.0fs", exc, backoff)
                 self.connected = False
                 self._ws = None

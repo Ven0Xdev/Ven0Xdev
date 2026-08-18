@@ -191,7 +191,7 @@ def _evaluate_entry_for_account(
 
     try:
         quote = provider.get_quote(ncs_row.ticker_symbol)
-    except Exception as exc:  # noqa: BLE001 — a quote failure must never crash the autonomous loop
+    except Exception as exc:
         return AutonomousDecision(account.id, False, f"Quote unavailable: {exc}")
 
     quote_age = (datetime.now(timezone.utc) - quote.timestamp).total_seconds()
@@ -251,7 +251,7 @@ def _evaluate_entry_for_account(
             "user_id": account.user_id, "ticker_symbol": position.ticker_symbol,
             "quantity": position.quantity, "entry_price": position.avg_entry_price,
         })
-    except Exception:  # noqa: BLE001 — a dashboard-notification failure must never mask a real, committed trade
+    except Exception:
         logger.exception("Failed to publish autonomous.position_opened dashboard event")
     return AutonomousDecision(account.id, True, "Opened.", position=position)
 
@@ -282,7 +282,7 @@ def _close_reversed_positions(
             "user_id": account.user_id, "ticker_symbol": closed.ticker_symbol,
             "realized_pnl_dollars": closed.realized_pnl_dollars, "reason": "ncs_reversal",
         })
-    except Exception:  # noqa: BLE001 — a dashboard-notification failure must never mask a real, committed trade
+    except Exception:
         logger.exception("Failed to publish autonomous.position_closed dashboard event")
     return AutonomousDecision(account.id, True, "Closed on NCS reversal.", position=closed)
 
@@ -318,7 +318,7 @@ def on_ncs_fired_autonomous(db: Session, ncs_row: NcsSignal, provider: MarketDat
                     decisions.append(decision)
             else:
                 decisions.append(_evaluate_entry_for_account(db, account, ncs_row, provider))
-        except Exception as exc:  # noqa: BLE001 — one account's failure never blocks another's or the caller's
+        except Exception as exc:
             db.rollback()  # an unexpected failure may have left this session's transaction aborted
             decisions.append(AutonomousDecision(account.id, False, f"Unexpected error: {exc}"))
     return decisions

@@ -17,6 +17,7 @@ validates *execution*, this one validates *the probabilities themselves*.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import pairwise
 
 import numpy as np
 
@@ -44,7 +45,8 @@ def _dataset_between(provider: MarketDataProvider, symbols: list[str], lookback_
     row near the boundary never peeks past it plus the label horizon —
     the test fold starts after train labels fully resolve.
     """
-    X_rows, labels = [], {t: [] for t in HORIZON_THRESHOLDS}
+    X_rows: list = []
+    labels: dict[int, list] = {t: [] for t in HORIZON_THRESHOLDS}
     for symbol in symbols:
         df = provider.get_ohlcv(symbol, lookback_days=lookback_days)
         n = len(df)
@@ -69,7 +71,7 @@ def _dataset_between(provider: MarketDataProvider, symbols: list[str], lookback_
 def _calibration_buckets(y: np.ndarray, preds: np.ndarray, n_buckets: int = 4) -> list[dict]:
     buckets = []
     edges = np.linspace(0, 1, n_buckets + 1)
-    for lo, hi in zip(edges[:-1], edges[1:]):
+    for lo, hi in pairwise(edges):
         mask = (preds >= lo) & (preds < hi if hi < 1 else preds <= hi)
         if mask.sum() == 0:
             buckets.append({"range": [round(float(lo), 2), round(float(hi), 2)], "count": 0})
@@ -130,7 +132,7 @@ def run_walk_forward_validation(
         preds = np.array(all_preds[threshold])
         if len(y) == 0:
             continue
-        entry: dict = {
+        agg_entry: dict = {
             "test_rows": len(y),
             "positive_rate": round(float(y.mean()), 3),
             "calibration": _calibration_buckets(y, preds),
@@ -138,8 +140,8 @@ def run_walk_forward_validation(
         if len(np.unique(y)) == 2:
             from sklearn.metrics import roc_auc_score as _auc
 
-            entry["auc"] = round(float(_auc(y, preds)), 4)
-        aggregate[f"+{threshold}%"] = entry
+            agg_entry["auc"] = round(float(_auc(y, preds)), 4)
+        aggregate[f"+{threshold}%"] = agg_entry
 
     return {
         "symbols": symbols,

@@ -37,7 +37,7 @@ import logging
 import pickle
 import shutil
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -98,7 +98,9 @@ def build_labeled_dataset(db: Session) -> LabeledDataset:
         .all()
     )
 
-    X_rows, created, labels = [], [], {t: [] for t in HORIZON_THRESHOLDS}
+    X_rows: list = []
+    created: list = []
+    labels: dict[int, list] = {t: [] for t in HORIZON_THRESHOLDS}
     horizon_days: list[float] = []
     regimes: list[str] = []
     for prediction, outcome in rows:
@@ -301,7 +303,7 @@ def train_challenger(db: Session, artifact_dir: str | None = None) -> ModelVersi
 
     out_dir = Path(artifact_dir or settings.model_artifact_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    version_tag = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    version_tag = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     artifact_path = out_dir / f"challenger_{version_tag}.pkl"
     with open(artifact_path, "wb") as f:
         pickle.dump(challenger, f)

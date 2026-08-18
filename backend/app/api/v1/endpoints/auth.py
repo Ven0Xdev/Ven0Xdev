@@ -86,7 +86,7 @@ async def _submitted_email(request: Request) -> str | None:
         payload = await request.json()
         email = payload.get("email")
         return email.lower() if isinstance(email, str) else None
-    except Exception:  # noqa: BLE001 — not this dependency's job to validate the body
+    except Exception:
         return None
 
 
@@ -200,8 +200,8 @@ def update_me(request: UpdateTimezoneRequest, user: User = Depends(get_current_u
 
         try:
             ZoneInfo(request.timezone)
-        except ZoneInfoNotFoundError:
-            raise HTTPException(status_code=422, detail=f"Unknown timezone: {request.timezone!r}")
+        except ZoneInfoNotFoundError as exc:
+            raise HTTPException(status_code=422, detail=f"Unknown timezone: {request.timezone!r}") from exc
 
     user.timezone = request.timezone
     db.add(user)

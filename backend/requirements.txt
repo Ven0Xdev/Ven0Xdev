@@ -7,7 +7,12 @@ psycopg[binary]>=3.2
 alembic>=1.13
 redis>=5.0
 pandas>=2.2
-numpy>=1.26
+# Ceiling below 2.5: that release's bundled __init__.pyi uses unconditional
+# PEP 695 `type` statements mypy can't parse under python_version=3.11 (see
+# backend/pyproject.toml) — a real numpy-stub/mypy-target incompatibility,
+# not a version this project is otherwise trying to avoid. Revisit once
+# mypy or numpy's stubs resolve it.
+numpy>=1.26,<2.5
 scikit-learn>=1.5
 lightgbm>=4.5
 xgboost>=2.1

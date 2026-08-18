@@ -4,7 +4,6 @@ registry, schema readiness, asset universe) is served by endpoints that
 already existed and are already tested elsewhere (test_monitoring.py,
 test_models*.py, test_universe_endpoint.py).
 """
-from app.db.models.platform_setting import PlatformSetting
 from app.db.models.user import User
 from app.services.platform_settings import (
     get_platform_setting,

@@ -10,17 +10,17 @@ can be held forever).
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
 
 import numpy as np
 import pandas as pd
 
 from app.services.backtest import broker_sim, metrics
-from app.services.features import technical
 from app.services.backtest.strategy import Signal, simple_momentum_signal
 from app.services.data_providers.base import MarketDataProvider
+from app.services.features import technical
 
 
 @dataclass

@@ -32,8 +32,9 @@ def _get_or_create_dev_user(db: Session) -> User:
     """
     user = db.query(User).filter_by(email=DEV_EMAIL).one_or_none()
     if user is None:
-        from app.core.security import hash_password
         import secrets
+
+        from app.core.security import hash_password
 
         user = User(email=DEV_EMAIL, password_hash=hash_password(secrets.token_hex(16)), role="operator")
         db.add(user)

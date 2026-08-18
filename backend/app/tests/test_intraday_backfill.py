@@ -13,8 +13,7 @@ import pytest
 
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
-from app.services.signals.engine import bars_for_timeframe, candle_provenance
-from app.services.signals.engine import _intraday_bars_with_backfill
+from app.services.signals.engine import _intraday_bars_with_backfill, bars_for_timeframe, candle_provenance
 from app.services.streaming import service as streaming_service
 from app.services.streaming.core import CandleAggregator, TradeEvent
 

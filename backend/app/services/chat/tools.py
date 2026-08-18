@@ -14,8 +14,9 @@ directly.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import asdict
-from typing import Any, Callable
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -202,7 +203,7 @@ def execute_tool(name: str, args: dict, db: Session | None, provider: MarketData
         return {"error": f"unknown tool {name!r}; available: {sorted(_BY_NAME)}"}
     try:
         return executor(args or {}, db, provider)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("Tool %s failed", name)
         return {"error": f"{name} failed: {exc}"}
 

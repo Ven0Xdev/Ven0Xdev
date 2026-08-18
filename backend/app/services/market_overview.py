@@ -33,7 +33,6 @@ from zoneinfo import ZoneInfo
 import numpy as np
 from sqlalchemy.orm import Session
 
-from app.db.models.asset import Asset
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.universe.manager import get_active_universe
@@ -164,13 +163,13 @@ def get_market_overview(
         except ProviderDataUnavailable as exc:
             failure = exc
             logger.info("market_overview: %s unavailable from %s (%s) — using demo fallback", symbol, provider.name, exc)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             failure = exc
             logger.warning("market_overview: unexpected error for %s: %s", symbol, exc)
 
         try:
             results.append(_synthetic_quote(symbol, asset.name, _classify_failure(failure)))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("market_overview: demo fallback also failed for %s: %s", symbol, exc)
             results.append({
                 "symbol": symbol, "status": "unavailable",

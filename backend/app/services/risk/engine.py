@@ -36,7 +36,7 @@ def evaluate_risk(
     reward_risk_ratio: float,
     position_risk_pct: float | None = None,
     settings: Settings | None = None,
-    db: "Session | None" = None,
+    db: Session | None = None,
     safe_mode: bool | None = None,
 ) -> RiskVerdict:
     """Checks confidence and reward:risk unconditionally. `position_risk_pct`

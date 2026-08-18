@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from app.db.models.portfolio import PortfolioPosition
+from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
 from app.services.scoring.scorer import analyze_ticker
 
@@ -88,16 +89,17 @@ def assess_portfolio(
     positions = query.all()
 
     assessments: list[PositionAssessment] = []
-    analyses: dict[str, object] = {}
+    analyses: dict[str, StockAnalysis | None] = {}
     for position in positions:
+        analysis: StockAnalysis | None
         try:
             analysis = analyze_ticker(position.ticker_symbol, provider=provider)
-            analyses[position.ticker_symbol] = analysis
             price = analysis.current_price
         except Exception:
             logger.exception("Cannot price %s", position.ticker_symbol)
-            analyses[position.ticker_symbol] = None
+            analysis = None
             price = None
+        analyses[position.ticker_symbol] = analysis
 
         assessments.append(
             PositionAssessment(
@@ -110,30 +112,24 @@ def assess_portfolio(
                 unrealized_pnl_pct=(price / position.avg_entry_price - 1) * 100
                 if price and position.avg_entry_price
                 else None,
-                ceiling_pct=analyses[position.ticker_symbol].max_allocation_pct
-                if analyses[position.ticker_symbol]
-                else None,
+                ceiling_pct=analysis.max_allocation_pct if analysis else None,
                 sizing_verdict="unpriced" if price is None else "hold",
                 sizing_reason="" if price else "Provider could not price this position — excluded from weights.",
-                manipulation_risk=analyses[position.ticker_symbol].manipulation_risk
-                if analyses[position.ticker_symbol]
-                else None,
-                liquidity_score=analyses[position.ticker_symbol].liquidity_score
-                if analyses[position.ticker_symbol]
-                else None,
-                sector=analyses[position.ticker_symbol].sector if analyses[position.ticker_symbol] else None,
+                manipulation_risk=analysis.manipulation_risk if analysis else None,
+                liquidity_score=analysis.liquidity_score if analysis else None,
+                sector=analysis.sector if analysis else None,
             )
         )
 
     priced = [a for a in assessments if a.market_value]
-    total_value = sum(a.market_value for a in priced)
+    total_value = sum(a.market_value or 0.0 for a in priced)
 
     # --- weights, HHI, sectors -------------------------------------------
     sector_weights: dict[str, float] = {}
     hhi = 0.0
     largest = 0.0
     for a in priced:
-        a.weight_pct = a.market_value / total_value * 100 if total_value else 0.0
+        a.weight_pct = (a.market_value or 0.0) / total_value * 100 if total_value else 0.0
         hhi += (a.weight_pct / 100) ** 2
         largest = max(largest, a.weight_pct)
         if a.sector:
@@ -144,21 +140,28 @@ def assess_portfolio(
         total_w = sum(w for w, _ in attr_values)
         return sum(w * v for w, v in attr_values) / total_w if total_w else 0.0
 
-    weighted_manip = _weighted([(a.weight_pct, a.manipulation_risk) for a in priced if a.manipulation_risk is not None])
-    weighted_liq = _weighted([(a.weight_pct, a.liquidity_score) for a in priced if a.liquidity_score is not None])
-    weighted_downside = _weighted(
-        [
-            (a.weight_pct, analyses[a.ticker].probability_downside_before_upside * 100)
-            for a in priced
-            if analyses.get(a.ticker)
-        ]
+    # weight_pct was just assigned a real float for every element of `priced`
+    # in the loop above — `or 0.0` here is a mypy narrowing idiom, not a
+    # fallback that's actually expected to trigger.
+    weighted_manip = _weighted(
+        [(a.weight_pct or 0.0, a.manipulation_risk) for a in priced if a.manipulation_risk is not None]
     )
+    weighted_liq = _weighted(
+        [(a.weight_pct or 0.0, a.liquidity_score) for a in priced if a.liquidity_score is not None]
+    )
+    downside_inputs = []
+    for a in priced:
+        sa = analyses.get(a.ticker)
+        if sa is not None:
+            downside_inputs.append((a.weight_pct or 0.0, sa.probability_downside_before_upside * 100))
+    weighted_downside = _weighted(downside_inputs)
 
     # --- sizing verdicts vs. per-ticker ceilings ------------------------------
     alerts: list[dict] = []
     for a in priced:
         if a.ceiling_pct is None:
             continue
+        assert a.weight_pct is not None  # every member of `priced` had weight_pct filled in above
         if a.weight_pct > max(a.ceiling_pct, MAX_SINGLE_POSITION_PCT):
             a.sizing_verdict = "trim"
             a.sizing_reason = (
@@ -183,7 +186,7 @@ def assess_portfolio(
 
     # --- alerts ------------------------------------------------------------------
     if largest > MAX_SINGLE_POSITION_PCT:
-        worst = max(priced, key=lambda a: a.weight_pct)
+        worst = max(priced, key=lambda a: a.weight_pct or 0.0)
         alerts.append(
             {
                 "severity": "critical",

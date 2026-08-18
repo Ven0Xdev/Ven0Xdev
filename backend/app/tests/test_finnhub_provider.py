@@ -3,7 +3,6 @@
 Fixtures mirror Finnhub's documented response shapes exactly, so these tests
 verify our field mapping and failure handling — no live API, no key needed.
 """
-import json
 from datetime import datetime, timezone
 
 import httpx

@@ -179,7 +179,6 @@ def compute_technical_series(df: pd.DataFrame) -> pd.DataFrame:
     atr_series = atr(df)
 
     rolling_high_252 = close.rolling(252, min_periods=1).max()
-    rolling_low_252 = close.rolling(252, min_periods=1).min()
 
     if "bid" in df and "ask" in df:
         spread_pct = (df["ask"] - df["bid"]) / ((df["ask"] + df["bid"]) / 2).replace(0, np.nan) * 100

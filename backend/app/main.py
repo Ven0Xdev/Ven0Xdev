@@ -84,7 +84,7 @@ def _sanitized_db_url() -> str:
             scheme = scheme_and_creds.split("://", 1)[0]
             return f"{scheme}://***:***@{host_and_rest}"
         return url
-    except Exception:  # noqa: BLE001 — logging must never itself crash startup
+    except Exception:
         return "<unparseable>"
 
 
@@ -281,7 +281,7 @@ def health_check():
 
             conn.execute(text("SELECT 1"))
         database_status = "connected"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("health check: database unreachable: %s", type(exc).__name__)
         database_status = "unreachable"
 

@@ -16,8 +16,8 @@ import logging
 
 import pytest
 
-from app.core.logging import _RedactSecretsFilter, register_secret
 from app.core import logging as logging_module
+from app.core.logging import _RedactSecretsFilter, register_secret
 
 
 @pytest.fixture(autouse=True)

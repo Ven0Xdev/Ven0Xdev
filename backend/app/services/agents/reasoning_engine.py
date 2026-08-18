@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from app.services.agents.analysts import FundamentalAnalyst, NewsAnalyst, SentimentAnalyst, TechnicalAnalyst
 from app.services.agents.context import build_context
-from app.services.agents.evidence import Deliberation, EvidenceBundle, StageTrace
+from app.services.agents.evidence import Deliberation, EvidenceAgent, EvidenceBundle, StageTrace
 from app.services.agents.judge import JudgeAgent
 from app.services.agents.memory import MemoryAgent, SelfLearningAgent
 from app.services.agents.oversight import ContrarianAnalyst, ManipulationDetective, PortfolioManager, RiskManager
@@ -39,7 +39,9 @@ from app.services.data_providers.factory import get_data_provider
 
 class ReasoningEngine:
     def __init__(self) -> None:
-        self.analysts = [TechnicalAnalyst(), FundamentalAnalyst(), SentimentAnalyst(), NewsAnalyst()]
+        self.analysts: list[EvidenceAgent] = [
+            TechnicalAnalyst(), FundamentalAnalyst(), SentimentAnalyst(), NewsAnalyst(),
+        ]
         self.detective = ManipulationDetective()
         self.memory = MemoryAgent()
         self.learning = SelfLearningAgent()
@@ -59,7 +61,8 @@ class ReasoningEngine:
         stages: list[StageTrace] = []
 
         # ---- Stage 1: EVIDENCE -------------------------------------------------
-        for agent in [*self.analysts, self.detective, self.memory]:
+        evidence_agents: list[EvidenceAgent] = [*self.analysts, self.detective, self.memory]
+        for agent in evidence_agents:
             bundle.add(*agent.run(ctx))
         stages.append(
             StageTrace(

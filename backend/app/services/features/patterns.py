@@ -152,14 +152,14 @@ def detect_patterns(df: pd.DataFrame, lookback: int = 5) -> list[PatternMatch]:
 
         if i >= 1:
             prev = df.iloc[i - 1]
-            for name, (fn, direction, reason) in _TWO_BAR.items():
-                if fn(prev, cur):
+            for name, (two_bar_fn, direction, reason) in _TWO_BAR.items():
+                if two_bar_fn(prev, cur):
                     matches.append(PatternMatch(name, i, ts, direction, reason))
 
         if i >= 2:
             a, b = df.iloc[i - 2], df.iloc[i - 1]
-            for name, (fn, direction, reason) in _THREE_BAR.items():
-                if fn(a, b, cur):
+            for name, (three_bar_fn, direction, reason) in _THREE_BAR.items():
+                if three_bar_fn(a, b, cur):
                     matches.append(PatternMatch(name, i, ts, direction, reason))
 
     return list(reversed(matches))

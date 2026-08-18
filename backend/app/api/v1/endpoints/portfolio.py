@@ -49,7 +49,7 @@ def position_recommendation(
 
     try:
         return build_recommendation_dossier(symbol, provider, db=db)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=404, detail=f"Could not build dossier for {symbol}: {exc}") from exc
 
 

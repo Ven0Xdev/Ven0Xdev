@@ -38,14 +38,16 @@ def get_or_create_session(db: Session, session_key: str) -> ChatSession:
     db.add(session)
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         logger.info("chat session %r was created concurrently — reusing the existing row", session_key)
         db.rollback()
         session = db.query(ChatSession).filter_by(session_key=session_key).one_or_none()
         if session is None:
             # Extremely unlikely (the row that caused the conflict should
             # exist), but never fabricate a session — surface it clearly.
-            raise RuntimeError(f"Could not create or find chat session {session_key!r} after a commit conflict.")
+            raise RuntimeError(
+                f"Could not create or find chat session {session_key!r} after a commit conflict."
+            ) from exc
         return session
     db.refresh(session)
     return session

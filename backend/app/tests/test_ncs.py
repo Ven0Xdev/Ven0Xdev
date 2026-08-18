@@ -3,6 +3,8 @@ veto display, and the closed-bars-only guarantee.
 """
 from datetime import timedelta
 
+import pytest
+
 from app.db.models.ncs_signal import NcsSignal
 from app.services.data_providers.mock_provider import MockOTCProvider
 from app.services.signals.ncs import (
@@ -190,7 +192,7 @@ def test_insufficient_closed_bars_raises_instead_of_fabricating_a_verdict(db_ses
     )
     try:
         compute_ncs(SYMBOL, provider, db_session, timeframe="1D")
-        assert False, "expected NcsInsufficientData"
+        pytest.fail("expected NcsInsufficientData")
     except NcsInsufficientData as exc:
         assert "closed bars" in str(exc).lower()
 

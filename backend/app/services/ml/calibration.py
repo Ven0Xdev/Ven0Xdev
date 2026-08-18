@@ -16,7 +16,7 @@ class ProbabilityCalibrator:
         self._calibrator = None
         self._fitted = False
 
-    def fit(self, raw_probs: np.ndarray, outcomes: np.ndarray) -> "ProbabilityCalibrator":
+    def fit(self, raw_probs: np.ndarray, outcomes: np.ndarray) -> ProbabilityCalibrator:
         from sklearn.isotonic import IsotonicRegression
 
         self._calibrator = IsotonicRegression(out_of_bounds="clip", y_min=0.01, y_max=0.99)
@@ -29,4 +29,5 @@ class ProbabilityCalibrator:
             # Without enough historical outcomes yet, apply a mild shrink-to-prior
             # instead of pretending the raw GBM output is already calibrated.
             return 0.5 + (np.asarray(raw_probs) - 0.5) * 0.7
+        assert self._calibrator is not None  # _fitted is only ever True once fit() has set this
         return self._calibrator.predict(np.asarray(raw_probs))

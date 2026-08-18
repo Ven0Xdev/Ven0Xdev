@@ -109,10 +109,12 @@ class EdgarClient:
         with self._cik_lock:
             if self._cik_map is None:
                 payload = self._get_json("https://www.sec.gov/files/company_tickers.json") or {}
-                self._cik_map = {
-                    row["ticker"].upper(): str(row["cik_str"]).zfill(10)
-                    for row in payload.values()
-                }
+                # SEC's own schema for this endpoint is always a dict keyed
+                # by row index — never a bare list — but _get_json's return
+                # type covers both shapes across every EDGAR endpoint, so
+                # narrow explicitly rather than assume.
+                rows = payload.values() if isinstance(payload, dict) else payload
+                self._cik_map = {row["ticker"].upper(): str(row["cik_str"]).zfill(10) for row in rows}
         return self._cik_map.get(ticker)
 
     # --- share count history ---------------------------------------------
@@ -122,7 +124,7 @@ class EdgarClient:
         usable share-count facts (common on Expert Market shells).
         """
         payload = self._get_json(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json")
-        if not payload:
+        if not payload or not isinstance(payload, dict):
             return []
         facts = payload.get("facts", {})
         for taxonomy, concept in _SHARE_CONCEPTS:
@@ -168,14 +170,20 @@ class EdgarClient:
         submissions API. (None, None, None) = no filing history found.
         """
         payload = self._get_json(f"https://data.sec.gov/submissions/CIK{cik}.json")
-        if not payload:
+        if not payload or not isinstance(payload, dict):
             return None, None, None
         recent = payload.get("filings", {}).get("recent", {})
         forms = recent.get("form", [])
         dates = recent.get("filingDate", [])
 
         last_periodic: tuple[datetime, str] | None = None
-        for form, date_str in zip(forms, dates):
+        # strict=False: forms/dates are two parallel arrays from EDGAR's own
+        # JSON — external vendor data, not something this code controls the
+        # shape of. Matching this file's schema-validation discipline
+        # elsewhere (skip malformed entries, never crash the whole read),
+        # zip() truncating to the shorter array on a vendor-side mismatch is
+        # the same "ignore what doesn't parse" choice, not a bug to catch.
+        for form, date_str in zip(forms, dates, strict=False):
             if form in _PERIODIC_FORMS:
                 filed = datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
                 if last_periodic is None or filed > last_periodic[0]:

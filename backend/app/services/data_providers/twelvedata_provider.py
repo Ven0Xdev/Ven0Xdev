@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.twelvedata.com"
 
-__all__ = ["TwelveDataProvider", "ProviderDataUnavailable"]
+__all__ = ["ProviderDataUnavailable", "TwelveDataProvider"]
 
 
 def _check_errors(payload, vendor: str, context: str) -> None:

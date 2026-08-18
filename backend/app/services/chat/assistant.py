@@ -246,8 +246,13 @@ def _llm_reply(message: str, resolved_ticker: str | None, history: list[ChatTurn
                 model=settings.chat_model,
                 max_tokens=900,
                 system=SYSTEM_PROMPT,
-                tools=anthropic_tool_schemas(),
-                messages=messages,
+                # anthropic's SDK types tools/messages as TypedDicts for
+                # authoring convenience; a dynamically assembled list of
+                # plain dicts matching that same JSON shape (built above
+                # from chat history + tool_use/tool_result turns) is exactly
+                # what those TypedDicts serialize to over the wire.
+                tools=anthropic_tool_schemas(),  # type: ignore[arg-type]
+                messages=messages,  # type: ignore[arg-type]
                 timeout=30.0,
             )
             if response.stop_reason != "tool_use":

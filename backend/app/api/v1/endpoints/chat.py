@@ -61,7 +61,15 @@ def send_message(
 
     memory.append_message(db, session, "assistant", reply, meta=metadata)
 
-    return ChatResponse(reply=reply, ticker=resolved_ticker, session_key=request.session_key, metadata=metadata)
+    # `metadata` is a plain dict by design (assistant.py's _build_metadata
+    # docstring: the same dict is also stored verbatim in the ChatMessage.meta
+    # JSON column, where as_of must already be an isoformat string, not a
+    # ChatMetadata model). Pydantic validates/coerces it into ChatMetadata
+    # here at construction time exactly as if it had been typed — this is
+    # runtime-correct, just not nominally typed as ChatMetadata beforehand.
+    return ChatResponse(
+        reply=reply, ticker=resolved_ticker, session_key=request.session_key, metadata=metadata  # type: ignore[arg-type]
+    )
 
 
 @router.delete("/sessions/{session_key}/ticker")
@@ -93,5 +101,8 @@ def get_history(
     return ChatHistoryResponse(
         session_key=session_key,
         ticker=session.ticker_symbol,
-        messages=[ChatHistoryTurn(role=t.role, content=t.content, metadata=t.meta) for t in history],
+        messages=[
+            ChatHistoryTurn(role=t.role, content=t.content, metadata=t.meta)  # type: ignore[arg-type]
+            for t in history
+        ],
     )

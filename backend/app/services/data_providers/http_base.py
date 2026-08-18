@@ -62,7 +62,7 @@ def _connect_redis(redis_url: str | None):
         client = redis_lib.Redis.from_url(redis_url, socket_connect_timeout=1.0, socket_timeout=1.0)
         client.ping()
         return client
-    except Exception as exc:  # noqa: BLE001 — any connection/import failure degrades, never crashes
+    except Exception as exc:
         logger.warning("Redis unavailable (%s) — falling back to per-process cache/rate-limit.", exc)
         return None
 
@@ -113,7 +113,7 @@ class SharedRateLimiter:
             try:
                 self._acquire_redis()
                 return
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("SharedRateLimiter: Redis error (%s) — falling back to local limiter.", exc)
                 self._redis = None
         self._local.acquire()
@@ -184,7 +184,7 @@ class SharedCache:
             try:
                 raw = self._redis.get(self._redis_key(key))
                 return json.loads(raw) if raw is not None else None
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("SharedCache: Redis GET error (%s) — falling back to local cache.", exc)
                 self._redis = None
         return self._local.get(key)
@@ -195,7 +195,7 @@ class SharedCache:
                 ttl = self._local.default_ttl if ttl_seconds is None else ttl_seconds
                 self._redis.set(self._redis_key(key), json.dumps(value), ex=max(1, int(ttl)))
                 return
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("SharedCache: Redis SET error (%s) — falling back to local cache.", exc)
                 self._redis = None
         self._local.put(key, value, ttl_seconds)
@@ -306,18 +306,18 @@ class RateLimitedHttpClient:
             counters.increment("provider.failures")
             counters.increment(f"provider.failures.{self.vendor}")
             raise
-        except httpx.TimeoutException:
+        except httpx.TimeoutException as exc:
             counters.increment("provider.failures")
             counters.increment(f"provider.failures.{self.vendor}")
             raise ProviderDataUnavailable(
                 f"{self.vendor} {path} timed out after {self.timeout}s — vendor slow or unreachable."
-            )
+            ) from exc
         except httpx.HTTPError as exc:
             counters.increment("provider.failures")
             counters.increment(f"provider.failures.{self.vendor}")
             raise ProviderDataUnavailable(
                 f"{self.vendor} {path} connection failed: {type(exc).__name__}"
-            )
+            ) from exc
         if response.status_code != 200:
             counters.increment("provider.failures")
             counters.increment(f"provider.failures.{self.vendor}")

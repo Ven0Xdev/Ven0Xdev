@@ -30,9 +30,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.db import models  # noqa: F401
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
-from app.db import models  # noqa: F401
 from app.services.alerts.evaluator import evaluate_rules_for_symbol
 from app.services.data_providers.factory import get_data_provider
 from app.services.evaluation.outcome_evaluator import evaluate_due_predictions
@@ -63,10 +63,10 @@ def run_prediction_cycle(provider=None, db=None) -> int:
                 symbol = futures[future]
                 try:
                     results[symbol] = future.result()
-                except Exception:  # noqa: BLE001
+                except Exception:
                     logger.info("prediction_scheduler: could not analyze %s this cycle", symbol, exc_info=True)
 
-        for symbol, analysis in results.items():
+        for analysis in results.values():
             db.add(build_prediction_row(analysis))
             logged += 1
         db.commit()
@@ -75,7 +75,7 @@ def run_prediction_cycle(provider=None, db=None) -> int:
         for symbol, analysis in results.items():
             try:
                 alerts_fired += len(evaluate_rules_for_symbol(db, symbol, analysis))
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("prediction_scheduler: alert evaluation failed for %s", symbol)
         if alerts_fired:
             logger.info("prediction_scheduler: %d alert(s) fired", alerts_fired)

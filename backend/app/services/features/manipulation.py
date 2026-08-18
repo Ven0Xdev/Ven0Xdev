@@ -42,9 +42,7 @@ class ManipulationAssessment:
 def _pump_and_dump_flag(df: pd.DataFrame) -> ManipulationFlag | None:
     if len(df) < 15:
         return None
-    returns = df["close"].pct_change()
     vol = df["volume"]
-    recent = returns.tail(10)
     recent_vol = vol.tail(10)
     baseline_vol = vol.iloc[:-10].tail(30).mean() if len(vol) > 40 else vol.mean()
 

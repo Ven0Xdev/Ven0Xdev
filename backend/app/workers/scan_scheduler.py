@@ -30,10 +30,11 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.db.base import Base
-from app.db.session import SessionLocal, engine, init_timescale_hypertables
 from app.db import models  # noqa: F401
+from app.db.base import Base
 from app.db.models.scan import ScanCycle, ScanDecision
+from app.db.session import SessionLocal, engine, init_timescale_hypertables
+from app.schemas.stock import StockAnalysis
 from app.services.data_providers.base import MarketDataProvider
 from app.services.data_providers.factory import get_data_provider
 from app.services.scoring.prediction_log import build_prediction_row
@@ -66,7 +67,7 @@ def run_scan_cycle(
     tickers = provider.get_universe()
     cycle.universe_size = len(tickers)
 
-    results: dict[str, object] = {}
+    results: dict[str, StockAnalysis] = {}
     failures: dict[str, str] = {}
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {pool.submit(analyze_ticker, t.symbol, provider): t.symbol for t in tickers}
@@ -74,7 +75,7 @@ def run_scan_cycle(
             symbol = futures[future]
             try:
                 results[symbol] = future.result()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.exception("Failed to analyze %s", symbol)
                 failures[symbol] = str(exc)[:300]
 
@@ -107,7 +108,7 @@ def run_scan_cycle(
                 ai_score=analysis.overall_ai_score,
                 confidence=analysis.confidence_score,
                 manipulation_risk=analysis.manipulation_risk,
-                reasons=[f"Ranked #{rank} of {len(accepted)} accepted."] + gate.reasons,
+                reasons=[f"Ranked #{rank} of {len(accepted)} accepted.", *gate.reasons],
             )
         )
         if log_predictions:

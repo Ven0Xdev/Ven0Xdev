@@ -25,7 +25,7 @@ def _with_mark_to_market(position: PaperPosition, provider: MarketDataProvider) 
         return out
     try:
         quote = provider.get_quote(position.ticker_symbol)
-    except Exception:  # noqa: BLE001 — a quote failure must never break the positions list
+    except Exception:
         return out
     out.current_price = quote.last
     out.unrealized_pnl_dollars = (quote.last - position.avg_entry_price) * position.quantity
@@ -39,7 +39,7 @@ def _account_out(account: PaperTradingAccount, db: Session, provider: MarketData
     for position in engine.list_open_positions_for_account(account, db):
         try:
             market_value += provider.get_quote(position.ticker_symbol).last * position.quantity
-        except Exception:  # noqa: BLE001 — one bad quote must never break the whole account summary
+        except Exception:
             market_value += position.avg_entry_price * position.quantity
     out.equity = account.cash_balance + market_value
     out.unrealized_pnl_dollars = out.equity - account.starting_balance

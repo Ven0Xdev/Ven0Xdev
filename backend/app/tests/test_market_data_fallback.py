@@ -7,6 +7,8 @@ are covered by test_twelvedata_provider.py / test_alphavantage_provider.py).
 Also covers MixedSourceProvider (Alpaca's price-chain + separate
 reference-provider composite — see alpaca_provider.py's "alpaca" builder).
 """
+from datetime import datetime, timezone
+
 import pytest
 
 from app.services.data_providers.base import Fundamentals, Quote
@@ -15,7 +17,6 @@ from app.services.data_providers.market_data_fallback import (
     FallbackMarketDataProvider,
     MixedSourceProvider,
 )
-from datetime import datetime, timezone
 
 
 class _StubProvider:

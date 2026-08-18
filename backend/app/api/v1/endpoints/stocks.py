@@ -36,7 +36,7 @@ def search_and_validate(q: str, provider: MarketDataProvider = Depends(data_prov
 
     query = q.strip().upper()
     valid_format = bool(_SYMBOL_RE.match(query))
-    response = {
+    response: dict = {
         "query": query,
         "valid_format": valid_format,
         "source": provider.name,
@@ -89,7 +89,7 @@ def get_stock_deliberation(
             # instead of masking a provider outage as a 404 "not found".
             raise
         raise HTTPException(status_code=404, detail=f"Could not deliberate on {symbol}: {exc}") from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=404, detail=f"Could not deliberate on {symbol}: {exc}") from exc
     return asdict(deliberation)
 
@@ -118,7 +118,7 @@ def get_stock_analysis(symbol: str, db: Session = Depends(db_session)):
         if _is_tracked_asset(symbol, db):
             raise
         raise HTTPException(status_code=404, detail=f"Could not analyze {symbol}: {exc}") from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=404, detail=f"Could not analyze {symbol}: {exc}") from exc
 
 
@@ -167,7 +167,11 @@ async def get_stock_candles(
     from datetime import datetime, timezone
 
     from app.services.signals.engine import (
-        VALID_DAILY_RANGES, VALID_INTRADAY_RANGES, _INTRADAY_TIMEFRAMES, bars_for_timeframe, candle_provenance,
+        _INTRADAY_TIMEFRAMES,
+        VALID_DAILY_RANGES,
+        VALID_INTRADAY_RANGES,
+        bars_for_timeframe,
+        candle_provenance,
     )
 
     symbol = symbol.upper()
@@ -184,7 +188,7 @@ async def get_stock_candles(
         if _is_tracked_asset(symbol, db):
             raise
         raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
 
     if timeframe in _INTRADAY_TIMEFRAMES:
@@ -261,7 +265,7 @@ def get_stock_indicators(
     instead of collapsed to a single latest value.
     """
     from app.services.features import technical
-    from app.services.signals.engine import VALID_DAILY_RANGES, VALID_INTRADAY_RANGES, _INTRADAY_TIMEFRAMES, bars_for_timeframe
+    from app.services.signals.engine import _INTRADAY_TIMEFRAMES, VALID_DAILY_RANGES, VALID_INTRADAY_RANGES, bars_for_timeframe
 
     symbol = symbol.upper()
     if timeframe not in _VALID_TIMEFRAMES:
@@ -282,7 +286,7 @@ def get_stock_indicators(
         if _is_tracked_asset(symbol, db):
             raise
         raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=404, detail=f"Unknown symbol {symbol!r}: {exc}") from exc
 
     df = bars_for_timeframe(symbol, provider, timeframe, range_key=range)

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from app.services.ml.ensemble import EnsembleModel, HORIZON_THRESHOLDS
+from app.services.ml.ensemble import HORIZON_THRESHOLDS, EnsembleModel
 from app.services.ml.feature_vector import FEATURE_NAMES
 
 

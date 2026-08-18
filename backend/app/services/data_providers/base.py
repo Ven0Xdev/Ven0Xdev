@@ -11,14 +11,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 import pandas as pd
 
 from app.services.data_providers.http_base import ProviderDataUnavailable
 
 
-class AssetType(str, Enum):
+class AssetType(StrEnum):
     """The platform's unified asset taxonomy (multi-asset expansion,
     see /OTC_TO_MULTI_ASSET_MIGRATION.md §1). OTC_STOCK is one member
     among many now, not the implicit default for every symbol.

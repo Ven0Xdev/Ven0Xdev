@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import db_session, get_current_user
 from app.core.entitlements import EntitlementExceeded, enforce_limit
-from app.db.models.alert import CONDITION_TYPES, COMPARISONS, AlertEvent, AlertRule
+from app.db.models.alert import COMPARISONS, CONDITION_TYPES, AlertEvent, AlertRule
 from app.db.models.user import User
 from app.schemas.alert import AlertEventOut, AlertRuleCreate, AlertRuleOut
 from app.services.universe.manager import get_active_universe

@@ -52,7 +52,6 @@ class TrainingReport:
 def _row_features(window: pd.DataFrame) -> np.ndarray | None:
     if len(window) < 25:
         return None
-    close = window["close"]
     tech = technical.compute_all_technical_features(window)
     price = tech["price"]
 
@@ -150,7 +149,7 @@ def _score_thresholds(model: EnsembleModel, X: np.ndarray, y: dict[int, np.ndarr
     the final held-out test set below both use, so "the metrics" always
     means the same computation regardless of which split produced them.
     """
-    metrics = {}
+    metrics: dict[str, dict] = {}
     for threshold in HORIZON_THRESHOLDS:
         y_test = y[threshold][idx]
         if len(np.unique(y_test)) < 2:
@@ -204,7 +203,7 @@ def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
             # small training set — report that honestly instead of
             # attempting to fit a GBM trio on too few rows.
             walk_forward_report.append({
-                "fold": fold.fold_index, "train_rows": int(len(fold.train_idx)), "test_rows": int(len(fold.test_idx)),
+                "fold": fold.fold_index, "train_rows": len(fold.train_idx), "test_rows": len(fold.test_idx),
                 "metrics": {"note": f"fewer than {MIN_FOLD_TRAIN_ROWS} training rows survived purging/embargo for this fold"},
             })
             continue
@@ -212,8 +211,8 @@ def train_and_save(artifact_dir: str | None = None) -> TrainingReport:
         fold_model.fit(X[fold.train_idx], {t: v[fold.train_idx] for t, v in y.items()}, FEATURE_NAMES)
         walk_forward_report.append({
             "fold": fold.fold_index,
-            "train_rows": int(len(fold.train_idx)),
-            "test_rows": int(len(fold.test_idx)),
+            "train_rows": len(fold.train_idx),
+            "test_rows": len(fold.test_idx),
             "metrics": _score_thresholds(fold_model, X, y, fold.test_idx),
         })
 

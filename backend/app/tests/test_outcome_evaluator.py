@@ -5,11 +5,11 @@ import pandas as pd
 import pytest
 
 from app.db.models.prediction import Outcome, Prediction
+from app.services.data_providers.base import MarketDataProvider
 from app.services.evaluation.outcome_evaluator import (
     build_calibration_report,
     evaluate_due_predictions,
 )
-from app.services.data_providers.base import MarketDataProvider
 
 
 class ScriptedProvider(MarketDataProvider):

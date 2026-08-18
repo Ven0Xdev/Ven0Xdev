@@ -8,8 +8,6 @@ from app.services.data_providers.mock_provider import MockOTCProvider
 from app.services.ml.ensemble import HORIZON_THRESHOLDS
 from app.services.ml.feature_vector import FEATURE_NAMES
 from app.services.ml.training_pipeline import (
-    LABEL_HORIZON_DAYS,
-    MIN_FOLD_TRAIN_ROWS,
     N_WALK_FORWARD_SPLITS,
     TrainingSet,
     build_training_set,
@@ -28,7 +26,7 @@ def test_build_training_set_returns_aligned_features_labels_timestamps_and_regim
     assert dataset.timestamps.shape == (n,)
     assert dataset.regimes.shape == (n,)
     assert set(dataset.y) == set(HORIZON_THRESHOLDS)
-    for threshold, labels in dataset.y.items():
+    for labels in dataset.y.values():
         assert labels.shape == (n,)
         assert set(np.unique(labels)).issubset({0, 1})
     assert set(dataset.regimes.tolist()).issubset({"trending_up", "trending_down", "ranging", "high_volatility"})
@@ -79,8 +77,8 @@ def test_train_and_save_uses_purged_walk_forward_not_a_random_split(tmp_path, mo
     assert set(report.metrics) == {str(t) for t in HORIZON_THRESHOLDS}
     assert set(report.regime_breakdown) == {str(t) for t in HORIZON_THRESHOLDS}
 
-    for threshold_key, regime_metrics in report.regime_breakdown.items():
-        for regime, m in regime_metrics.items():
+    for regime_metrics in report.regime_breakdown.values():
+        for m in regime_metrics.values():
             assert "n" in m or "note" in m or "auc" in m
 
     assert (tmp_path / "ensemble_latest.pkl").exists()

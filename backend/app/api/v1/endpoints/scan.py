@@ -208,7 +208,7 @@ def risk_monitor(db: Session = Depends(db_session), provider: MarketDataProvider
     """Flags active assets (Asset Universe Manager) whose manipulation risk
     score is elevated."""
     tickers = get_active_universe(db)
-    flagged = []
+    flagged: list[dict] = []
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {pool.submit(analyze_ticker, t.symbol, provider): t for t in tickers}

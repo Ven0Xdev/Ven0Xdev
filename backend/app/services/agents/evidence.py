@@ -9,6 +9,10 @@ can always be decomposed back into who said what and why.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from app.services.agents.context import DeliberationContext
 
 BULLISH = "bullish"
 BEARISH = "bearish"
@@ -29,6 +33,15 @@ class Evidence:
     @property
     def signed_strength(self) -> float:
         return _SIGN[self.direction] * self.strength
+
+
+class EvidenceAgent(Protocol):
+    """Structural contract shared by every Stage-1 evidence gatherer
+    (the four analysts, the manipulation detective, and the memory
+    agent — see reasoning_engine.py) so they can be driven from one
+    homogeneous list despite having no common declared base class."""
+
+    def run(self, ctx: DeliberationContext) -> list[Evidence]: ...
 
 
 @dataclass

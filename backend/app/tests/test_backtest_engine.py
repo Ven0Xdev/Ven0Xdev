@@ -1,4 +1,3 @@
-import numpy as np
 
 from app.services.backtest.engine import BacktestConfig, BacktestEngine, walk_forward_splits
 from app.services.data_providers.mock_provider import MockOTCProvider

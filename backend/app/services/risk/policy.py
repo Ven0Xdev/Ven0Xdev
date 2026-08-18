@@ -43,7 +43,7 @@ class RiskPolicy:
     safe_mode: bool
 
     @classmethod
-    def from_settings(cls, settings: Settings | None = None) -> "RiskPolicy":
+    def from_settings(cls, settings: Settings | None = None) -> RiskPolicy:
         settings = settings or get_settings()
         return cls(
             version=POLICY_VERSION,

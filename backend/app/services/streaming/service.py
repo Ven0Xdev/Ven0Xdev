@@ -24,12 +24,16 @@ import logging
 import re
 import time
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from app.core.config import get_settings
 from app.services.streaming.core import Bar, CandleAggregator, EventBus, TradeEvent
 from app.services.streaming.incremental import LiveIndicatorSet
+
+if TYPE_CHECKING:
+    from websockets.asyncio.client import ClientConnection
 
 logger = logging.getLogger(__name__)
 
@@ -86,13 +90,13 @@ class FinnhubTradeSource:
                             await on_trade(t)
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("finnhub ws error for %s: %s — reconnecting in %.0fs", self.symbol, exc, backoff)
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 60.0)
 
     @staticmethod
-    def parse_message(raw: str, symbol: str) -> list[TradeEvent]:
+    def parse_message(raw: str | bytes, symbol: str) -> list[TradeEvent]:
         """Finnhub WS schema: {"type":"trade","data":[{s,p,v,t(ms),c}]}."""
         now = time.time()
         try:
@@ -136,7 +140,7 @@ def _parse_alpaca_ts(raw: str) -> float | None:
         return None
 
 
-def _alpaca_auth_succeeded(raw: str) -> bool:
+def _alpaca_auth_succeeded(raw: str | bytes) -> bool:
     try:
         msgs = json.loads(raw)
     except json.JSONDecodeError:
@@ -146,7 +150,7 @@ def _alpaca_auth_succeeded(raw: str) -> bool:
     return any(isinstance(m, dict) and m.get("T") == "success" and m.get("msg") == "authenticated" for m in msgs)
 
 
-def _parse_alpaca_trades(raw: str) -> list[TradeEvent]:
+def _parse_alpaca_trades(raw: str | bytes) -> list[TradeEvent]:
     """Alpaca WS schema: a JSON array of message objects (not a single
     object per message, unlike Finnhub) — trade messages shaped
     {"T":"t","S":symbol,"p":price,"s":size,"t":RFC3339-ns,"i":trade_id,
@@ -209,9 +213,15 @@ class AlpacaStreamManager:
         self.api_key = api_key
         self.api_secret = api_secret
         self._callbacks: dict[str, list] = {}
-        self._ws = None
+        self._ws: ClientConnection | None = None
         self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
+        # asyncio.ensure_future()'s own return value must be held
+        # somewhere, or the event loop is free to garbage-collect the
+        # task mid-execution (a documented asyncio footgun, not
+        # theoretical) — unsubscribe() below is sync and can't await its
+        # fire-and-forget cleanup send, so this set is that "somewhere."
+        self._background_tasks: set[asyncio.Task] = set()
 
     async def subscribe(self, symbol: str, on_trade) -> None:
         symbol = symbol.upper()
@@ -225,7 +235,7 @@ class AlpacaStreamManager:
                 # than waiting for the next reconnect cycle.
                 try:
                     await self._ws.send(json.dumps({"action": "subscribe", "trades": [symbol]}))
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning("alpaca ws: failed to subscribe %s on the live connection: %s", symbol, exc)
 
     def unsubscribe(self, symbol: str, on_trade) -> None:
@@ -239,12 +249,14 @@ class AlpacaStreamManager:
             self._callbacks.pop(symbol, None)
             ws = self._ws
             if ws is not None:
-                asyncio.ensure_future(self._safe_send_unsubscribe(ws, symbol))
+                task = asyncio.ensure_future(self._safe_send_unsubscribe(ws, symbol))
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
 
     async def _safe_send_unsubscribe(self, ws, symbol: str) -> None:
         try:
             await ws.send(json.dumps({"action": "unsubscribe", "trades": [symbol]}))
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass  # connection already gone — nothing to clean up
 
     async def _run(self) -> None:
@@ -258,7 +270,7 @@ class AlpacaStreamManager:
                     await ws.send(json.dumps({"action": "auth", "key": self.api_key, "secret": self.api_secret}))
                     auth_reply = await ws.recv()
                     if not _alpaca_auth_succeeded(auth_reply):
-                        raise RuntimeError(f"Alpaca WS auth rejected: {auth_reply}")
+                        raise RuntimeError(f"Alpaca WS auth rejected: {auth_reply!r}")
                     self._ws = ws
                     # Re-subscribe to everything wanted so far — covers both
                     # the first connection and every reconnect after a drop.
@@ -272,7 +284,7 @@ class AlpacaStreamManager:
                                 await cb(t)
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("alpaca ws error: %s — reconnecting in %.0fs", exc, backoff)
                 self._ws = None
                 await asyncio.sleep(backoff)

@@ -69,7 +69,7 @@ def test_start_new_simulation_rejects_out_of_bounds_amounts(db_session):
     for bad in (0.0, -100.0, MIN_STARTING_CAPITAL - 1, MAX_STARTING_CAPITAL + 1, float("nan"), float("inf")):
         try:
             engine.start_new_simulation(user_id=2, starting_capital=bad, db=db_session)
-            assert False, f"expected PaperTradingError for {bad}"
+            pytest.fail(f"expected PaperTradingError for {bad}")
         except PaperTradingError:
             pass
     assert engine.get_active_account(user_id=2, db=db_session) is None
@@ -98,7 +98,7 @@ def test_start_new_simulation_refuses_while_positions_are_open(db_session):
 
     try:
         engine.start_new_simulation(user_id=4, starting_capital=2_000.0, db=db_session)
-        assert False, "expected PaperTradingError"
+        pytest.fail("expected PaperTradingError")
     except PaperTradingError as exc:
         assert "open paper position" in str(exc).lower()
 
@@ -119,7 +119,7 @@ def test_new_simulations_position_sizing_uses_the_new_equity_automatically(db_se
     engine.start_new_simulation(user_id=5, starting_capital=200.0, db=db_session)
     try:
         engine.open_position(user_id=5, symbol=PASSES_RISK_GATE, quantity=1000, db=db_session, provider=provider)
-        assert False, "expected insufficient-cash refusal against the small new-simulation balance"
+        pytest.fail("expected insufficient-cash refusal against the small new-simulation balance")
     except PaperTradingError as exc:
         assert "insufficient" in str(exc).lower()
         assert "$200.00" in str(exc)  # the new simulation's own cash, not any stale/hardcoded balance
@@ -150,7 +150,7 @@ def test_open_position_refused_without_an_active_simulation(db_session):
     provider = MockOTCProvider()
     try:
         engine.open_position(user_id=21, symbol=PASSES_RISK_GATE, quantity=1, db=db_session, provider=provider)
-        assert False, "expected PaperTradingError"
+        pytest.fail("expected PaperTradingError")
     except PaperTradingError as exc:
         assert "no active paper simulation" in str(exc).lower()
 
@@ -162,7 +162,7 @@ def test_open_position_refused_when_risk_gate_fails(db_session):
 
     try:
         engine.open_position(user_id=22, symbol=FAILS_RISK_GATE, quantity=10, db=db_session, provider=provider)
-        assert False, "expected PaperTradingError"
+        pytest.fail("expected PaperTradingError")
     except PaperTradingError as exc:
         assert "risk gate" in str(exc).lower()
 
@@ -192,7 +192,7 @@ def test_open_position_refused_when_insufficient_cash(db_session, monkeypatch):
 
     try:
         engine.open_position(user_id=23, symbol=PASSES_RISK_GATE, quantity=10, db=db_session, provider=provider)
-        assert False, "expected PaperTradingError"
+        pytest.fail("expected PaperTradingError")
     except PaperTradingError as exc:
         assert "insufficient" in str(exc).lower()
 
@@ -203,7 +203,7 @@ def test_open_position_rejects_non_positive_quantity(db_session):
     for bad_qty in (0, -5):
         try:
             engine.open_position(user_id=24, symbol=PASSES_RISK_GATE, quantity=bad_qty, db=db_session, provider=provider)
-            assert False, "expected PaperTradingError"
+            pytest.fail("expected PaperTradingError")
         except PaperTradingError:
             pass
 
@@ -233,7 +233,7 @@ def test_close_position_fails_for_unknown_position(db_session):
     engine.start_new_simulation(user_id=26, starting_capital=50_000.0, db=db_session)
     try:
         engine.close_position(user_id=26, position_id=999_999, db=db_session, provider=provider)
-        assert False, "expected PaperTradingError"
+        pytest.fail("expected PaperTradingError")
     except PaperTradingError as exc:
         assert "no open paper position" in str(exc).lower()
 
@@ -245,7 +245,7 @@ def test_close_position_cannot_close_someone_elses_position(db_session):
     engine.start_new_simulation(user_id=28, starting_capital=50_000.0, db=db_session)
     try:
         engine.close_position(user_id=28, position_id=position.id, db=db_session, provider=provider)
-        assert False, "expected PaperTradingError"
+        pytest.fail("expected PaperTradingError")
     except PaperTradingError:
         pass
 

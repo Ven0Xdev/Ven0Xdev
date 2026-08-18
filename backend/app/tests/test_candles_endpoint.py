@@ -1,6 +1,5 @@
 """GET /stocks/{symbol}/candles: timeframe-aware candle fetching, the data
 source behind the chart's timeframe selector."""
-import pytest
 
 
 def test_daily_timeframe_returns_real_bars(client):

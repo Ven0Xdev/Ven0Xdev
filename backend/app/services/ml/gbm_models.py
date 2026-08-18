@@ -15,7 +15,7 @@ import numpy as np
 
 
 class ProbabilisticClassifier(Protocol):
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "ProbabilisticClassifier": ...
+    def fit(self, X: np.ndarray, y: np.ndarray) -> ProbabilisticClassifier: ...
 
     def predict_proba_positive(self, X: np.ndarray) -> np.ndarray: ...
 
@@ -57,7 +57,11 @@ class LightGBMModel:
             )
         except ImportError:
             self._native = False
-            self.model = _SklearnFallback(random_state=random_state)
+            # self.model genuinely holds one of two structurally different
+            # types here, dispatched at every call site via self._native —
+            # not a bug, but not expressible as one consistent static type
+            # without a broader refactor of this third-party-interop shim.
+            self.model = _SklearnFallback(random_state=random_state)  # type: ignore[assignment]
 
     def fit(self, X, y):
         self.model.fit(X, y)
@@ -65,7 +69,7 @@ class LightGBMModel:
 
     def predict_proba_positive(self, X):
         if self._native:
-            return self.model.predict_proba(X)[:, 1]
+            return self.model.predict_proba(X)[:, 1]  # type: ignore[call-overload]
         return self.model.predict_proba_positive(X)
 
     def feature_importances(self):
@@ -91,7 +95,7 @@ class XGBoostModel:
             )
         except ImportError:
             self._native = False
-            self.model = _SklearnFallback(random_state=random_state)
+            self.model = _SklearnFallback(random_state=random_state)  # type: ignore[assignment]
 
     def fit(self, X, y):
         self.model.fit(X, y)

@@ -14,16 +14,16 @@ from functools import lru_cache
 
 import numpy as np
 
+from app.schemas.stock import HorizonProbabilities, ManipulationFlagOut, StockAnalysis, TopFactor
 from app.services.data_providers.base import Fundamentals, MarketDataProvider
 from app.services.data_providers.factory import get_data_provider
 from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.features import catalyst, fundamental, liquidity, manipulation, sentiment, technical
 from app.services.ml import forecasting
+from app.services.ml.ensemble import EnsembleModel
 from app.services.ml.explainability import build_plain_english_explanation, explain_with_shap
 from app.services.ml.feature_vector import FEATURE_NAMES
 from app.services.ml.training_pipeline import load_latest_model
-from app.services.ml.ensemble import EnsembleModel
-from app.schemas.stock import HorizonProbabilities, ManipulationFlagOut, StockAnalysis, TopFactor
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +213,7 @@ def _analyze_ticker_uncached(symbol: str, provider: MarketDataProvider) -> Stock
             ManipulationFlagOut(code=f.code, severity=f.severity, reason=f.reason) for f in manip_assessment.flags
         ],
         top_factors=[TopFactor(**f) for f in explanation_data["top_factors"]],
-        feature_vector={name: float(value) for name, value in zip(FEATURE_NAMES, feature_row)},
+        feature_vector={name: float(value) for name, value in zip(FEATURE_NAMES, feature_row, strict=True)},
     )
 
 

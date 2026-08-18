@@ -225,7 +225,7 @@ def build_calibration_report(db: Session, n_buckets: int = 5) -> dict:
             "note": "No matured predictions with outcomes yet. Calibration populates as the outcome evaluator runs over time.",
         }
 
-    report = _bucket_report(rows, n_buckets)
+    report = _bucket_report([(p, o) for p, o in rows], n_buckets)
 
     by_engine_mode: dict[str, dict] = {}
     for mode in sorted({p.engine_mode for p, _ in rows}):

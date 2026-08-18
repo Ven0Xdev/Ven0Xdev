@@ -102,7 +102,7 @@ def _database_health(db: Session) -> dict:
         db.execute(text("SELECT 1"))
         ping_ms = (time.perf_counter() - started) * 1000
         return {"status": "healthy", "ping_ms": round(ping_ms, 2)}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"status": "unreachable", "error": str(exc)[:200]}
 
 

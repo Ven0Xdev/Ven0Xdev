@@ -165,7 +165,7 @@ def compute_impact(sentiment_score: float, reliability: float, relevance: float,
     category_weight = {
         "earnings": 1.0, "merger": 1.0, "regulatory": 0.9, "legal": 0.8,
         "guidance": 0.85, "analyst": 0.6, "macro": 0.5,
-    }.get(category, 0.5)
+    }.get(category or "", 0.5)
     magnitude = abs(sentiment_score)
     return round(min(1.0, magnitude * reliability * relevance * category_weight * 1.3), 3)
 

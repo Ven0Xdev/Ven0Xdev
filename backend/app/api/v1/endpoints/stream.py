@@ -38,7 +38,7 @@ async def stream_dashboard(_user=Depends(get_current_user)):
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=15.0)
                     yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": keepalive\n\n"
         finally:
             service.bus.unsubscribe(DASHBOARD_CHANNEL, queue)
@@ -79,7 +79,7 @@ async def stream_symbol(symbol: str, _user=Depends(get_current_user)):
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=15.0)
                     yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": keepalive\n\n"
         finally:
             service.bus.unsubscribe(symbol, queue)

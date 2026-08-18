@@ -44,7 +44,7 @@ def log_prediction(symbol: str, db: Session = Depends(db_session)):
     """
     try:
         analysis = analyze_ticker(symbol)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     from app.services.scoring.prediction_log import build_prediction_row

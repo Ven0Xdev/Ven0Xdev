@@ -7,7 +7,7 @@ cannot guarantee).
 import pytest
 
 from app.core.config import get_settings
-from app.core.entitlements import PLAN_LIMITS, enforce_limit, limit_for, EntitlementExceeded
+from app.core.entitlements import PLAN_LIMITS, EntitlementExceeded, enforce_limit, limit_for
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def test_enforce_limit_raises_at_the_cap():
     limit = PLAN_LIMITS["free"]["max_watchlist_items"]
     try:
         enforce_limit("free", "max_watchlist_items", limit, "watchlist items")
-        assert False, "expected EntitlementExceeded"
+        pytest.fail("expected EntitlementExceeded")
     except EntitlementExceeded as exc:
         assert "free plan" in str(exc)
         assert "upgrade" in str(exc).lower()

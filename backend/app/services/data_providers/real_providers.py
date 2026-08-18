@@ -27,6 +27,8 @@ quotes/candles provider behind this port.
 """
 from __future__ import annotations
 
+from typing import NoReturn
+
 import pandas as pd
 
 from app.services.data_providers.base import (
@@ -51,7 +53,7 @@ class _UnimplementedProvider(MarketDataProvider):
         self.docs_url = docs_url
         self.has_key = has_key
 
-    def _fail(self):
+    def _fail(self) -> NoReturn:
         key_note = "" if self.has_key else " (its API key is also not configured in .env)"
         raise ProviderDataUnavailable(
             f"The {self.vendor} adapter is registered but not implemented yet{key_note}. "

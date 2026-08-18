@@ -128,12 +128,18 @@ class EdgarEnrichedProvider(MarketDataProvider):
     # every analysis at whatever the inner provider's initial default was
     # ("unspecified") forever, silently hiding the real provenance behind
     # this decorator.
+    # Ignored below (override): MarketDataProvider declares these as
+    # writeable for composites that mutate their own name/data_mode (see
+    # comment above) — nothing ever writes through an EdgarEnrichedProvider
+    # composition (grep confirms every assignment site targets a
+    # composite's own attribute, never a wrapped inner/primary/fallback
+    # provider), so read-only here is safe in practice, not just in theory.
     @property
-    def name(self) -> str:
+    def name(self) -> str:  # type: ignore[override]
         return f"{self.inner.name}+edgar"
 
     @property
-    def data_mode(self) -> str:
+    def data_mode(self) -> str:  # type: ignore[override]
         return getattr(self.inner, "data_mode", "unspecified")
 
     # --- enriched call -----------------------------------------------------

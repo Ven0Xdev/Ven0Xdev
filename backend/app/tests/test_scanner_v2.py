@@ -1,7 +1,7 @@
 """Scanner v2: quality gates + recorded accept/reject decisions."""
 from app.db.models.prediction import Prediction
 from app.db.models.scan import ScanCycle, ScanDecision
-from app.schemas.stock import StockAnalysis, HorizonProbabilities
+from app.schemas.stock import HorizonProbabilities, StockAnalysis
 from app.services.data_providers.mock_provider import MockOTCProvider
 from app.services.scoring.quality_gates import evaluate_quality_gates
 from app.workers.scan_scheduler import run_scan_cycle

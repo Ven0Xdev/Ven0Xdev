@@ -33,7 +33,7 @@ def _expected_head() -> str | None:
 
         cfg = Config(str(ALEMBIC_INI))
         return ScriptDirectory.from_config(cfg).get_current_head()
-    except Exception:  # noqa: BLE001 — readiness must never itself crash
+    except Exception:
         logger.exception("schema readiness: could not resolve expected Alembic head")
         return None
 
@@ -69,7 +69,7 @@ def get_schema_status(url: str | None = None, db_engine=None) -> dict:
     try:
         with db_engine.connect() as conn:
             applied = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-    except Exception:  # noqa: BLE001 — most likely: alembic_version doesn't exist yet
+    except Exception:
         logger.warning("schema readiness: alembic_version table unreadable — migrations have not run")
         return {
             "ready": False,

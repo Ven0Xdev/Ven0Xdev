@@ -21,8 +21,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db.base import Base
 from app.db import models  # noqa: F401
+from app.db.base import Base
 
 
 @pytest.fixture(scope="session")

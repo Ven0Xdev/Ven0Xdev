@@ -51,7 +51,7 @@ def test_purging_drops_training_rows_whose_label_window_reaches_the_test_fold():
     ts = _daily_timestamps(100)
     no_purge = purged_walk_forward_splits(ts, n_splits=5, label_horizon_days=0, embargo_days=0)
     with_purge = purged_walk_forward_splits(ts, n_splits=5, label_horizon_days=15, embargo_days=0)
-    for a, b in zip(no_purge, with_purge):
+    for a, b in zip(no_purge, with_purge, strict=True):
         assert len(b.train_idx) < len(a.train_idx)
         assert set(b.train_idx).issubset(set(a.train_idx))
 
@@ -60,7 +60,7 @@ def test_embargo_drops_additional_rows_immediately_before_the_test_fold():
     ts = _daily_timestamps(100)
     no_embargo = purged_walk_forward_splits(ts, n_splits=5, label_horizon_days=0, embargo_days=0)
     with_embargo = purged_walk_forward_splits(ts, n_splits=5, label_horizon_days=0, embargo_days=10)
-    for a, b in zip(no_embargo, with_embargo):
+    for a, b in zip(no_embargo, with_embargo, strict=True):
         assert len(b.train_idx) < len(a.train_idx)
         assert set(b.train_idx).issubset(set(a.train_idx))
 
@@ -116,7 +116,7 @@ def test_single_split_purges_by_each_rows_own_label_horizon():
     horizons[holdout_start_approx - 2] = 30.0  # long horizon, close to boundary
     horizons[holdout_start_approx - 20] = 1.0  # short horizon, further away
 
-    train_idx, holdout_idx = purge_and_embargo_single_split(ts, horizons, holdout_fraction=0.25)
+    train_idx, _holdout_idx = purge_and_embargo_single_split(ts, horizons, holdout_fraction=0.25)
     assert (holdout_start_approx - 2) not in train_idx
     assert (holdout_start_approx - 20) in train_idx
 
@@ -154,7 +154,6 @@ def test_ranging_when_adx_below_the_trending_threshold():
 
 def test_computes_auc_per_regime_separately():
     rng = np.random.default_rng(1)
-    n = 60
     regimes = np.array(["trending_up"] * 30 + ["ranging"] * 30)
     # trending_up: predictions correlate with outcome; ranging: pure noise.
     y_true = np.concatenate([rng.integers(0, 2, 30), rng.integers(0, 2, 30)])

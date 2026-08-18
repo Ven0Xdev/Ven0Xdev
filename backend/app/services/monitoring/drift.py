@@ -71,7 +71,7 @@ def drift_report(db: Session, window: int = 200) -> dict:
     recent_rows = rows[: len(rows) // 2]
     reference_rows = rows[len(rows) // 2 :]
 
-    model_drift = {}
+    model_drift: dict[str, dict] = {}
     for attr in ("prob_up_10", "overall_ai_score", "confidence_score", "manipulation_risk"):
         psi = population_stability_index(
             np.array([getattr(r, attr) for r in reference_rows]),
@@ -79,7 +79,7 @@ def drift_report(db: Session, window: int = 200) -> dict:
         )
         model_drift[attr] = {"psi": round(psi, 4), "band": _band(psi)}
 
-    feature_drift = {}
+    feature_drift: dict[str, dict] = {}
     ref_snaps = [r.feature_snapshot for r in reference_rows if r.feature_snapshot]
     rec_snaps = [r.feature_snapshot for r in recent_rows if r.feature_snapshot]
     if len(ref_snaps) >= MIN_WINDOW and len(rec_snaps) >= MIN_WINDOW:

@@ -206,7 +206,7 @@ def test_sweep_position_walks_every_real_closed_bar_since_entry(db_session):
 
 
 def test_sweep_open_positions_skips_a_ticker_the_provider_cannot_serve(db_session, monkeypatch):
-    position = _open_position(db_session, direction="LONG", entry_price=100.0)
+    _open_position(db_session, direction="LONG", entry_price=100.0)
 
     class _BrokenProvider(MockOTCProvider):
         def get_ohlcv(self, symbol, lookback_days=2000):

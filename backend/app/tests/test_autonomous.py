@@ -15,14 +15,12 @@ from app.services.paper_trading import engine
 from app.services.paper_trading.autonomous import (
     AUTONOMOUS_RISK_BUDGET_FRACTION_OF_POLICY_MAX,
     MAX_CONCURRENT_AUTONOMOUS_POSITIONS,
-    MIN_SHADOW_CLOSED_SAMPLE,
-    MIN_SHADOW_WIN_RATE_PCT,
     on_ncs_fired_autonomous,
 )
 from app.services.platform_settings import is_autonomous_trading_paused, set_autonomous_trading_paused
 from app.services.risk.policy import RiskPolicy
-from app.services.signals.ncs import NCS_VERSION
 from app.services.shadow.engine import SHADOW_VERSION
+from app.services.signals.ncs import NCS_VERSION
 
 # BLKM reliably clears the default risk gate (confidence >= 65%, RR >=
 # 2.0x) — the same deterministic mock-universe fixture symbol
@@ -227,7 +225,7 @@ def test_never_exceeds_the_max_concurrent_autonomous_position_count(db_session):
     _seed_shadow_track_record(db_session, symbol="DDDD")
     provider = MockOTCProvider()
 
-    for i, sym in enumerate(["AAAA", "BBBB", "CCCC"]):
+    for sym in ["AAAA", "BBBB", "CCCC"]:
         db_session.add(
             PaperPosition(
                 account_id=account.id, ticker_symbol=sym, quantity=1.0, avg_entry_price=10.0,

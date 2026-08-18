@@ -38,8 +38,9 @@ gate independently.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Protocol, runtime_checkable
 
 import numpy as np
 import pandas as pd
@@ -96,6 +97,19 @@ class RiskContribution:
     weight: float
 
 
+@runtime_checkable
+class _RedTeamVerdictLike(Protocol):
+    """Structural contract for `red_team_veto` below — anything with these
+    two fields plugs in, whether it's the local `RedTeamVerdict` placeholder
+    or `services.risk.red_team.RedTeamVerdict`'s richer, real verdict (see
+    that dataclass's own `vetoed`/`reason` fields). Declared as a Protocol
+    rather than a Union of the two concrete classes so NCS still never
+    takes a hard import dependency on the risk module."""
+
+    vetoed: bool
+    reason: str | None
+
+
 @dataclass
 class NcsInputs:
     """Optional, pluggable inputs NCS doesn't compute itself — supplied by
@@ -107,7 +121,7 @@ class NcsInputs:
     news_sentiment: float | None = None  # -1..+1, e.g. from a future news pipeline
     strategy_agreement: float | None = None  # 0..1, e.g. agents.evidence.EvidenceBundle.agreement()
     portfolio_open_symbols: set[str] | None = None  # the account's currently-open symbols
-    red_team_veto: RedTeamVerdict | None = None
+    red_team_veto: _RedTeamVerdictLike | None = None
 
 
 @dataclass
@@ -344,8 +358,9 @@ def compute_ncs(
     # than a vetoed setup being indistinguishable from a genuinely neutral
     # one. evaluate_ncs() below is what actually prevents a vetoed
     # signal from ever confirming/firing a marker.
-    vetoed = bool(inputs.red_team_veto and inputs.red_team_veto.vetoed)
-    veto_reason = inputs.red_team_veto.reason if vetoed else None
+    red_team_veto = inputs.red_team_veto
+    vetoed = bool(red_team_veto and red_team_veto.vetoed)
+    veto_reason = red_team_veto.reason if red_team_veto is not None and vetoed else None
 
     explanation = _compose_explanation(verdict, components, risk_score, vetoed, veto_reason)
     bar_ts = df.index[-1].to_pydatetime()

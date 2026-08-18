@@ -44,7 +44,7 @@ def explain_with_shap(model, X_background: np.ndarray, x_row: np.ndarray, featur
         explainer = shap.TreeExplainer(model)
         values = explainer.shap_values(x_row.reshape(1, -1))
         values = values[1] if isinstance(values, list) else values
-        contributions = dict(zip(feature_names, values.flatten().tolist()))
+        contributions = dict(zip(feature_names, values.flatten().tolist(), strict=True))
     except Exception:
         contributions = _fallback_contribution(x_row, feature_names)
 
@@ -78,7 +78,7 @@ def _fallback_contribution(x_row: np.ndarray, feature_names: list[str]) -> dict:
         "catalyst_score": 40,
     }
     out = {}
-    for name, val in zip(feature_names, x_row):
+    for name, val in zip(feature_names, x_row, strict=True):
         base = neutral.get(name, 0)
         scale = max(abs(base), 1)
         out[name] = float(np.clip((val - base) / scale, -1, 1))

@@ -30,7 +30,7 @@ def test_deliberation_tool_returns_staged_trace():
     provider = _provider()
     symbol = provider.get_universe(limit=1)[0].symbol
     result = execute_tool("get_deliberation", {"symbol": symbol}, None, provider)
-    assert [s["stage"] for s in result["stages"]][0] == "evidence"
+    assert next(s["stage"] for s in result["stages"]) == "evidence"
     assert result["verdict"]["conviction"] <= 0.97
 
 

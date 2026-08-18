@@ -3,8 +3,8 @@ import pytest
 
 from app.db.models.signal import Signal, SignalEvent
 from app.services.data_providers.mock_provider import MockOTCProvider
-from app.services.signals.engine import apply_safety_rules, evaluate_signal
 from app.services.scoring.scorer import analyze_ticker
+from app.services.signals.engine import apply_safety_rules, evaluate_signal
 
 VALID = {"NO_TRADE", "AVOID", "WATCH", "SETUP_FORMING", "POSSIBLE_ENTRY"}
 

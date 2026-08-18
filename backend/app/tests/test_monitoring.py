@@ -136,11 +136,10 @@ def test_monitoring_endpoint_allows_operator_when_auth_is_required(client, test_
     original = settings.auth_required
     settings.auth_required = True
     try:
-        register = client.post(
+        client.post(
             "/api/v1/auth/register",
             json={"email": "monitoring-promoted@example.com", "password": "correct-horse-battery"},
         )
-        token = register.json()["access_token"]
 
         session = sessionmaker(bind=test_engine)()
         try:

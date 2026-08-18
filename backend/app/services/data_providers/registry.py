@@ -9,7 +9,8 @@ name fails with the full list of what IS available.
 from __future__ import annotations
 
 import importlib
-from typing import Callable, Protocol
+from collections.abc import Callable
+from typing import Protocol
 
 from app.services.data_providers.base import MarketDataProvider
 

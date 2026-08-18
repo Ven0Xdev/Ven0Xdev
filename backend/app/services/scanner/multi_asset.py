@@ -67,7 +67,7 @@ def _score_one(asset: Asset, provider: MarketDataProvider, safe_mode: bool) -> P
             confidence_score=None,
             reasons=[f"Provider data unavailable: {exc}"],
         )
-    except Exception as exc:  # noqa: BLE001 — one bad symbol must never sink the whole scan
+    except Exception as exc:
         return PrescanCandidate(
             symbol=asset.symbol,
             asset_type=asset.asset_type,

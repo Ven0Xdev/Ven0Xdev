@@ -4,12 +4,12 @@ and passed through isotonic calibration. No single model is trusted alone.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
 from app.services.ml.calibration import ProbabilityCalibrator
-from app.services.ml.gbm_models import CatBoostModel, LightGBMModel, XGBoostModel
+from app.services.ml.gbm_models import CatBoostModel, LightGBMModel, ProbabilisticClassifier, XGBoostModel
 
 HORIZON_THRESHOLDS = [5, 10, 20]  # % up-moves we estimate probability for
 
@@ -34,7 +34,7 @@ class EnsembleModel:
 
     def __init__(self, random_state: int = 42):
         self.random_state = random_state
-        self.models: dict[int, dict[str, object]] = {}
+        self.models: dict[int, dict[str, ProbabilisticClassifier]] = {}
         self.calibrators: dict[int, ProbabilityCalibrator] = {}
         self._feature_names: list[str] = []
         self._fitted = False
@@ -44,7 +44,7 @@ class EnsembleModel:
         # never a fabricated model version.
         self.version: str | None = None
 
-    def fit(self, X: np.ndarray, labels_by_threshold: dict[int, np.ndarray], feature_names: list[str]) -> "EnsembleModel":
+    def fit(self, X: np.ndarray, labels_by_threshold: dict[int, np.ndarray], feature_names: list[str]) -> EnsembleModel:
         self._feature_names = feature_names
         for threshold, y in labels_by_threshold.items():
             trio = {
@@ -104,7 +104,7 @@ class EnsembleModel:
         if not all_importances:
             return {}
         avg = np.mean(all_importances, axis=0)
-        return dict(zip(self._feature_names, [float(v) for v in avg]))
+        return dict(zip(self._feature_names, [float(v) for v in avg], strict=True))
 
     @staticmethod
     def _heuristic_prior(features: np.ndarray, threshold: int) -> float:
@@ -114,7 +114,7 @@ class EnsembleModel:
         """
         from app.services.ml.feature_vector import FEATURE_NAMES
 
-        f = dict(zip(FEATURE_NAMES, features))
+        f = dict(zip(FEATURE_NAMES, features, strict=True))
         bullish = 0.0
         bullish += np.clip((f.get("rsi_14", 50) - 50) / 50, -1, 1) * 0.15
         bullish += np.clip(f.get("macd_histogram", 0), -1, 1) * 0.1

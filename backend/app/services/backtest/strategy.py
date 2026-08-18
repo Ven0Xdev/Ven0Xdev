@@ -14,8 +14,6 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from app.services.features import technical
-
 
 @dataclass
 class Signal:
@@ -57,8 +55,8 @@ def ai_ensemble_signal(window: pd.DataFrame, symbol: str, min_overall_score: flo
     """Higher-fidelity (and much slower) signal using the full AI scorer.
     Intended for small, sampled backtests rather than full daily walks.
     """
-    from app.services.scoring.scorer import analyze_ticker
     from app.services.data_providers.mock_provider import MockOTCProvider
+    from app.services.scoring.scorer import analyze_ticker
 
     class _WindowProvider(MockOTCProvider):
         def get_ohlcv(self, symbol_, timeframe="1d", lookback_days=250):

@@ -186,13 +186,13 @@ def regime_breakdown_metrics(y_true: np.ndarray, y_pred: np.ndarray, regimes: np
         mask = regimes == regime
         y_r, p_r = y_true[mask], y_pred[mask]
         if len(y_r) < MIN_REGIME_SAMPLE:
-            out[regime] = {"n": int(len(y_r)), "note": f"only {len(y_r)} samples — too few for a reliable metric"}
+            out[regime] = {"n": len(y_r), "note": f"only {len(y_r)} samples — too few for a reliable metric"}
             continue
         if len(np.unique(y_r)) < 2:
-            out[regime] = {"n": int(len(y_r)), "note": "single-class holdout for this regime"}
+            out[regime] = {"n": len(y_r), "note": "single-class holdout for this regime"}
             continue
         out[regime] = {
-            "n": int(len(y_r)),
+            "n": len(y_r),
             "auc": round(float(roc_auc_score(y_r, p_r)), 4),
             "positive_rate": round(float(y_r.mean()), 4),
             "calibration_gap": round(float(abs(p_r.mean() - y_r.mean())), 4),

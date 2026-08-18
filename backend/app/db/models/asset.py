@@ -5,7 +5,7 @@ modify `Ticker`, which remains the OTC-specific table). See
 """
 from datetime import datetime
 
-from sqlalchemy import Boolean, JSON, String
+from sqlalchemy import JSON, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base

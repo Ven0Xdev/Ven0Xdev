@@ -8,10 +8,10 @@ from app.services.data_providers.base import (
 from app.services.data_providers.factory import get_data_provider
 
 __all__ = [
-    "MarketDataProvider",
-    "TickerMeta",
-    "Quote",
     "Fundamentals",
+    "MarketDataProvider",
     "NewsArticle",
+    "Quote",
+    "TickerMeta",
     "get_data_provider",
 ]
