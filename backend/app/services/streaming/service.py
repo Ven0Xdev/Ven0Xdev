@@ -410,6 +410,16 @@ class MarketStreamService:
             bars.append(agg.current)
         return bars
 
+    def closed_bars_only(self, symbol: str, limit: int = 500) -> list[Bar]:
+        """Same as `recent_bars`, minus the still-forming current bar —
+        for any caller (e.g. services/signals/ncs.py) that must never
+        compute from a bar that could still change. Never repaints: the
+        last bar this returns is always one whose OHLC is already final."""
+        agg = self._aggs.get(symbol.upper())
+        if agg is None:
+            return []
+        return list(agg.closed_bars)[-limit:]
+
 
 _service: MarketStreamService | None = None
 

@@ -14,6 +14,8 @@ import type {
   IndicatorSeriesResponse,
   MarketOverviewResponse,
   ModelVersionOut,
+  NcsNoSignalYet,
+  NcsSignal,
   NewsArticle,
   OhlcvBar,
   PaperAccount,
@@ -337,6 +339,13 @@ export const api = {
       signals: SignalPayload[];
       events: { signal_id: number; at: string; type: string; from: string | null; to: string | null; reason: string | null }[];
     }>(`/stream/${symbol}/signal-history?limit=${limit}`),
+
+  evaluateNcs: (symbol: string, timeframe = "1D") =>
+    request<NcsSignal>(`/stream/${symbol}/evaluate-ncs?timeframe=${timeframe}`, { method: "POST" }),
+  currentNcs: (symbol: string, timeframe = "1D") =>
+    request<NcsSignal | NcsNoSignalYet>(`/stream/${symbol}/ncs?timeframe=${timeframe}`),
+  ncsHistory: (symbol: string, timeframe = "1D", limit = 100) =>
+    request<{ symbol: string; timeframe: string; signals: NcsSignal[] }>(`/stream/${symbol}/ncs-history?timeframe=${timeframe}&limit=${limit}`),
 
   // Admin/Operator — Phase 11. Reads are operator-only server-side; the
   // frontend additionally hides the /admin route client-side for UX, but

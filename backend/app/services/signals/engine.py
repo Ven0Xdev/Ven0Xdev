@@ -98,7 +98,7 @@ def _resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     return resampled.dropna(subset=["open"])
 
 
-def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider) -> pd.DataFrame:
+def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider, closed_only: bool = False) -> pd.DataFrame:
     """Real 1-minute-and-up bars for intraday timeframes: the streaming
     service's own live-accumulated bars, backfilled with the provider's
     real intraday REST history when it has one (currently only
@@ -111,10 +111,17 @@ def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider) -> p
     than the backfill's last timestamp always survives, since only the
     stream can possibly know about it. Never fabricated: with neither
     source available, this returns the same empty frame it always did.
+
+    `closed_only=True` (services/signals/ncs.py's non-repaint contract):
+    excludes the stream's still-forming current bar entirely — a REST
+    backfill can never itself return a bar that hasn't happened yet, so
+    only the stream side needs the distinction.
     """
     from app.services.streaming.service import get_stream_service
 
-    stream_df = _bars_to_df(get_stream_service().recent_bars(symbol, limit=500))
+    service = get_stream_service()
+    raw_bars = service.closed_bars_only(symbol, limit=500) if closed_only else service.recent_bars(symbol, limit=500)
+    stream_df = _bars_to_df(raw_bars)
 
     try:
         backfill_df = provider.get_intraday_bars(symbol)
@@ -129,7 +136,7 @@ def _intraday_bars_with_backfill(symbol: str, provider: MarketDataProvider) -> p
     return merged[~merged.index.duplicated(keep="first")].sort_index()
 
 
-def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str) -> pd.DataFrame:
+def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str, closed_only: bool = False) -> pd.DataFrame:
     """The single timeframe -> real-bars mapping shared by the signal
     engine and the /stocks/{symbol}/candles endpoint. Intraday timeframes
     read the streaming service's live-accumulated bars, backfilled with
@@ -139,16 +146,34 @@ def bars_for_timeframe(symbol: str, provider: MarketDataProvider, timeframe: str
     intraday endpoint and was never subscribed to streaming either. Daily+
     timeframes are always real provider history; 1W/1M are a lossless
     resample of it.
+
+    `closed_only=True`: never includes a bar that could still change —
+    the intraday stream's still-forming bar, or (daily+) today's bar while
+    the market is still open. Used by services/signals/ncs.py, whose whole
+    non-repaint guarantee rests on never computing from an unfinished bar;
+    every other caller (charts, the existing Signal Engine) is unaffected,
+    since this defaults to the prior always-include-the-latest behavior.
     """
     timeframe = (timeframe or "1D").upper() if timeframe not in _INTRADAY_TIMEFRAMES else timeframe
 
     if timeframe in _INTRADAY_TIMEFRAMES:
-        df = _intraday_bars_with_backfill(symbol, provider)
+        df = _intraday_bars_with_backfill(symbol, provider, closed_only=closed_only)
         if df.empty or timeframe == "1m":
             return df
         return _resample_ohlcv(df, _RESAMPLE_RULE[timeframe])
 
     df = provider.get_ohlcv(symbol, lookback_days=_BASE_DAILY_LOOKBACK)
+    if closed_only and not df.empty:
+        from zoneinfo import ZoneInfo
+
+        from app.services.market_overview import market_status
+
+        if market_status() == "open":
+            last_ts = df.index[-1]
+            last_date_ny = (last_ts.tz_convert("America/New_York") if last_ts.tzinfo else last_ts.tz_localize("UTC").tz_convert("America/New_York")).date()
+            today_ny = pd.Timestamp.now(tz=ZoneInfo("America/New_York")).date()
+            if last_date_ny == today_ny:
+                df = df.iloc[:-1]
     if timeframe in ("1W", "1M"):
         df = _resample_ohlcv(df, _RESAMPLE_RULE[timeframe])
     elif timeframe == "ALL":

@@ -500,3 +500,38 @@ export interface SignalPayload {
   feature_version: string;
   risk_policy_version: string;
 }
+
+export interface NcsComponent {
+  name: string;
+  score: number; // -1..+1
+  weight: number;
+  detail: string;
+}
+
+/** Nexora Conviction Signal — Nexora's own versioned composite indicator.
+ * Distinct from SignalPayload's POSSIBLE_ENTRY/WATCH/... ladder above. */
+export interface NcsSignal {
+  id: number;
+  ticker: string;
+  timeframe: string;
+  bar_ts: string;
+  computed_at: string;
+  raw_verdict: "STRONG_BUY" | "BUY" | "NEUTRAL" | "SELL" | "STRONG_SELL";
+  confirmed_verdict: "STRONG_BUY" | "BUY" | "NEUTRAL" | "SELL" | "STRONG_SELL" | null;
+  fired: boolean;
+  composite_score: number;
+  confidence_pct: number;
+  risk_score: number;
+  explanation: string;
+  components: NcsComponent[];
+  vetoed: boolean;
+  veto_reason: string | null;
+  version: string;
+  data_source: string;
+  data_mode: string;
+}
+
+export interface NcsNoSignalYet {
+  raw_verdict: "NO_SIGNAL_YET";
+  ticker: string;
+}

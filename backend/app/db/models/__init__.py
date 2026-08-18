@@ -5,6 +5,7 @@ from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.edgar import EdgarCompanyFacts
 from app.db.models.market import OHLCVBar, Ticker
 from app.db.models.model_version import ModelVersion
+from app.db.models.ncs_signal import NcsSignal
 from app.db.models.news import NewsItem
 from app.db.models.paper_trading import PaperPosition, PaperTradingAccount
 from app.db.models.platform_setting import PlatformSetting
@@ -28,6 +29,7 @@ __all__ = [
     "Prediction",
     "Outcome",
     "ModelVersion",
+    "NcsSignal",
     "NewsItem",
     "Trade",
     "BacktestResult",

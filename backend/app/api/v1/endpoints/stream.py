@@ -1,12 +1,14 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import data_provider, db_session, get_current_user
+from app.db.models.ncs_signal import NcsSignal
 from app.db.models.signal import Signal, SignalEvent
+from app.db.models.user import User
 from app.services.data_providers.base import MarketDataProvider
 from app.services.streaming.service import get_stream_service
 
@@ -102,6 +104,66 @@ def signal_history(symbol: str, timeframe: str = "1D", limit: int = 20, db: Sess
              "from": e.from_status, "to": e.to_status, "reason": e.reason}
             for e in events
         ],
+    }
+
+
+@router.post("/{symbol}/evaluate-ncs")
+def evaluate_ncs_now(
+    symbol: str,
+    timeframe: str = "1D",
+    cooldown_minutes: float = 60.0,
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
+):
+    """Computes (or returns the already-persisted row for) the latest
+    closed bar's NCS on `timeframe`. This is a chart annotation, nothing
+    more — nothing here places, opens, or even proposes a paper order;
+    autonomous paper trading is a fully separate decision that must clear
+    its own safety gates independently (see services/paper_trading/engine.py).
+    """
+    from app.services.paper_trading.engine import list_open_positions
+    from app.services.signals.ncs import NcsInputs, NcsInsufficientData, evaluate_ncs
+
+    portfolio_open_symbols = {p.ticker_symbol for p in list_open_positions(user.id, db)}
+    try:
+        row = evaluate_ncs(
+            symbol, provider, db, timeframe=timeframe,
+            inputs=NcsInputs(portfolio_open_symbols=portfolio_open_symbols),
+            cooldown_minutes=cooldown_minutes,
+        )
+    except NcsInsufficientData as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if row.fired:
+        get_stream_service().bus.publish(symbol.upper(), "ncs.updated", _ncs_payload(row))
+    return _ncs_payload(row)
+
+
+@router.get("/{symbol}/ncs")
+def current_ncs(symbol: str, timeframe: str = "1D", db: Session = Depends(db_session), _user=Depends(get_current_user)):
+    from app.services.signals.ncs import latest_ncs
+
+    row = latest_ncs(db, symbol, timeframe)
+    return _ncs_payload(row) if row else {"raw_verdict": "NO_SIGNAL_YET", "ticker": symbol.upper()}
+
+
+@router.get("/{symbol}/ncs-history")
+def ncs_history_endpoint(symbol: str, timeframe: str = "1D", limit: int = 100, db: Session = Depends(db_session), _user=Depends(get_current_user)):
+    from app.services.signals.ncs import ncs_history
+
+    return {"symbol": symbol.upper(), "timeframe": timeframe, "signals": [_ncs_payload(r) for r in ncs_history(db, symbol, timeframe, limit)]}
+
+
+def _ncs_payload(s: NcsSignal) -> dict:
+    return {
+        "id": s.id, "ticker": s.ticker_symbol, "timeframe": s.timeframe,
+        "bar_ts": s.bar_ts.isoformat(), "computed_at": s.created_at.isoformat(),
+        "raw_verdict": s.raw_verdict, "confirmed_verdict": s.confirmed_verdict, "fired": s.fired,
+        "composite_score": s.composite_score, "confidence_pct": s.confidence_pct, "risk_score": s.risk_score,
+        "explanation": s.explanation, "components": s.components,
+        "vetoed": s.vetoed, "veto_reason": s.veto_reason,
+        "version": s.version, "data_source": s.data_source, "data_mode": s.data_mode,
     }
 
 
