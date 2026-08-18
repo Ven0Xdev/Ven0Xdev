@@ -5,6 +5,7 @@ from app.api.deps import data_provider, db_session, get_current_user
 from app.db.models.paper_trading import PaperPosition, PaperTradingAccount
 from app.db.models.user import User
 from app.schemas.paper_trading import (
+    AutonomousTradingToggleRequest,
     PaperAccountOut,
     PaperOpenRequest,
     PaperPositionOut,
@@ -91,6 +92,24 @@ def start_simulation(
 ):
     try:
         account = engine.start_new_simulation(user.id, request.starting_capital, db, label=request.label)
+    except PaperTradingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _account_out(account, db, provider)
+
+
+@router.post("/autonomous", response_model=PaperAccountOut)
+def toggle_autonomous_trading(
+    request: AutonomousTradingToggleRequest,
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
+):
+    """Explicit per-simulation opt-in/out for autonomous paper trading —
+    see services/paper_trading/autonomous.py's module docstring for the
+    full gate this alone does not bypass (Red-Team, shadow track record,
+    position limits, the platform-wide emergency stop)."""
+    try:
+        account = engine.set_autonomous_trading_enabled(user.id, request.enabled, db)
     except PaperTradingError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _account_out(account, db, provider)

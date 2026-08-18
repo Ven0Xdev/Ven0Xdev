@@ -51,3 +51,26 @@ def set_safe_mode_override(db: Session, override: bool | None, operator: User) -
     db.commit()
     db.refresh(row)
     return row
+
+
+def is_autonomous_trading_paused(db: Session | None) -> bool:
+    """The platform-wide emergency stop for autonomous paper trading
+    (services/paper_trading/autonomous.py) — distinct from Safe Mode
+    (which pauses every risk-gated action, manual trades included) and
+    from a single simulation's own opt-in. `db=None` fails safe (paused),
+    the opposite default from is_safe_mode_active's env fallback, since
+    there is no env-level default here to fall back to."""
+    if db is None:
+        return True
+    return get_platform_setting(db).autonomous_trading_paused
+
+
+def set_autonomous_trading_paused(db: Session, paused: bool, operator: User) -> PlatformSetting:
+    row = get_platform_setting(db)
+    row.autonomous_trading_paused = paused
+    row.updated_at = datetime.now(timezone.utc)
+    row.updated_by_user_id = operator.id
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row

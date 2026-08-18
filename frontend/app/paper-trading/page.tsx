@@ -277,6 +277,19 @@ export default function PaperTradingPage() {
     }
   };
 
+  const [autonomousBusy, setAutonomousBusy] = useState(false);
+  const toggleAutonomous = async (enabled: boolean) => {
+    setAutonomousBusy(true);
+    try {
+      const updated = await api.setAutonomousTrading(enabled);
+      setAccount(updated);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setAutonomousBusy(false);
+    }
+  };
+
   const totalUnrealized = (openPositions ?? []).reduce((sum, p) => sum + (p.unrealized_pnl_dollars ?? 0), 0);
 
   return (
@@ -323,6 +336,28 @@ export default function PaperTradingPage() {
                 {account.label ? ` — ${account.label}` : ""} · started{" "}
                 <LocalTime iso={account.created_at} options={{ style: "short" }} />
               </p>
+
+              <div className="card animate-in flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                    Autonomous trading
+                  </h3>
+                  <p className="mt-0.5 max-w-2xl text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    When on, this simulation may open a NEXORA INTERNAL PAPER position on its own — only when a fired
+                    NCS signal clears Red-Team review, its own shadow track record, and this account&apos;s position
+                    limits. Off by default; a platform-wide emergency stop can also disable this for every simulation.
+                  </p>
+                </div>
+                <label className="flex shrink-0 items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={account.autonomous_trading_enabled}
+                    disabled={autonomousBusy}
+                    onChange={(e) => toggleAutonomous(e.target.checked)}
+                  />
+                  {account.autonomous_trading_enabled ? "Enabled" : "Disabled"}
+                </label>
+              </div>
 
               <form
                 className="card animate-in flex flex-wrap items-start gap-2.5 p-4"
@@ -393,6 +428,15 @@ export default function PaperTradingPage() {
                               <Link href={`/stock/${p.ticker_symbol}`} className="font-semibold hover:underline">
                                 {p.ticker_symbol}
                               </Link>
+                              {p.opened_by === "autonomous" && (
+                                <span
+                                  className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
+                                  style={{ color: "var(--accent)", background: "var(--accent-soft)" }}
+                                  title={`Opened autonomously${p.ncs_signal_id ? ` from NCS signal #${p.ncs_signal_id}` : ""}`}
+                                >
+                                  AUTO
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3">{p.quantity}</td>
                             <td className="px-4 py-3">${p.avg_entry_price.toFixed(4)}</td>
@@ -452,6 +496,15 @@ export default function PaperTradingPage() {
                               <Link href={`/stock/${p.ticker_symbol}`} className="font-semibold hover:underline">
                                 {p.ticker_symbol}
                               </Link>
+                              {p.opened_by === "autonomous" && (
+                                <span
+                                  className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
+                                  style={{ color: "var(--accent)", background: "var(--accent-soft)" }}
+                                  title={`Opened autonomously${p.ncs_signal_id ? ` from NCS signal #${p.ncs_signal_id}` : ""}`}
+                                >
+                                  AUTO
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3">{p.quantity}</td>
                             <td className="px-4 py-3">${p.avg_entry_price.toFixed(4)}</td>

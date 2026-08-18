@@ -16,6 +16,16 @@ class SafeModeOut(BaseModel):
     updated_by_user_id: int | None
 
 
+class AutonomousTradingUpdate(BaseModel):
+    paused: bool
+
+
+class AutonomousTradingOut(BaseModel):
+    paused: bool
+    updated_at: datetime | None
+    updated_by_user_id: int | None
+
+
 class AdminUserOut(BaseModel):
     id: int
     email: str

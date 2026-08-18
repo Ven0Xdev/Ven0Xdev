@@ -464,6 +464,15 @@ def evaluate_ncs(
         shadow_engine.on_ncs_fired(db, row, computation.close_price)
     shadow_engine.on_ncs_evaluated(db, row, computation.close_price)
 
+    # Autonomous paper trading: fully gated (per-simulation opt-in,
+    # Red-Team, shadow track record, position limits, the platform-wide
+    # emergency stop) — see services/paper_trading/autonomous.py's module
+    # docstring. Only ever acts through the one real execution engine.
+    if row.fired:
+        from app.services.paper_trading import autonomous as autonomous_trading
+
+        autonomous_trading.on_ncs_fired_autonomous(db, row, provider)
+
     return row
 
 

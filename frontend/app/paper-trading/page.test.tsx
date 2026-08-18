@@ -10,6 +10,7 @@ const apiMock = vi.hoisted(() => ({
   startPaperSimulation: vi.fn(),
   openPaperPosition: vi.fn(),
   closePaperPosition: vi.fn(),
+  setAutonomousTrading: vi.fn(),
 }));
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
@@ -21,6 +22,7 @@ import PaperTradingPage from "./page";
 const ACCOUNT: PaperAccount = {
   id: 1, simulation_number: 1, label: null, cash_balance: 2_500, starting_balance: 2_500,
   is_active: true, archived_at: null, created_at: "2026-08-18T00:00:00Z", equity: 2_500, unrealized_pnl_dollars: 0,
+  autonomous_trading_enabled: false,
 };
 
 const SIM_HISTORY: PaperSimulationSummary = {

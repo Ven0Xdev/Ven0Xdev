@@ -17,6 +17,7 @@ class PaperAccountOut(BaseModel):
     # market value, unrealized_pnl_dollars = equity - starting_balance.
     equity: float | None = None
     unrealized_pnl_dollars: float | None = None
+    autonomous_trading_enabled: bool = False
 
     class Config:
         from_attributes = True
@@ -64,6 +65,8 @@ class PaperPositionOut(BaseModel):
     current_price: float | None = None
     unrealized_pnl_dollars: float | None = None
     unrealized_pnl_pct: float | None = None
+    opened_by: str = "manual"
+    ncs_signal_id: int | None = None
 
     class Config:
         from_attributes = True
@@ -77,3 +80,7 @@ class PaperOpenRequest(BaseModel):
 class PaperStartSimulationRequest(BaseModel):
     starting_capital: float = Field(gt=0)
     label: str | None = Field(default=None, max_length=64)
+
+
+class AutonomousTradingToggleRequest(BaseModel):
+    enabled: bool

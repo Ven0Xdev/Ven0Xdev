@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { SafeModeStatus } from "@/lib/types";
+import type { AutonomousTradingStatus, SafeModeStatus } from "@/lib/types";
 
 const apiMock = vi.hoisted(() => ({
   me: vi.fn(),
   safeMode: vi.fn(),
+  autonomousTradingStatus: vi.fn(),
   providerHealth: vi.fn(),
   platformHealth: vi.fn(),
   schemaStatus: vi.fn(),
@@ -14,6 +15,7 @@ const apiMock = vi.hoisted(() => ({
   adminUsers: vi.fn(),
   planCatalog: vi.fn(),
   setSafeMode: vi.fn(),
+  setAutonomousTradingPaused: vi.fn(),
   setUserPlan: vi.fn(),
 }));
 vi.mock("@/lib/api", () => ({ api: apiMock }));
@@ -21,9 +23,11 @@ vi.mock("@/lib/api", () => ({ api: apiMock }));
 import AdminPage from "./page";
 
 const SAFE_MODE_OFF: SafeModeStatus = { override: null, env_default: false, effective: false, updated_at: null, updated_by_user_id: null };
+const AUTONOMOUS_TRADING_RUNNING: AutonomousTradingStatus = { paused: false, updated_at: null, updated_by_user_id: null };
 
 function mockDashboardData() {
   apiMock.safeMode.mockResolvedValue(SAFE_MODE_OFF);
+  apiMock.autonomousTradingStatus.mockResolvedValue(AUTONOMOUS_TRADING_RUNNING);
   apiMock.providerHealth.mockResolvedValue({
     provider: "mock", data_mode: "synthetic", ok: true, latency_ms: 1, sample_symbols: ["AAPL"], error: null, checked_at: "2026-01-01T00:00:00Z",
   });

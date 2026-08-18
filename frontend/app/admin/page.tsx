@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useResyncListener } from "@/lib/pwa";
 import type {
   AdminUser,
+  AutonomousTradingStatus,
   ModelVersionOut,
   PlanCatalog,
   PlatformHealthReport,
@@ -58,6 +59,7 @@ export default function AdminPage() {
 
 function AdminDashboard() {
   const [safeMode, setSafeMode] = useState<SafeModeStatus | null>(null);
+  const [autonomousTrading, setAutonomousTrading] = useState<AutonomousTradingStatus | null>(null);
   const [providerHealth, setProviderHealth] = useState<ProviderHealth | null>(null);
   const [platformHealth, setPlatformHealth] = useState<PlatformHealthReport | null>(null);
   const [schemaStatus, setSchemaStatus] = useState<SchemaStatus | null>(null);
@@ -71,6 +73,7 @@ function AdminDashboard() {
   const load = useCallback(() => {
     Promise.all([
       api.safeMode(),
+      api.autonomousTradingStatus(),
       api.providerHealth(),
       api.platformHealth(),
       api.schemaStatus(),
@@ -79,8 +82,9 @@ function AdminDashboard() {
       api.adminUsers(),
       api.planCatalog(),
     ])
-      .then(([sm, ph, plh, ss, m, a, u, pc]) => {
+      .then(([sm, at, ph, plh, ss, m, a, u, pc]) => {
         setSafeMode(sm);
+        setAutonomousTrading(at);
         setProviderHealth(ph);
         setPlatformHealth(plh);
         setSchemaStatus(ss);
@@ -111,6 +115,7 @@ function AdminDashboard() {
   if (error) return <ErrorState error={error} onRetry={retry} />;
   if (
     safeMode === null ||
+    autonomousTrading === null ||
     providerHealth === null ||
     platformHealth === null ||
     schemaStatus === null ||
@@ -139,6 +144,7 @@ function AdminDashboard() {
       />
 
       <SafeModeCard status={safeMode} onChange={load} />
+      <AutonomousTradingCard status={autonomousTrading} onChange={load} />
 
       <div className="animate-in-stagger grid grid-cols-1 gap-4 lg:grid-cols-3">
         <ProviderHealthCard health={providerHealth} />
@@ -215,6 +221,69 @@ function SafeModeCard({ status, onChange }: { status: SafeModeStatus; onChange: 
         </button>
         <button disabled={busy || status.override === null} onClick={() => apply(null)} className="btn btn-ghost btn-sm">
           Clear override (follow env default)
+        </button>
+      </div>
+      {actionError !== null && (
+        <p className="text-xs" style={{ color: "var(--status-critical)" }}>
+          {actionError instanceof Error ? actionError.message : String(actionError)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AutonomousTradingCard({ status, onChange }: { status: AutonomousTradingStatus; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<unknown>(null);
+
+  const apply = async (paused: boolean) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await api.setAutonomousTradingPaused(paused);
+      onChange();
+    } catch (e) {
+      setActionError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className="card animate-in flex flex-col gap-3 p-5"
+      style={status.paused ? { borderColor: "var(--status-critical-soft)" } : undefined}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">Autonomous trading — emergency stop</h2>
+          <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+            When paused, no simulation may open a NEXORA INTERNAL PAPER position autonomously, regardless of its own
+            opt-in — a separate, stricter switch than Safe Mode (which also blocks manual trades).
+            {status.updated_at && (
+              <>
+                {" "}
+                · last changed <LocalTime iso={status.updated_at} options={{ style: "short" }} />
+              </>
+            )}
+          </p>
+        </div>
+        <span
+          className="rounded-full px-3 py-1 text-xs font-semibold"
+          style={{
+            background: status.paused ? "var(--status-critical-soft)" : "var(--status-good-soft)",
+            color: status.paused ? "var(--status-critical)" : "var(--status-good)",
+          }}
+        >
+          {status.paused ? "PAUSED" : "Running"}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button disabled={busy || status.paused} onClick={() => apply(true)} className="btn btn-secondary btn-sm">
+          Emergency stop
+        </button>
+        <button disabled={busy || !status.paused} onClick={() => apply(false)} className="btn btn-ghost btn-sm">
+          Resume
         </button>
       </div>
       {actionError !== null && (

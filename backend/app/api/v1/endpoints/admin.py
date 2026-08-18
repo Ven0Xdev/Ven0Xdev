@@ -24,10 +24,18 @@ from app.api.deps import db_session, require_operator
 from app.core.config import get_settings
 from app.core.entitlements import VALID_PLANS
 from app.db.models.user import User
-from app.schemas.admin import AdminUserOut, SafeModeOut, SafeModeUpdate, UserPlanUpdate
+from app.schemas.admin import (
+    AdminUserOut,
+    AutonomousTradingOut,
+    AutonomousTradingUpdate,
+    SafeModeOut,
+    SafeModeUpdate,
+    UserPlanUpdate,
+)
 from app.services.platform_settings import (
     get_platform_setting,
     is_safe_mode_active,
+    set_autonomous_trading_paused,
     set_safe_mode_override,
 )
 
@@ -58,6 +66,30 @@ def set_safe_mode(
 ):
     set_safe_mode_override(db, payload.override, operator)
     return _serialize(db)
+
+
+def _serialize_autonomous(db: Session) -> AutonomousTradingOut:
+    row = get_platform_setting(db)
+    return AutonomousTradingOut(
+        paused=row.autonomous_trading_paused, updated_at=row.updated_at, updated_by_user_id=row.updated_by_user_id,
+    )
+
+
+@router.get("/autonomous-trading", response_model=AutonomousTradingOut)
+def get_autonomous_trading(db: Session = Depends(db_session), _operator: User = Depends(require_operator)):
+    """The platform-wide emergency stop for autonomous paper trading —
+    distinct from Safe Mode (see services/paper_trading/autonomous.py)."""
+    return _serialize_autonomous(db)
+
+
+@router.post("/autonomous-trading", response_model=AutonomousTradingOut)
+def set_autonomous_trading(
+    payload: AutonomousTradingUpdate,
+    db: Session = Depends(db_session),
+    operator: User = Depends(require_operator),
+):
+    set_autonomous_trading_paused(db, payload.paused, operator)
+    return _serialize_autonomous(db)
 
 
 @router.get("/users", response_model=list[AdminUserOut])

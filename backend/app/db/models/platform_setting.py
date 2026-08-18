@@ -23,5 +23,11 @@ class PlatformSetting(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     safe_mode_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
+    # Direct on/off (not a 3-state override like safe_mode_override above —
+    # there's no env-level default to fall back to; autonomous trading is
+    # off everywhere until this is false AND a given simulation has
+    # separately opted in via PaperTradingAccount.autonomous_trading_enabled).
+    # See services/paper_trading/autonomous.py.
+    autonomous_trading_paused: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     updated_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

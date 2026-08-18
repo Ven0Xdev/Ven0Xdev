@@ -356,3 +356,26 @@ def test_paper_trading_api_refuses_a_setup_that_fails_the_risk_gate(client, auth
 def test_paper_trading_api_rejects_invalid_status_filter(client):
     res = client.get("/api/v1/paper-trading/positions?status=bogus")
     assert res.status_code == 400
+
+
+# ---------- autonomous trading opt-in -----------------------------------------
+
+
+def test_autonomous_trading_is_off_by_default_and_can_be_toggled(client, auth_on):
+    token = _register(client, "sim-autonomous@example.com")
+    headers = _auth_header(token)
+    started = client.post("/api/v1/paper-trading/simulations", json={"starting_capital": 5_000}, headers=headers)
+    assert started.json()["autonomous_trading_enabled"] is False
+
+    on = client.post("/api/v1/paper-trading/autonomous", json={"enabled": True}, headers=headers)
+    assert on.status_code == 200
+    assert on.json()["autonomous_trading_enabled"] is True
+
+    off = client.post("/api/v1/paper-trading/autonomous", json={"enabled": False}, headers=headers)
+    assert off.json()["autonomous_trading_enabled"] is False
+
+
+def test_autonomous_trading_toggle_requires_an_active_simulation(client, auth_on):
+    token = _register(client, "sim-autonomous-none@example.com")
+    res = client.post("/api/v1/paper-trading/autonomous", json={"enabled": True}, headers=_auth_header(token))
+    assert res.status_code == 400

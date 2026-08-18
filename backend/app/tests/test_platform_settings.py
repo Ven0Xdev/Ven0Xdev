@@ -151,3 +151,40 @@ def test_safe_mode_endpoints_allow_operator_when_auth_is_required(client, test_e
         # to be required to clear it — the dev principal is an operator too.
         settings.auth_required = original
         client.post("/api/v1/admin/safe-mode", json={"override": None})
+
+
+def test_autonomous_trading_endpoints_reject_anonymous_and_regular_users_when_auth_is_required(client, test_engine):
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    original = settings.auth_required
+    settings.auth_required = True
+    try:
+        assert client.get("/api/v1/admin/autonomous-trading").status_code == 401
+
+        token = _login_as(client, test_engine, email="auto-regular@example.com", role="user")
+        headers = {"Authorization": f"Bearer {token}"}
+        assert client.get("/api/v1/admin/autonomous-trading", headers=headers).status_code == 403
+        assert client.post("/api/v1/admin/autonomous-trading", json={"paused": True}, headers=headers).status_code == 403
+    finally:
+        settings.auth_required = original
+
+
+def test_autonomous_trading_endpoints_allow_operator_when_auth_is_required(client, test_engine):
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    original = settings.auth_required
+    settings.auth_required = True
+    try:
+        token = _login_as(client, test_engine, email="auto-operator@example.com", role="operator")
+        headers = {"Authorization": f"Bearer {token}"}
+        assert client.get("/api/v1/admin/autonomous-trading", headers=headers).status_code == 200
+        set_res = client.post("/api/v1/admin/autonomous-trading", json={"paused": True}, headers=headers)
+        assert set_res.status_code == 200
+        assert set_res.json()["paused"] is True
+    finally:
+        # Same reasoning as the safe-mode test above — never leave this
+        # stuck "on" in the shared test DB for every later test.
+        settings.auth_required = original
+        client.post("/api/v1/admin/autonomous-trading", json={"paused": False})

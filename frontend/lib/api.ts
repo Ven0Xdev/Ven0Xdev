@@ -4,6 +4,7 @@ import type {
   AlertComparison,
   AlertEvent,
   AlertRule,
+  AutonomousTradingStatus,
   BacktestResult,
   BillingStatus,
   CalibrationReport,
@@ -326,6 +327,8 @@ export const api = {
     }),
   closePaperPosition: (positionId: number) =>
     request<PaperPosition>(`/paper-trading/positions/${positionId}/close`, { method: "POST" }),
+  setAutonomousTrading: (enabled: boolean) =>
+    request<PaperAccount>(`/paper-trading/autonomous`, { method: "POST", body: JSON.stringify({ enabled }) }),
 
   runBacktest: (params: {
     universe_limit?: number;
@@ -381,6 +384,9 @@ export const api = {
   safeMode: () => request<SafeModeStatus>(`/admin/safe-mode`),
   setSafeMode: (override: boolean | null) =>
     request<SafeModeStatus>(`/admin/safe-mode`, { method: "POST", body: JSON.stringify({ override }) }),
+  autonomousTradingStatus: () => request<AutonomousTradingStatus>(`/admin/autonomous-trading`),
+  setAutonomousTradingPaused: (paused: boolean) =>
+    request<AutonomousTradingStatus>(`/admin/autonomous-trading`, { method: "POST", body: JSON.stringify({ paused }) }),
   providerHealth: () => request<ProviderHealth>(`/providers/health`),
   platformHealth: () => request<PlatformHealthReport>(`/monitoring/health`),
   schemaStatus: async () => {

@@ -37,6 +37,13 @@ class PaperTradingAccount(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # Explicit per-simulation opt-in — never on by default, never carried
+    # over to a new simulation automatically (start_new_simulation always
+    # creates a fresh row, which defaults this to False again). See
+    # services/paper_trading/autonomous.py for the full gate this alone
+    # does not bypass (Red-Team, shadow track record, position limits,
+    # the platform-wide emergency stop).
+    autonomous_trading_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 # Partial unique index — only rows where is_active is true participate, so
@@ -81,3 +88,10 @@ class PaperPosition(Base):
     risk_policy_version: Mapped[str] = mapped_column(String(48), default="unversioned")
     entry_data_source: Mapped[str] = mapped_column(String(32), default="unknown")
     entry_data_mode: Mapped[str] = mapped_column(String(16), default="unspecified")
+    # "manual" (a user clicked Buy) | "autonomous" (services/paper_trading/
+    # autonomous.py opened it on the account owner's behalf, per their own
+    # opt-in). Always explicit — a position must never be ambiguous about
+    # who/what opened it. ncs_signal_id is set only for autonomous opens,
+    # the provenance link back to the exact fired signal that triggered it.
+    opened_by: Mapped[str] = mapped_column(String(16), default="manual")
+    ncs_signal_id: Mapped[int | None] = mapped_column(ForeignKey("ncs_signals.id"), nullable=True)

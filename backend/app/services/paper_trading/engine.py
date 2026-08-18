@@ -136,6 +136,21 @@ def start_new_simulation(user_id: int, starting_capital: float, db: Session, lab
     return account
 
 
+def set_autonomous_trading_enabled(user_id: int, enabled: bool, db: Session) -> PaperTradingAccount:
+    """Explicit per-simulation opt-in/out for autonomous trading (see
+    services/paper_trading/autonomous.py) — never flips silently, never
+    carries over to a future simulation (start_new_simulation always
+    creates a fresh row defaulting this back to False)."""
+    account = get_active_account(user_id, db)
+    if account is None:
+        raise PaperTradingError("No active paper simulation — start one from the Paper Trading page first.")
+    account.autonomous_trading_enabled = enabled
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+
 def _fill_price(quote: Quote, side: str) -> float:
     if side == "buy":
         return quote.ask if quote.ask is not None else quote.last
@@ -148,6 +163,8 @@ def open_position(
     quantity: float,
     db: Session,
     provider: MarketDataProvider,
+    opened_by: str = "manual",
+    ncs_signal_id: int | None = None,
 ) -> PaperPosition:
     if quantity <= 0:
         raise PaperTradingError("Quantity must be positive.")
@@ -189,6 +206,8 @@ def open_position(
         risk_policy_version=policy.version,
         entry_data_source=provider.name,
         entry_data_mode=getattr(provider, "data_mode", "unspecified"),
+        opened_by=opened_by,
+        ncs_signal_id=ncs_signal_id,
     )
     account.cash_balance -= cost
     db.add(position)

@@ -147,6 +147,7 @@ export interface PaperAccount {
   created_at: string;
   equity: number | null;
   unrealized_pnl_dollars: number | null;
+  autonomous_trading_enabled: boolean;
 }
 
 export interface PaperSimulationSummary {
@@ -182,6 +183,14 @@ export interface PaperPosition {
   current_price: number | null;
   unrealized_pnl_dollars: number | null;
   unrealized_pnl_pct: number | null;
+  opened_by: "manual" | "autonomous";
+  ncs_signal_id: number | null;
+}
+
+export interface AutonomousTradingStatus {
+  paused: boolean;
+  updated_at: string | null;
+  updated_by_user_id: number | null;
 }
 
 export interface BacktestTrade {
