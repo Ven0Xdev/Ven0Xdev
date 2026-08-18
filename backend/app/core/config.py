@@ -104,6 +104,15 @@ class Settings(BaseSettings):
     # operator discipline, not something this code enforces.
     alpaca_api_key: str | None = None
     alpaca_api_secret: str | None = None
+    # News (services/news/*) — Alpaca News is the primary real-time source
+    # (REST backfill + WS stream), using the SAME Alpaca Data API
+    # credentials above (market-data scope, never Alpaca's Trading API).
+    # Alpha Vantage stays a low-frequency fallback/enrichment source only
+    # (see services/data_providers/alphavantage_provider.py's get_news) —
+    # this setting does not change that provider's own behavior, it only
+    # controls whether app startup opens the Alpaca news WS connection.
+    news_provider: str = "alpaca"
+    alpaca_news_stream_enabled: bool = True
     sec_edgar_user_agent: str = "Nexora contact@nexora.dev"
     # EDGAR enrichment overlays real dilution/filing facts onto fundamentals.
     # Meaningless for the synthetic provider (fake tickers), so it only

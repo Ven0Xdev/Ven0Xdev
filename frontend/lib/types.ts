@@ -535,3 +535,40 @@ export interface NcsNoSignalYet {
   raw_verdict: "NO_SIGNAL_YET";
   ticker: string;
 }
+
+/** A single article from the Alpaca-backed news pipeline (services/news) —
+ * deduplicated, persisted, and deterministically classified (sentiment/
+ * category/reliability/novelty/relevance/impact are keyword-lexicon
+ * heuristics, never an ML or LLM claim). Distinct from the older, simpler
+ * `NewsArticle` above (live pass-through via GET /stocks/{symbol}/news,
+ * no persistence/dedup/novelty/impact scoring) — kept separate rather than
+ * merged since the two power different, still-independently-used features. */
+export interface NewsPipelineArticle {
+  id: number;
+  provider: string;
+  external_id: string;
+  source: string;
+  headline: string;
+  summary: string | null;
+  url: string;
+  symbols: string[];
+  published_at: string;
+  received_at: string;
+  update_count: number;
+  sentiment: number; // -1..+1
+  sentiment_label: "positive" | "negative" | "neutral" | "uncertain";
+  novelty: number; // 0..1
+  relevance: number; // 0..1
+  reliability: number; // 0..1
+  impact: number; // 0..1
+  category: string | null;
+  is_press_release: boolean;
+  is_promotional: boolean;
+}
+
+export interface NewsHealth {
+  enabled: boolean;
+  configured: boolean;
+  connected: boolean;
+  note?: string;
+}

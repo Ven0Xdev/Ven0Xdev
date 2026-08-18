@@ -132,6 +132,49 @@ async def lifespan(app: FastAPI):
     if settings.chat_backend == "llm" and not settings.anthropic_api_key:
         logger.warning("CHAT_BACKEND=llm but ANTHROPIC_API_KEY is not set — falling back to the template assistant.")
     logger.info("Chat backend: %s", settings.chat_backend)
+
+    # News ingestion: opens the Alpaca news WS at boot (mirrors this
+    # platform's other "start automatically after deployment" background
+    # behaviors) — never silently skipped without a clear log line either
+    # way, since /news/health's "unavailable" state depends on knowing
+    # exactly why.
+    #
+    # environment == "test" is an explicit, deliberate hard stop, distinct
+    # from every other provider in this app: MarketStreamService's trade
+    # sources are already test-safe *implicitly*, because they're lazily
+    # constructed only when a client actually hits GET /stream/{symbol}
+    # (which the test suite's `client` fixture triggers lifespan for on
+    # every single test via `with TestClient(app)`, but essentially never
+    # calls that specific endpoint) and gated on MARKET_DATA_PROVIDER=mock
+    # (conftest.py's default). News ingestion has no such natural gate — it
+    # opens a real background WebSocket unconditionally at process boot —
+    # so without this check, every test run would open a live Alpaca
+    # connection using whatever real ALPACA_API_KEY/SECRET happen to be in
+    # the developer's own backend/.env, violating "tests never call live
+    # APIs" on every single test.
+    if settings.environment == "test":
+        logger.info("News ingestion: skipped (ENVIRONMENT=test) — tests never open a live Alpaca connection.")
+    elif settings.news_provider == "alpaca" and settings.alpaca_news_stream_enabled:
+        if settings.alpaca_api_key and settings.alpaca_api_secret:
+            from app.services.news.ingest import NewsIngestionService
+            from app.services.news.service import set_news_ingestion_service
+            from app.services.universe.manager import get_active_universe
+
+            with SessionLocal() as universe_db:
+                canonical_symbols = [a.symbol for a in get_active_universe(universe_db)]
+            news_service = NewsIngestionService(settings.alpaca_api_key, settings.alpaca_api_secret, SessionLocal)
+            set_news_ingestion_service(news_service)
+            if canonical_symbols:
+                await news_service.start(canonical_symbols)
+                logger.info("News ingestion: Alpaca WS stream starting for %d canonical symbols.", len(canonical_symbols))
+        else:
+            logger.warning(
+                "NEWS_PROVIDER=alpaca and ALPACA_NEWS_STREAM_ENABLED=true, but ALPACA_API_KEY/SECRET are not "
+                "set — live news ingestion will not run; GET /news/health will report this honestly."
+            )
+    else:
+        logger.info("News ingestion disabled (NEWS_PROVIDER=%s, ALPACA_NEWS_STREAM_ENABLED=%s).", settings.news_provider, settings.alpaca_news_stream_enabled)
+
     yield
     logger.info("Shutting down %s", settings.app_name)
 

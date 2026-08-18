@@ -17,6 +17,8 @@ import type {
   NcsNoSignalYet,
   NcsSignal,
   NewsArticle,
+  NewsHealth,
+  NewsPipelineArticle,
   OhlcvBar,
   PaperAccount,
   PaperPosition,
@@ -346,6 +348,18 @@ export const api = {
     request<NcsSignal | NcsNoSignalYet>(`/stream/${symbol}/ncs?timeframe=${timeframe}`),
   ncsHistory: (symbol: string, timeframe = "1D", limit = 100) =>
     request<{ symbol: string; timeframe: string; signals: NcsSignal[] }>(`/stream/${symbol}/ncs-history?timeframe=${timeframe}&limit=${limit}`),
+
+  // Alpaca-backed news pipeline (services/news) — persisted, deduplicated,
+  // classified. Distinct from the older, live-pass-through `news()` above.
+  newsHealth: () => request<NewsHealth>(`/news/health`),
+  newsForSymbol: (symbol: string, limit = 20, windowDays = 30) =>
+    request<{ symbol: string; count: number; articles: NewsPipelineArticle[] }>(
+      `/news/${symbol}?limit=${limit}&window_days=${windowDays}`,
+    ),
+  breakingNews: (limit = 20, windowHours = 24, minImpact = 0.4) =>
+    request<{ count: number; articles: NewsPipelineArticle[] }>(
+      `/news?limit=${limit}&window_hours=${windowHours}&min_impact=${minImpact}`,
+    ),
 
   // Admin/Operator — Phase 11. Reads are operator-only server-side; the
   // frontend additionally hides the /admin route client-side for UX, but
