@@ -50,6 +50,12 @@ class StockAnalysis(BaseModel):
     liquidity_score: float = Field(..., ge=0, le=100)
     manipulation_risk: float = Field(..., ge=0, le=100)
     fundamental_score: float = Field(..., ge=0, le=100)
+    fundamentals_available: bool = Field(
+        True,
+        description="False means no provider could supply fundamentals for this symbol (e.g. an ETF on a "
+        "free-tier plan) — fundamental_score is a neutral 50.0 placeholder, not a real reading. UI must "
+        "render this as 'unavailable', never as a real score.",
+    )
     technical_score: float = Field(..., ge=0, le=100)
     sentiment_score: float = Field(..., ge=0, le=100)
     catalyst_score: float = Field(..., ge=0, le=100)

@@ -11,7 +11,20 @@ def compute_fundamental_score(meta: TickerMeta, fund: Fundamentals) -> tuple[flo
 
     Components (weights): solvency/runway, profitability trend, dilution
     discipline, ownership alignment, filing quality.
+
+    fund.data_available=False (no vendor could supply fundamentals for this
+    symbol — e.g. an ETF neither Twelve Data's paid-only /statistics nor
+    Alpha Vantage's stock-only OVERVIEW cover) short-circuits to a neutral
+    50.0: computing the usual formula over placeholder zeros would score
+    every such symbol as if it had zero cash and zero revenue, which is
+    fabricated-looking, not honestly "unknown."
     """
+    if not fund.data_available:
+        return 50.0, {
+            "data_available": False,
+            "note": "Fundamentals unavailable from the configured provider(s) for this symbol.",
+        }
+
     runway_months = _runway_months(fund)
     runway_score = float(np.clip(runway_months / 18 * 100, 0, 100))
 
@@ -45,6 +58,7 @@ def compute_fundamental_score(meta: TickerMeta, fund: Fundamentals) -> tuple[flo
         **components,
         "runway_months_estimate": runway_months,
         "net_margin_ttm": margin,
+        "data_available": True,
     }
 
 

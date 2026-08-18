@@ -56,6 +56,7 @@ from app.services.data_providers.base import (
     TickerMeta,
 )
 from app.services.data_providers.http_base import (
+    LOW_FREQUENCY_TTL_SECONDS,
     ProviderDataUnavailable,
     RateLimitedHttpClient,
 )
@@ -88,6 +89,7 @@ class AlphaVantageProvider(MarketDataProvider):
         calls_per_minute: int = 5,
         cache_ttl_seconds: float = 300.0,
         transport: httpx.BaseTransport | None = None,
+        redis_url: str | None = None,
     ):
         if not api_key:
             raise ProviderDataUnavailable(
@@ -104,6 +106,11 @@ class AlphaVantageProvider(MarketDataProvider):
             # "apikey" in every log line, so it never leaks.
             default_params={"apikey": api_key},
             transport=transport,
+            # Shared across every container polling this same universe —
+            # this is the provider that actually needs it: Alpha Vantage's
+            # free tier is 25 requests/day *total*, not per-process. See
+            # http_base.py's SharedCache/SharedRateLimiter docstrings.
+            redis_url=redis_url,
         )
         # Updated after every successful call: "delayed" for a fresh vendor
         # response, "cached" when served from the local TTL cache — read by
@@ -112,8 +119,8 @@ class AlphaVantageProvider(MarketDataProvider):
         self.data_mode = "delayed"
 
     # --- plumbing ---------------------------------------------------------
-    def _get(self, params: dict, cache_key: tuple, context: str) -> dict:
-        payload, from_cache = self._http.get_json_cached("/query", params, cache_key)
+    def _get(self, params: dict, cache_key: tuple, context: str, ttl_seconds: float | None = None) -> dict:
+        payload, from_cache = self._http.get_json_cached("/query", params, cache_key, ttl_seconds)
         _check_errors(payload, "AlphaVantage", context)
         self.data_mode = "cached" if from_cache else "delayed"
         return payload
@@ -129,8 +136,11 @@ class AlphaVantageProvider(MarketDataProvider):
 
     def get_ticker_meta(self, symbol: str) -> TickerMeta:
         symbol = symbol.upper()
+        # Company profile changes rarely — same long TTL as get_fundamentals
+        # below, which hits this identical endpoint/cache key.
         overview = self._get(
-            {"function": "OVERVIEW", "symbol": symbol}, ("overview", symbol), "OVERVIEW"
+            {"function": "OVERVIEW", "symbol": symbol}, ("overview", symbol), "OVERVIEW",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
         )
         if not overview or not overview.get("Symbol"):
             raise ProviderDataUnavailable(f"AlphaVantage has no company overview for {symbol}")
@@ -202,7 +212,8 @@ class AlphaVantageProvider(MarketDataProvider):
     def get_fundamentals(self, symbol: str) -> Fundamentals:
         symbol = symbol.upper()
         overview = self._get(
-            {"function": "OVERVIEW", "symbol": symbol}, ("overview", symbol), "OVERVIEW"
+            {"function": "OVERVIEW", "symbol": symbol}, ("overview", symbol), "OVERVIEW",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
         )
         if not overview or not overview.get("Symbol"):
             raise ProviderDataUnavailable(f"AlphaVantage has no company overview for {symbol}")
@@ -231,6 +242,7 @@ class AlphaVantageProvider(MarketDataProvider):
             {"function": "NEWS_SENTIMENT", "tickers": symbol, "limit": str(limit)},
             ("news", symbol, limit),
             "NEWS_SENTIMENT",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
         )
         feed = payload.get("feed") or []
         articles = []
@@ -259,7 +271,10 @@ class AlphaVantageProvider(MarketDataProvider):
     # --- corporate actions -------------------------------------------------------------
     def get_corporate_actions(self, symbol: str) -> list[CorporateAction]:
         symbol = symbol.upper()
-        payload = self._get({"function": "SPLITS", "symbol": symbol}, ("splits", symbol), "SPLITS")
+        payload = self._get(
+            {"function": "SPLITS", "symbol": symbol}, ("splits", symbol), "SPLITS",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
+        )
         actions = []
         for row in payload.get("data") or []:
             try:
@@ -283,4 +298,4 @@ from app.services.data_providers.registry import register_provider  # noqa: E402
 
 @register_provider("alphavantage")
 def _build_alphavantage(settings) -> AlphaVantageProvider:
-    return AlphaVantageProvider(settings.alpha_vantage_api_key)
+    return AlphaVantageProvider(settings.alpha_vantage_api_key, redis_url=settings.redis_url)

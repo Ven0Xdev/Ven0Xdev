@@ -7,14 +7,16 @@ numbers for a given ticker/timestamp.
 """
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from functools import lru_cache
 
 import numpy as np
 
-from app.services.data_providers.base import MarketDataProvider
+from app.services.data_providers.base import Fundamentals, MarketDataProvider
 from app.services.data_providers.factory import get_data_provider
+from app.services.data_providers.http_base import ProviderDataUnavailable
 from app.services.features import catalyst, fundamental, liquidity, manipulation, sentiment, technical
 from app.services.ml import forecasting
 from app.services.ml.explainability import build_plain_english_explanation, explain_with_shap
@@ -22,6 +24,8 @@ from app.services.ml.feature_vector import FEATURE_NAMES
 from app.services.ml.training_pipeline import load_latest_model
 from app.services.ml.ensemble import EnsembleModel
 from app.schemas.stock import HorizonProbabilities, ManipulationFlagOut, StockAnalysis, TopFactor
+
+logger = logging.getLogger(__name__)
 
 HORIZONS_DAYS = [5, 10, 20]
 PRIMARY_HORIZON = 10
@@ -67,11 +71,49 @@ def analyze_ticker(symbol: str, provider: MarketDataProvider | None = None) -> S
 
 def _analyze_ticker_uncached(symbol: str, provider: MarketDataProvider) -> StockAnalysis:
 
+    # Price data has no honest degraded state — without it there is no
+    # analysis to run, so these two stay hard requirements (a failure here
+    # correctly 503s the whole request via the caller's ProviderDataUnavailable
+    # handling). Fundamentals/news/corporate-actions are each individually
+    # optional inputs the rest of the pipeline already tolerates being
+    # empty/neutral for (see fundamental.py's data_available branch and
+    # sentiment.py/catalyst.py's empty-list handling) — a vendor gap in any
+    # one of them (e.g. no ETF fundamentals on a free plan) must degrade
+    # that one signal honestly, never sink the whole analysis.
     meta = provider.get_ticker_meta(symbol)
     df = provider.get_ohlcv(symbol, lookback_days=300)
-    fundamentals = provider.get_fundamentals(symbol)
-    news = provider.get_news(symbol)
-    corp_actions = provider.get_corporate_actions(symbol)
+
+    try:
+        fundamentals = provider.get_fundamentals(symbol)
+    except ProviderDataUnavailable as exc:
+        logger.info("%s: fundamentals unavailable (%s) — scoring with data_available=False", symbol, exc)
+        fundamentals = Fundamentals(
+            symbol=symbol,
+            market_cap=meta.market_cap,
+            float_shares=meta.float_shares,
+            shares_outstanding=meta.shares_outstanding,
+            cash=0.0,
+            total_debt=0.0,
+            revenue_ttm=0.0,
+            net_income_ttm=0.0,
+            dilution_12m_pct=0.0,
+            going_concern_flag=False,
+            last_filing_date=None,
+            filing_delinquent=False,
+            data_available=False,
+        )
+
+    try:
+        news = provider.get_news(symbol)
+    except ProviderDataUnavailable as exc:
+        logger.info("%s: news unavailable (%s) — scoring with no news", symbol, exc)
+        news = []
+
+    try:
+        corp_actions = provider.get_corporate_actions(symbol)
+    except ProviderDataUnavailable as exc:
+        logger.info("%s: corporate actions unavailable (%s) — scoring with none", symbol, exc)
+        corp_actions = []
 
     tech = technical.compute_all_technical_features(df)
     technical_score, _tech_components = technical.compute_technical_score(tech)
@@ -148,6 +190,7 @@ def _analyze_ticker_uncached(symbol: str, provider: MarketDataProvider) -> Stock
         liquidity_score=liquidity_score,
         manipulation_risk=manipulation_risk,
         fundamental_score=fundamental_score,
+        fundamentals_available=fundamentals.data_available,
         technical_score=technical_score,
         sentiment_score=sentiment_score,
         catalyst_score=catalyst_score,

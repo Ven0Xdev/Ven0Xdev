@@ -146,6 +146,15 @@ class Fundamentals:
     going_concern_flag: bool
     last_filing_date: datetime | None
     filing_delinquent: bool = False
+    # False means every field above is a neutral placeholder (zeros/False),
+    # not a real "the company has zero cash" observation — set when a
+    # provider genuinely cannot supply fundamentals for this symbol (e.g.
+    # neither Twelve Data's paid-only /statistics nor Alpha Vantage's
+    # stock-only OVERVIEW cover ETFs like SPY/XLK). Callers must render
+    # "fundamentals unavailable", never a real-looking score built from
+    # fabricated zeros — see services/scoring/scorer.py's fallback
+    # construction and features/fundamental.py's neutral-score branch.
+    data_available: bool = True
 
 
 @dataclass

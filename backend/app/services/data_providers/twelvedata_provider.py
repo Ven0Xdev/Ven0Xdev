@@ -48,6 +48,7 @@ from app.services.data_providers.base import (
     TickerMeta,
 )
 from app.services.data_providers.http_base import (
+    LOW_FREQUENCY_TTL_SECONDS,
     ProviderDataUnavailable,
     RateLimitedHttpClient,
 )
@@ -79,6 +80,7 @@ class TwelveDataProvider(MarketDataProvider):
         cache_ttl_seconds: float = 300.0,
         universe_limit: int = 500,
         transport: httpx.BaseTransport | None = None,
+        redis_url: str | None = None,
     ):
         if not api_key:
             raise ProviderDataUnavailable(
@@ -95,6 +97,11 @@ class TwelveDataProvider(MarketDataProvider):
             # log line, so it never leaks.
             default_params={"apikey": api_key},
             transport=transport,
+            # Shared across every container (api/prediction-logger/scanner)
+            # polling this same 20-symbol universe — see http_base.py's
+            # SharedCache/SharedRateLimiter docstrings. None (unset Redis)
+            # degrades to this process's own cache/limiter, same as before.
+            redis_url=redis_url,
         )
         self._universe_limit = universe_limit
         # Updated after every successful call: "delayed" for a fresh vendor
@@ -104,8 +111,8 @@ class TwelveDataProvider(MarketDataProvider):
         self.data_mode = "delayed"
 
     # --- plumbing ---------------------------------------------------------
-    def _get(self, path: str, params: dict, cache_key: tuple, context: str):
-        payload, from_cache = self._http.get_json_cached(path, params, cache_key)
+    def _get(self, path: str, params: dict, cache_key: tuple, context: str, ttl_seconds: float | None = None):
+        payload, from_cache = self._http.get_json_cached(path, params, cache_key, ttl_seconds)
         _check_errors(payload, "TwelveData", context)
         self.data_mode = "cached" if from_cache else "delayed"
         return payload
@@ -200,7 +207,8 @@ class TwelveDataProvider(MarketDataProvider):
     def get_fundamentals(self, symbol: str) -> Fundamentals:
         symbol = symbol.upper()
         payload = self._get(
-            "/statistics", {"symbol": symbol}, ("statistics", symbol), "/statistics"
+            "/statistics", {"symbol": symbol}, ("statistics", symbol), "/statistics",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
         )
         stats = payload.get("statistics") or {}
         valuations = stats.get("valuations_metrics") or {}
@@ -235,7 +243,10 @@ class TwelveDataProvider(MarketDataProvider):
     # --- corporate actions -------------------------------------------------------------
     def get_corporate_actions(self, symbol: str) -> list[CorporateAction]:
         symbol = symbol.upper()
-        payload = self._get("/splits", {"symbol": symbol}, ("splits", symbol), "/splits")
+        payload = self._get(
+            "/splits", {"symbol": symbol}, ("splits", symbol), "/splits",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
+        )
         actions = []
         for row in payload.get("splits") or []:
             try:
@@ -263,4 +274,5 @@ def _build_twelvedata_only(settings) -> TwelveDataProvider:
     return TwelveDataProvider(
         settings.twelve_data_api_key,
         universe_limit=settings.universe_max_tickers,
+        redis_url=settings.redis_url,
     )

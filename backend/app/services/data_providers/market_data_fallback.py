@@ -132,6 +132,7 @@ def _build_twelvedata_with_fallback(settings) -> FallbackMarketDataProvider:
         primary = TwelveDataProvider(
             settings.twelve_data_api_key,
             universe_limit=settings.universe_max_tickers,
+            redis_url=settings.redis_url,
         )
     except ProviderDataUnavailable as exc:
         # No TWELVE_DATA_API_KEY set — the composite still builds and goes
@@ -142,7 +143,7 @@ def _build_twelvedata_with_fallback(settings) -> FallbackMarketDataProvider:
     fallback: AlphaVantageProvider | None = None
     try:
         if settings.alpha_vantage_api_key:
-            fallback = AlphaVantageProvider(settings.alpha_vantage_api_key)
+            fallback = AlphaVantageProvider(settings.alpha_vantage_api_key, redis_url=settings.redis_url)
     except ProviderDataUnavailable:
         fallback = None
 
