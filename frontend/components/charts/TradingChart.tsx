@@ -191,6 +191,21 @@ export function TradingChart({
   const drawingsPrimitiveRef = useRef<DrawingsPrimitive | null>(null);
   const dragActiveRef = useRef(false);
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(document.fullscreenElement === wrapperRef.current);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!wrapperRef.current) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else wrapperRef.current.requestFullscreen();
+  }, []);
+
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("1D");
   const [range, setRange] = useState<ChartRange | null>(defaultRangeForInterval("1D"));
   const [activeOverlays, setActiveOverlays] = useState<Set<string>>(new Set(["sma_20"]));
@@ -865,7 +880,11 @@ export function TradingChart({
     : "var(--text-muted)";
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      ref={wrapperRef}
+      className="flex flex-col gap-3"
+      style={isFullscreen ? { height: "100vh", background: "var(--surface-1)", padding: "1rem", overflowY: "auto" } : undefined}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap gap-1" role="group" aria-label="Chart interval">
@@ -913,6 +932,16 @@ export function TradingChart({
             {candles.market_status && ` · ${candles.market_status.replace("-", " ")}`}
           </span>
         )}
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit full screen" : "Full screen chart"}
+          aria-label={isFullscreen ? "Exit full screen" : "Full screen chart"}
+          className="rounded-md px-2 py-1 text-xs font-semibold"
+          style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        >
+          {isFullscreen ? "⤡ Exit full screen" : "⤢ Full screen"}
+        </button>
       </div>
 
       {isLive && (
@@ -1015,7 +1044,7 @@ export function TradingChart({
           pendingFirstPoint={drawingsApi.hasPendingFirstPoint()}
         />
         <div className="relative flex-1">
-          <div ref={containerRef} className="content-reveal w-full" style={{ height: 420 }} />
+          <div ref={containerRef} className="content-reveal w-full" style={{ height: isFullscreen ? "calc(100vh - 200px)" : 420 }} />
           {hoveredMarker && <MarkerTooltip x={hoveredMarker.x} y={hoveredMarker.y} info={hoveredMarker.info} />}
           {drawingsApi.selected && drawingsApi.tool === "cursor" && (
             <div className="absolute right-2 top-2 z-20">
