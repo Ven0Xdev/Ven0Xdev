@@ -16,8 +16,18 @@ import { PlatformStatusBar } from "./PlatformStatusBar";
 
 const SAFE_MODE_OFF: SafeModeStatus = { override: null, env_default: false, effective: false, updated_at: null, updated_by_user_id: null };
 const SAFE_MODE_ON: SafeModeStatus = { override: true, env_default: false, effective: true, updated_at: null, updated_by_user_id: null };
-const AUTONOMOUS_RUNNING: AutonomousTradingStatus = { paused: false, updated_at: null, updated_by_user_id: null };
-const AUTONOMOUS_PAUSED: AutonomousTradingStatus = { paused: true, updated_at: null, updated_by_user_id: null };
+const AUTONOMOUS_RUNNING: AutonomousTradingStatus = {
+  paused: false, updated_at: null, updated_by_user_id: null,
+  drift_status: "stable", drift_blocking: false, safe_mode_active: false, operational: true,
+};
+const AUTONOMOUS_PAUSED: AutonomousTradingStatus = {
+  paused: true, updated_at: null, updated_by_user_id: null,
+  drift_status: "stable", drift_blocking: false, safe_mode_active: false, operational: false,
+};
+const AUTONOMOUS_DRIFT_BLOCKED: AutonomousTradingStatus = {
+  paused: false, updated_at: null, updated_by_user_id: null,
+  drift_status: "significant", drift_blocking: true, safe_mode_active: false, operational: false,
+};
 
 describe("PlatformStatusBar", () => {
   afterEach(() => {
@@ -45,6 +55,21 @@ describe("PlatformStatusBar", () => {
 
     await waitFor(() => expect(screen.getByText(/Safe Mode ACTIVE/)).toBeTruthy());
     expect(screen.getByText(/Autonomous trading PAUSED/)).toBeTruthy();
+  });
+
+  it("shows BLOCKED — CRITICAL MODEL DRIFT rather than 'running' when the emergency stop is off but drift is significant", async () => {
+    // Regression guard: the label must never be derived from `!paused`
+    // alone — Red-Team's drift veto blocks every autonomous entry
+    // independently of the emergency-stop switch (see admin.py's
+    // AutonomousTradingOut docstring).
+    apiMock.safeMode.mockResolvedValue(SAFE_MODE_OFF);
+    apiMock.autonomousTradingStatus.mockResolvedValue(AUTONOMOUS_DRIFT_BLOCKED);
+    apiMock.me.mockResolvedValue({ id: 1, email: "u@example.com", role: "user", created_at: "" });
+
+    render(<PlatformStatusBar refreshSignal={0} />);
+
+    await waitFor(() => expect(screen.getByText(/BLOCKED — CRITICAL MODEL DRIFT/)).toBeTruthy());
+    expect(screen.queryByText(/Autonomous trading running/)).toBeNull();
   });
 
   it("shows operator controls only for an operator, and toggling calls the right endpoint", async () => {

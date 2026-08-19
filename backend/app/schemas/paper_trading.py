@@ -84,3 +84,35 @@ class PaperStartSimulationRequest(BaseModel):
 
 class AutonomousTradingToggleRequest(BaseModel):
     enabled: bool
+
+
+class WhyNoTradeGateOut(BaseModel):
+    name: str
+    passed: bool
+    detail: str
+
+
+class WhyNoTradeOut(BaseModel):
+    """Paper Trading's "Why no trade?" diagnostic — read-only, mirrors
+    every gate services/paper_trading/autonomous.py itself checks before
+    an autonomous entry, without executing anything. See
+    services/paper_trading/why_no_trade.py for the authoritative logic."""
+
+    ticker: str
+    timeframe: str
+    market_state: str
+    provider: str
+    data_mode: str
+    data_freshness: str
+    ncs_state: str
+    ncs_fired: bool
+    ncs_vetoed: bool
+    red_team_result: str
+    shadow_sample_size: int
+    shadow_win_rate_pct: float | None
+    drift_status: str
+    risk_gate_passed: bool
+    risk_gate_reasons: list[str]
+    gates: list[WhyNoTradeGateOut]
+    permitted: bool
+    blockers: list[str]

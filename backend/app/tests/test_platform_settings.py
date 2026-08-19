@@ -187,3 +187,30 @@ def test_autonomous_trading_endpoints_allow_operator_when_auth_is_required(clien
         # stuck "on" in the shared test DB for every later test.
         settings.auth_required = original
         client.post("/api/v1/admin/autonomous-trading", json={"paused": False})
+
+
+def test_autonomous_trading_status_reports_operational_true_with_every_gate_clear(client):
+    res = client.get("/api/v1/admin/autonomous-trading")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["paused"] is False
+    assert body["drift_blocking"] is False
+    assert body["safe_mode_active"] is False
+    assert body["operational"] is True
+
+
+def test_autonomous_trading_status_reports_not_operational_on_critical_drift_even_when_not_paused(client, monkeypatch):
+    """Regression guard for the "displays Running despite critical drift"
+    bug: the emergency-stop switch being off must never make this endpoint
+    (or anything reading it) claim autonomous trading is operational while
+    Red-Team's drift veto (services/risk/red_team.py) would refuse every
+    entry anyway."""
+    monkeypatch.setattr("app.services.monitoring.drift.drift_status_label", lambda db: "significant")
+
+    res = client.get("/api/v1/admin/autonomous-trading")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["paused"] is False
+    assert body["drift_status"] == "significant"
+    assert body["drift_blocking"] is True
+    assert body["operational"] is False

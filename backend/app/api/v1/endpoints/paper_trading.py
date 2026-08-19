@@ -11,6 +11,8 @@ from app.schemas.paper_trading import (
     PaperPositionOut,
     PaperSimulationSummary,
     PaperStartSimulationRequest,
+    WhyNoTradeGateOut,
+    WhyNoTradeOut,
 )
 from app.services.data_providers.base import MarketDataProvider
 from app.services.paper_trading import engine
@@ -147,6 +149,37 @@ def open_position(
     except PaperTradingError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _with_mark_to_market(position, provider)
+
+
+@router.get("/why-no-trade/{symbol}", response_model=WhyNoTradeOut)
+def why_no_trade(
+    symbol: str,
+    timeframe: str = "1D",
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
+):
+    """Read-only diagnostic: walks every gate autonomous paper trading
+    itself checks (services/paper_trading/autonomous.py) for this user's
+    active simulation and this ticker, without opening or closing
+    anything. Requires an active simulation — there is no account to
+    diagnose gates against otherwise."""
+    from app.services.paper_trading.why_no_trade import why_no_trade as build_report
+
+    account = engine.get_active_account(user.id, db)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Start a paper trading simulation first.")
+    report = build_report(db, account, symbol, timeframe, provider)
+    return WhyNoTradeOut(
+        ticker=report.ticker, timeframe=report.timeframe, market_state=report.market_state,
+        provider=report.provider, data_mode=report.data_mode, data_freshness=report.data_freshness,
+        ncs_state=report.ncs_state, ncs_fired=report.ncs_fired, ncs_vetoed=report.ncs_vetoed,
+        red_team_result=report.red_team_result, shadow_sample_size=report.shadow_sample_size,
+        shadow_win_rate_pct=report.shadow_win_rate_pct, drift_status=report.drift_status,
+        risk_gate_passed=report.risk_gate_passed, risk_gate_reasons=report.risk_gate_reasons,
+        gates=[WhyNoTradeGateOut(name=g.name, passed=g.passed, detail=g.detail) for g in report.gates],
+        permitted=report.permitted, blockers=report.blockers,
+    )
 
 
 @router.post("/positions/{position_id}/close", response_model=PaperPositionOut)

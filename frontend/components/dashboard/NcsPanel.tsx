@@ -47,6 +47,17 @@ export function NcsPanel({ symbol, timeframe = "1D" }: { symbol: string; timefra
   const signal = hasSignal ? (ncs as NcsSignal) : null;
   const style = signal ? VERDICT_STYLES[signal.raw_verdict] ?? VERDICT_STYLES.NEUTRAL : VERDICT_STYLES.NEUTRAL;
 
+  // Exact, honest reasons this row is not (yet) an actionable chart
+  // marker — never inferred, only what the row itself already says.
+  const blockers: string[] = [];
+  if (signal?.vetoed) blockers.push(`Red-Team vetoed: ${signal.veto_reason ?? "no reason recorded"}`);
+  if (signal && !signal.vetoed && signal.confirmed_verdict === null) {
+    blockers.push("Awaiting a second consecutive closed bar agreeing on this verdict before it confirms.");
+  }
+  if (signal && !signal.vetoed && signal.confirmed_verdict !== null && !signal.fired) {
+    blockers.push("Confirmed but did not fire — either unchanged from the prior bucket or still within cooldown.");
+  }
+
   return (
     <div className="card animate-in p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -113,6 +124,30 @@ export function NcsPanel({ symbol, timeframe = "1D" }: { symbol: string; timefra
             {signal.explanation}
           </p>
 
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span
+              className="font-semibold"
+              style={{ color: signal.vetoed ? "var(--status-critical)" : "var(--status-good)" }}
+            >
+              Red-Team: {signal.vetoed ? "VETO" : "PASS"}
+            </span>
+          </div>
+
+          {blockers.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--text-muted)" }}>
+                Blockers
+              </p>
+              <ul className="mt-0.5 flex flex-col gap-0.5">
+                {blockers.map((b, i) => (
+                  <li key={i} className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                    · {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-1.5">
             {signal.components
               .filter((c) => c.weight > 0)
@@ -129,7 +164,8 @@ export function NcsPanel({ symbol, timeframe = "1D" }: { symbol: string; timefra
           </div>
 
           <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            Closed bar <LocalTime iso={signal.bar_ts} options={{ style: "short" }} /> · {signal.data_source} (
+            Closed bar <LocalTime iso={signal.bar_ts} options={{ style: "short" }} /> · evaluated{" "}
+            <LocalTime iso={signal.computed_at} options={{ style: "short" }} /> · {signal.data_source} (
             {signal.data_mode}) · {signal.version}
           </p>
         </div>

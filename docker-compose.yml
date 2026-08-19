@@ -106,6 +106,29 @@ services:
     volumes:
       - model_artifacts:/app/model_artifacts
 
+  # Continuous NCS (Nexora Conviction Signal) evaluator — runs by default,
+  # not profile-gated like `scanner` above: without this, chart Buy/Sell
+  # markers, the Shadow track record, and autonomous paper trading's own
+  # trigger all stay dormant for any symbol nobody manually clicked
+  # "Evaluate now" on. See backend/app/workers/ncs_scheduler.py.
+  ncs-scheduler:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.workers.ncs_scheduler"]
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://ven0x:ven0x@timescaledb:5432/ven0x_otc
+      USE_SQLITE_FALLBACK: "false"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - model_artifacts:/app/model_artifacts
+
   web:
     build:
       context: ./frontend

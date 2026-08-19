@@ -84,6 +84,20 @@ function toTime(iso: string): UTCTimestamp {
   return (Date.parse(iso) / 1000) as UTCTimestamp;
 }
 
+type MarkerTooltipInfo =
+  | { kind: "news"; article: NewsPipelineArticle }
+  | { kind: "ncs"; signal: NcsSignal; vetoed: boolean };
+
+const NCS_BUY_FAMILY = new Set(["STRONG_BUY", "BUY"]);
+const NCS_SELL_FAMILY = new Set(["STRONG_SELL", "SELL"]);
+
+function ncsBucket(verdict: string | null): "BUY" | "SELL" | "NEUTRAL" | null {
+  if (verdict === null) return null;
+  if (NCS_BUY_FAMILY.has(verdict)) return "BUY";
+  if (NCS_SELL_FAMILY.has(verdict)) return "SELL";
+  return "NEUTRAL";
+}
+
 /** lightweight-charts' own tick-mark formatter, re-derived per selected
  * timezone so the x-axis (and everything else on the chart) represents the
  * same instant as the REST-backfilled and SSE-streamed bars — both of
@@ -200,6 +214,11 @@ export function TradingChart({
   // NCS + news chart markers — annotations only, see the module docstring.
   const [ncsHistory, setNcsHistory] = useState<NcsSignal[]>([]);
   const [newsForMarkers, setNewsForMarkers] = useState<NewsPipelineArticle[]>([]);
+  // lightweight-charts' markers plugin has no built-in hover tooltip — this
+  // is that tooltip, keyed by the same UTCTimestamp every marker is placed
+  // at, so a crosshair-move hit test can look up what's actually under it.
+  const markerTooltipsRef = useRef<Map<number, MarkerTooltipInfo>>(new Map());
+  const [hoveredMarker, setHoveredMarker] = useState<{ x: number; y: number; info: MarkerTooltipInfo } | null>(null);
 
   // Drawing toolbar — trendline/horizontal-line, persisted per symbol in
   // localStorage (client-side only: not shared across devices/sessions,
@@ -277,12 +296,23 @@ export function TradingChart({
   // on [symbol, timeframe] only: NCS history and news don't have a Range
   // dimension, they're just plotted wherever they land within whatever
   // candles are currently visible.
+  //
+  // Re-polled every 60s while mounted: `app/workers/ncs_scheduler.py`
+  // evaluates and persists new NCS rows in the background on its own
+  // interval, independently of whether this chart is even open — without
+  // this poll, a fresh Buy/Sell marker would only ever appear after a full
+  // page reload.
   useEffect(() => {
     let cancelled = false;
-    api.ncsHistory(symbol, timeframe).then((r) => !cancelled && setNcsHistory(r.signals)).catch(() => !cancelled && setNcsHistory([]));
-    api.newsForSymbol(symbol).then((r) => !cancelled && setNewsForMarkers(r.articles)).catch(() => !cancelled && setNewsForMarkers([]));
+    const load = () => {
+      api.ncsHistory(symbol, timeframe).then((r) => !cancelled && setNcsHistory(r.signals)).catch(() => !cancelled && setNcsHistory([]));
+      api.newsForSymbol(symbol).then((r) => !cancelled && setNewsForMarkers(r.articles)).catch(() => !cancelled && setNewsForMarkers([]));
+    };
+    load();
+    const interval = setInterval(load, 60_000);
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, [symbol, timeframe]);
 
@@ -389,39 +419,114 @@ export function TradingChart({
 
   // NCS + news markers on the candle series — chart annotations only, see
   // the module docstring: nothing here places, opens, or even proposes a
-  // paper order. NCS markers only for *confirmed* verdicts (non-repaint
-  // contract — see services/signals/ncs.py), never the raw/unconfirmed
-  // read, so a marker on the chart never shows something that could still
-  // flip on the next bar. News markers are small, sentiment-colored dots
-  // (lightweight-charts markers have no built-in hover tooltip) — the full
-  // article list with headline/source/link lives in NewsPanel below.
+  // paper order.
+  //
+  // NCS markers are keyed off `fired`, never every confirmed row — see
+  // NcsSignal's own docstring ("the one field a chart/UI should key 'new
+  // marker' off of, never every row, which would repeat markers on every
+  // unchanged re-evaluation"). A row can only ever fire on a BUY/SELL-family
+  // bucket (services/signals/ncs.py's evaluate_ncs never sets fired=True on
+  // NEUTRAL or on a vetoed row), so this filter alone also fixes what was
+  // previously a real bug here: confirmed NEUTRAL rows fell into the
+  // `else` (bearish) branch and rendered as a false red "Sell" arrow.
+  //
+  // Vetoed BUY/SELL-family confirmations never fire (by the same backend
+  // rule) and were previously dropped from the chart entirely — silently
+  // hiding a Red-Team veto from the one place a user is actually looking.
+  // They now get their own distinct marker (gray circle, veto reason in
+  // the hover tooltip), deduped the same way `fired` dedupes real
+  // signals: only the first bar of a consecutive same-bucket vetoed streak
+  // gets a marker, never one per bar.
+  //
+  // News markers use a square shape (NCS uses arrows) specifically so
+  // they can never be visually mistaken for an NCS Neutral marker — NCS
+  // never draws a marker for Neutral at all (it stays in the NCS panel
+  // only, per design), so a gray shape on the chart is always news.
   useEffect(() => {
     const plugin = markersPluginRef.current;
     if (!plugin) return;
+    const tooltips = new Map<number, MarkerTooltipInfo>();
+
     const ncsMarkers: SeriesMarker<Time>[] = ncsHistory
-      .filter((s) => s.confirmed_verdict !== null && !s.vetoed)
+      .filter((s) => s.fired)
       .map((s) => {
-        const bullish = s.confirmed_verdict === "STRONG_BUY" || s.confirmed_verdict === "BUY";
+        const verdict = s.confirmed_verdict as string;
+        const bullish = verdict === "STRONG_BUY" || verdict === "BUY";
+        const strong = verdict === "STRONG_BUY" || verdict === "STRONG_SELL";
+        const time = toTime(s.bar_ts);
+        tooltips.set(time as number, { kind: "ncs", signal: s, vetoed: false });
         return {
-          time: toTime(s.bar_ts),
+          time,
           position: bullish ? "belowBar" : "aboveBar",
           shape: bullish ? "arrowUp" : "arrowDown",
           color: bullish ? "#0bb981" : "#dc2626",
-          text: `NCS ${s.confirmed_verdict?.replace("_", " ")}`,
-          size: 1,
+          text: strong ? (bullish ? "Strong Buy" : "Strong Sell") : bullish ? "Buy" : "Sell",
+          size: strong ? 1.6 : 1.1,
         } satisfies SeriesMarker<Time>;
       });
-    const newsMarkers: SeriesMarker<Time>[] = newsForMarkers.map((a) => ({
-      time: toTime(a.published_at),
-      position: "aboveBar",
-      shape: "circle",
-      color: a.sentiment_label === "positive" ? "#0bb981" : a.sentiment_label === "negative" ? "#dc2626" : "#8a919c",
-      text: "N",
-      size: 0.6,
-    }));
-    const combined = [...ncsMarkers, ...newsMarkers].sort((a, b) => (a.time as number) - (b.time as number));
+
+    const vetoedSorted = [...ncsHistory]
+      .filter((s) => s.vetoed && ncsBucket(s.confirmed_verdict) !== "NEUTRAL" && ncsBucket(s.confirmed_verdict) !== null)
+      .sort((a, b) => toTime(a.bar_ts) - toTime(b.bar_ts));
+    let lastVetoedBucket: string | null = null;
+    const vetoedMarkers: SeriesMarker<Time>[] = [];
+    for (const s of vetoedSorted) {
+      const bucket = ncsBucket(s.confirmed_verdict);
+      if (bucket === lastVetoedBucket) continue; // same unbroken streak — already marked
+      lastVetoedBucket = bucket;
+      const time = toTime(s.bar_ts);
+      tooltips.set(time as number, { kind: "ncs", signal: s, vetoed: true });
+      vetoedMarkers.push({
+        time,
+        position: bucket === "BUY" ? "belowBar" : "aboveBar",
+        shape: "circle",
+        color: "#8a919c",
+        text: "VETOED",
+        size: 1,
+      });
+    }
+
+    const newsMarkers: SeriesMarker<Time>[] = newsForMarkers.map((a) => {
+      const time = toTime(a.published_at);
+      tooltips.set(time as number, { kind: "news", article: a });
+      return {
+        time,
+        position: "aboveBar",
+        shape: "square",
+        color: a.sentiment_label === "positive" ? "#0bb981" : a.sentiment_label === "negative" ? "#dc2626" : "#8a919c",
+        text: "News",
+        size: 0.6,
+      } satisfies SeriesMarker<Time>;
+    });
+
+    markerTooltipsRef.current = tooltips;
+    const combined = [...ncsMarkers, ...vetoedMarkers, ...newsMarkers].sort(
+      (a, b) => (a.time as number) - (b.time as number)
+    );
     plugin.setMarkers(combined);
   }, [ncsHistory, newsForMarkers, candles]);
+
+  // Marker hover tooltip — lightweight-charts' SeriesMarkers plugin has no
+  // built-in one, so this hit-tests the crosshair's bar time against the
+  // lookup built above and positions a floating tooltip at the cursor.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const handler = (param: MouseEventParams<Time>) => {
+      if (!param.point || param.time === undefined) {
+        setHoveredMarker(null);
+        return;
+      }
+      const info = markerTooltipsRef.current.get(param.time as number);
+      if (!info) {
+        setHoveredMarker(null);
+        return;
+      }
+      setHoveredMarker({ x: param.point.x, y: param.point.y, info });
+    };
+    chart.subscribeCrosshairMove(handler);
+    return () => chart.unsubscribeCrosshairMove(handler);
+  }, [symbol]);
 
   // Push RSI/MACD sub-pane data — explicitly cleared (not left stale) when
   // the new response has no series for a pane, e.g. an intraday timeframe
@@ -814,11 +919,21 @@ export function TradingChart({
             </span>
           )}
           <span style={{ color: "var(--text-muted)" }}>
-            {lastUpdate
-              ? `last update ${
-                  tzReady ? formatInTimeZone(lastUpdate, effectiveTimeZone, { style: "time", seconds: true }) : lastUpdate
-                } ${tzReady ? abbreviation : ""}`
-              : "waiting for first tick…"}
+            {lastUpdate ? (
+              `last update ${
+                tzReady ? formatInTimeZone(lastUpdate, effectiveTimeZone, { style: "time", seconds: true }) : lastUpdate
+              } ${tzReady ? abbreviation : ""}`
+            ) : candles?.market_status && candles.market_status !== "open" ? (
+              // Outside regular NYSE hours the live feed genuinely never
+              // ticks (see services/market_overview.py's market_status) —
+              // saying "waiting for first tick" forever is misleading, not
+              // just impatient. Say plainly why nothing's arriving.
+              <span className="font-semibold" style={{ color: "var(--status-critical)" }}>
+                MARKET {candles.market_status.toUpperCase().replace("-", " ")} — no live ticks
+              </span>
+            ) : (
+              "waiting for first tick…"
+            )}
           </span>
         </div>
       )}
@@ -856,7 +971,51 @@ export function TradingChart({
         </p>
       )}
 
-      <div ref={containerRef} className="content-reveal w-full" style={{ height: 420 }} />
+      <div className="relative">
+        <div ref={containerRef} className="content-reveal w-full" style={{ height: 420 }} />
+        {hoveredMarker && <MarkerTooltip x={hoveredMarker.x} y={hoveredMarker.y} info={hoveredMarker.info} />}
+      </div>
+    </div>
+  );
+}
+
+function MarkerTooltip({ x, y, info }: { x: number; y: number; info: MarkerTooltipInfo }) {
+  return (
+    <div
+      className="pointer-events-none absolute z-10 max-w-xs rounded-lg px-3 py-2 text-xs shadow-lg"
+      style={{
+        left: x, top: y, transform: "translate(-50%, -110%)",
+        background: "var(--surface-1)", border: "1px solid var(--border)", color: "var(--text-primary)",
+      }}
+    >
+      {info.kind === "news" ? (
+        <>
+          <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+            📰 {info.article.headline}
+          </p>
+          <p className="mt-1" style={{ color: "var(--text-muted)" }}>
+            {info.article.source} · sentiment {info.article.sentiment_label}
+          </p>
+        </>
+      ) : info.vetoed ? (
+        <>
+          <p className="font-semibold" style={{ color: "var(--status-critical)" }}>
+            VETOED — {info.signal.confirmed_verdict?.replace("_", " ")}
+          </p>
+          <p className="mt-1" style={{ color: "var(--text-secondary)" }}>
+            {info.signal.veto_reason ?? "Red-Team vetoed this signal."}
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="font-semibold" style={{ color: "var(--text-primary)" }}>
+            NCS {info.signal.confirmed_verdict?.replace("_", " ")}
+          </p>
+          <p className="mt-1" style={{ color: "var(--text-muted)" }}>
+            confidence {info.signal.confidence_pct.toFixed(0)}% · risk {info.signal.risk_score.toFixed(0)}/100
+          </p>
+        </>
+      )}
     </div>
   );
 }

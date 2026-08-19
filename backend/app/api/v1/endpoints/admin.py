@@ -69,9 +69,16 @@ def set_safe_mode(
 
 
 def _serialize_autonomous(db: Session) -> AutonomousTradingOut:
+    from app.services.monitoring.drift import drift_status_label
+
     row = get_platform_setting(db)
+    drift_status = drift_status_label(db)
+    drift_blocking = drift_status == "significant"
+    safe_mode_active = is_safe_mode_active(db)
     return AutonomousTradingOut(
         paused=row.autonomous_trading_paused, updated_at=row.updated_at, updated_by_user_id=row.updated_by_user_id,
+        drift_status=drift_status, drift_blocking=drift_blocking, safe_mode_active=safe_mode_active,
+        operational=not row.autonomous_trading_paused and not drift_blocking and not safe_mode_active,
     )
 
 

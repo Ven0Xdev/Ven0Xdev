@@ -73,13 +73,33 @@ export function PlatformStatusBar({ refreshSignal }: { refreshSignal: number }) 
       {autonomous && (
         <span
           className="inline-flex items-center gap-1.5 font-semibold"
-          style={{ color: autonomous.paused ? "var(--status-critical)" : "var(--status-good)" }}
+          style={{ color: autonomous.operational ? "var(--status-good)" : "var(--status-critical)" }}
+          title={
+            autonomous.operational
+              ? undefined
+              : autonomous.paused
+                ? "Emergency stop is engaged — no autonomous entries."
+                : autonomous.drift_blocking
+                  ? `Model drift is "${autonomous.drift_status}" — Red-Team vetoes every autonomous entry until it clears.`
+                  : "Safe Mode is active — no autonomous entries."
+          }
         >
           <span
             className="h-1.5 w-1.5 rounded-full"
-            style={{ background: autonomous.paused ? "var(--status-critical)" : "var(--status-good)" }}
+            style={{ background: autonomous.operational ? "var(--status-good)" : "var(--status-critical)" }}
           />
-          Autonomous trading {autonomous.paused ? "PAUSED" : "running"}
+          {/* Never derive this label from `!autonomous.paused` alone — the
+              backend's own `operational` flag already folds in the
+              drift/Safe-Mode gates that block entries independently of the
+              emergency-stop switch (see AutonomousTradingOut's docstring). */}
+          Autonomous trading{" "}
+          {autonomous.paused
+            ? "PAUSED"
+            : autonomous.drift_blocking
+              ? "BLOCKED — CRITICAL MODEL DRIFT"
+              : autonomous.safe_mode_active
+                ? "BLOCKED — SAFE MODE"
+                : "running"}
         </span>
       )}
       {isOperator && safeMode && autonomous && (

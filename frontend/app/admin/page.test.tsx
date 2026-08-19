@@ -23,7 +23,10 @@ vi.mock("@/lib/api", () => ({ api: apiMock }));
 import AdminPage from "./page";
 
 const SAFE_MODE_OFF: SafeModeStatus = { override: null, env_default: false, effective: false, updated_at: null, updated_by_user_id: null };
-const AUTONOMOUS_TRADING_RUNNING: AutonomousTradingStatus = { paused: false, updated_at: null, updated_by_user_id: null };
+const AUTONOMOUS_TRADING_RUNNING: AutonomousTradingStatus = {
+  paused: false, updated_at: null, updated_by_user_id: null,
+  drift_status: "stable", drift_blocking: false, safe_mode_active: false, operational: true,
+};
 
 function mockDashboardData() {
   apiMock.safeMode.mockResolvedValue(SAFE_MODE_OFF);

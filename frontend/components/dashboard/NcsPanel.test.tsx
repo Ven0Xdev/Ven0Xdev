@@ -63,6 +63,31 @@ describe("NcsPanel", () => {
     expect(screen.getByText("VETOED").getAttribute("title")).toContain("correlated exposure too high");
   });
 
+  it("shows an explicit Red-Team PASS/VETO line distinct from the verdict pill", async () => {
+    apiMock.currentNcs.mockResolvedValue(SIGNAL);
+    render(<NcsPanel symbol="AAPL" />);
+    await waitFor(() => expect(screen.getByText(/Red-Team: PASS/)).toBeTruthy());
+  });
+
+  it("lists the exact blocker when confirmed but not yet fired", async () => {
+    apiMock.currentNcs.mockResolvedValue({ ...SIGNAL, fired: false });
+    render(<NcsPanel symbol="AAPL" />);
+    await waitFor(() => expect(screen.getByText(/did not fire/)).toBeTruthy());
+  });
+
+  it("lists the veto reason as a blocker for a vetoed signal", async () => {
+    apiMock.currentNcs.mockResolvedValue({ ...SIGNAL, vetoed: true, veto_reason: "correlated exposure too high", fired: false });
+    render(<NcsPanel symbol="AAPL" />);
+    await waitFor(() => expect(screen.getByText(/Red-Team vetoed: correlated exposure too high/)).toBeTruthy());
+    expect(screen.getByText(/Red-Team: VETO/)).toBeTruthy();
+  });
+
+  it("shows the last evaluation time distinct from the closed-bar time", async () => {
+    apiMock.currentNcs.mockResolvedValue(SIGNAL);
+    render(<NcsPanel symbol="AAPL" />);
+    await waitFor(() => expect(screen.getByText(/evaluated/)).toBeTruthy());
+  });
+
   it("never claims a chart signal is a paper order", async () => {
     apiMock.currentNcs.mockResolvedValue(SIGNAL);
     render(<NcsPanel symbol="AAPL" />);

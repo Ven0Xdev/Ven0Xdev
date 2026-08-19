@@ -32,6 +32,7 @@ import type {
   ProviderHealth,
   SafeModeStatus,
   SchemaStatus,
+  WhyNoTrade,
   SearchResponse,
   SectorHeatmapEntry,
   SignalPayload,
@@ -329,6 +330,8 @@ export const api = {
     request<PaperPosition>(`/paper-trading/positions/${positionId}/close`, { method: "POST" }),
   setAutonomousTrading: (enabled: boolean) =>
     request<PaperAccount>(`/paper-trading/autonomous`, { method: "POST", body: JSON.stringify({ enabled }) }),
+  whyNoTrade: (symbol: string, timeframe = "1D") =>
+    request<WhyNoTrade>(`/paper-trading/why-no-trade/${symbol}?timeframe=${timeframe}`),
 
   runBacktest: (params: {
     universe_limit?: number;

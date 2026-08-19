@@ -249,10 +249,24 @@ function AutonomousTradingCard({ status, onChange }: { status: AutonomousTrading
     }
   };
 
+  // Never label this "Running" from `!status.paused` alone — Red-Team's
+  // drift/Safe-Mode checks (services/risk/red_team.py) block every
+  // autonomous entry independently of the emergency-stop switch, and a
+  // human reading "Running" here would reasonably assume trades can
+  // actually happen. `operational` is the backend's own honest summary.
+  const headline = status.paused
+    ? "PAUSED — EMERGENCY STOP"
+    : status.drift_blocking
+      ? "BLOCKED — CRITICAL MODEL DRIFT"
+      : status.safe_mode_active
+        ? "BLOCKED — SAFE MODE"
+        : "Running";
+  const headlineCritical = status.paused || status.drift_blocking || status.safe_mode_active;
+
   return (
     <div
       className="card animate-in flex flex-col gap-3 p-5"
-      style={status.paused ? { borderColor: "var(--status-critical-soft)" } : undefined}
+      style={headlineCritical ? { borderColor: "var(--status-critical-soft)" } : undefined}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -271,13 +285,20 @@ function AutonomousTradingCard({ status, onChange }: { status: AutonomousTrading
         <span
           className="rounded-full px-3 py-1 text-xs font-semibold"
           style={{
-            background: status.paused ? "var(--status-critical-soft)" : "var(--status-good-soft)",
-            color: status.paused ? "var(--status-critical)" : "var(--status-good)",
+            background: headlineCritical ? "var(--status-critical-soft)" : "var(--status-good-soft)",
+            color: headlineCritical ? "var(--status-critical)" : "var(--status-good)",
           }}
         >
-          {status.paused ? "PAUSED" : "Running"}
+          {headline}
         </span>
       </div>
+
+      <div className="flex flex-wrap gap-1.5 text-[11px]">
+        <GateChip label="Emergency stop" blocked={status.paused} blockedText="ENGAGED" okText="off" />
+        <GateChip label="Model drift" blocked={status.drift_blocking} blockedText={status.drift_status} okText={status.drift_status} />
+        <GateChip label="Safe Mode" blocked={status.safe_mode_active} blockedText="active" okText="off" />
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <button disabled={busy || status.paused} onClick={() => apply(true)} className="btn btn-secondary btn-sm">
           Emergency stop
@@ -292,6 +313,24 @@ function AutonomousTradingCard({ status, onChange }: { status: AutonomousTrading
         </p>
       )}
     </div>
+  );
+}
+
+function GateChip({
+  label, blocked, blockedText, okText,
+}: {
+  label: string; blocked: boolean; blockedText: string; okText: string;
+}) {
+  return (
+    <span
+      className="rounded px-2 py-1 font-medium"
+      style={{
+        background: blocked ? "var(--status-critical-soft)" : "var(--surface-2)",
+        color: blocked ? "var(--status-critical)" : "var(--text-muted)",
+      }}
+    >
+      {label}: {blocked ? blockedText : okText}
+    </span>
   );
 }
 

@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { StatTile } from "@/components/ui/StatTile";
 import { LocalTime } from "@/components/ui/LocalTime";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { WhyNoTradePanel } from "@/components/dashboard/WhyNoTradePanel";
 
 const QUICK_AMOUNTS = [1_000, 2_500, 5_000, 10_000];
 
@@ -358,6 +359,8 @@ export default function PaperTradingPage() {
                   {account.autonomous_trading_enabled ? "Enabled" : "Disabled"}
                 </label>
               </div>
+
+              <WhyNoTradePanel />
 
               <form
                 className="card animate-in flex flex-wrap items-start gap-2.5 p-4"

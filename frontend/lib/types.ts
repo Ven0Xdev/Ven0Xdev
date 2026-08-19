@@ -191,6 +191,14 @@ export interface AutonomousTradingStatus {
   paused: boolean;
   updated_at: string | null;
   updated_by_user_id: number | null;
+  drift_status: "insufficient_history" | "stable" | "moderate" | "significant";
+  drift_blocking: boolean;
+  safe_mode_active: boolean;
+  /** The one honest "can this actually open a position right now?"
+   * summary — false means every autonomous entry is refused platform-wide
+   * regardless of `paused` alone. Never infer "operational" from
+   * `!paused` — see admin.py's AutonomousTradingOut docstring. */
+  operational: boolean;
 }
 
 export interface BacktestTrade {
@@ -556,6 +564,37 @@ export interface NcsSignal {
 export interface NcsNoSignalYet {
   raw_verdict: "NO_SIGNAL_YET";
   ticker: string;
+}
+
+export interface WhyNoTradeGate {
+  name: string;
+  passed: boolean;
+  detail: string;
+}
+
+/** Paper Trading's "Why no trade?" diagnostic — mirrors every gate
+ * autonomous paper trading itself checks (services/paper_trading/
+ * autonomous.py) without opening or closing anything. See
+ * backend/app/services/paper_trading/why_no_trade.py. */
+export interface WhyNoTrade {
+  ticker: string;
+  timeframe: string;
+  market_state: string;
+  provider: string;
+  data_mode: string;
+  data_freshness: string;
+  ncs_state: string;
+  ncs_fired: boolean;
+  ncs_vetoed: boolean;
+  red_team_result: string;
+  shadow_sample_size: number;
+  shadow_win_rate_pct: number | null;
+  drift_status: string;
+  risk_gate_passed: boolean;
+  risk_gate_reasons: string[];
+  gates: WhyNoTradeGate[];
+  permitted: boolean;
+  blockers: string[];
 }
 
 /** A single article from the Alpaca-backed news pipeline (services/news) —

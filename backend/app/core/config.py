@@ -142,6 +142,25 @@ class Settings(BaseSettings):
     # unconditionally (not gated behind otc_module_enabled).
     prediction_log_interval_seconds: int = 3600
 
+    # --- NCS scheduler (app/workers/ncs_scheduler.py) ---
+    # Without this worker, services/signals/ncs.py's evaluate_ncs() is only
+    # ever invoked by a human clicking "Evaluate now" (NcsPanel) or hitting
+    # POST /stream/{symbol}/evaluate-ncs directly — meaning chart markers,
+    # the Shadow track record, and autonomous paper trading's own trigger
+    # (on_ncs_fired_autonomous, called from inside evaluate_ncs) all stay
+    # permanently dormant for any symbol nobody happened to click. Much
+    # shorter than prediction_log_interval_seconds: evaluate_ncs() is cheap
+    # to re-run (it no-ops immediately once the current closed bar's row
+    # already exists — see its anti-repaint check) and a fresh Buy/Sell
+    # marker should appear soon after its bar actually closes, not up to an
+    # hour later.
+    ncs_eval_interval_seconds: int = 300
+    # Timeframe(s) evaluated automatically, comma-separated. "1D" only by
+    # default — matches the chart's and NcsPanel's own default timeframe;
+    # other timeframes remain available on demand via the existing
+    # POST /stream/{symbol}/evaluate-ncs endpoint.
+    ncs_eval_timeframes: str = "1D"
+
     # --- Optional OTC/micro-cap module (disabled by default) ---
     # Nexora's mainstream experience runs on the Asset Universe Manager's
     # STOCK/ETF/INDEX/COMMODITY/PRECIOUS_METAL universe (services/universe/
