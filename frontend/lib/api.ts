@@ -35,6 +35,7 @@ import type {
   PlatformHealthReport,
   PortfolioPosition,
   ProviderHealth,
+  QuoteTicket,
   SafeModeStatus,
   SchemaStatus,
   WhyNoTrade,
@@ -412,6 +413,7 @@ export const api = {
     request<PaperOrderRecord[]>(`/paper-trading/orders${status ? `?status=${status}` : ""}`),
   cancelPaperOrder: (id: number) => request<PaperOrderRecord>(`/paper-trading/orders/${id}/cancel`, { method: "POST" }),
   paperTrades: (limit = 100) => request<PaperTradeRecord[]>(`/paper-trading/trades?limit=${limit}`),
+  paperTicketQuote: (symbol: string) => request<QuoteTicket>(`/paper-trading/quote/${symbol}`),
 
   // Decision Audit — every real persisted NCS evaluation for this
   // ticker/timeframe, enriched with Shadow/order outcome (see

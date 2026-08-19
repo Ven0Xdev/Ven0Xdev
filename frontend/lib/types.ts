@@ -273,9 +273,23 @@ export interface DecisionAuditRow {
   paper_order_id: number | null;
 }
 
+/** Top-of-book quote for the chart Order Ticket. bid/ask/spread are null,
+ * never invented, when the provider doesn't supply quote depth. */
+export interface QuoteTicket {
+  symbol: string;
+  last: number;
+  bid: number | null;
+  ask: number | null;
+  spread: number | null;
+  timestamp: string;
+  data_source: string;
+  data_mode: string;
+}
+
 export interface DecisionAuditResponse {
   symbol: string;
   timeframe: string;
+  current_drift_status: string;
   eligibility_progress: {
     candidate_signals: number;
     open_observations: number;

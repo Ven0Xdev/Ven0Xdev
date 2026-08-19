@@ -1,18 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { useResyncListener } from "@/lib/pwa";
-import type { PaperAccount, PaperPosition, PaperSimulationSummary } from "@/lib/types";
+import type { PaperAccount, PaperOrderRecord, PaperPosition, PaperSimulationSummary, PaperTradeRecord } from "@/lib/types";
+import { computeAccountSummary } from "@/lib/paperTradingMath";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { StatTile } from "@/components/ui/StatTile";
 import { LocalTime } from "@/components/ui/LocalTime";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { WhyNoTradePanel } from "@/components/dashboard/WhyNoTradePanel";
-import { ShadowLearningProgressPanel } from "@/components/dashboard/ShadowLearningProgressPanel";
+import { AccountSummaryPanel } from "@/components/paperTrading/AccountSummaryPanel";
+import { PaperTradingTerminal } from "@/components/paperTrading/PaperTradingTerminal";
+
+// Each cycle mark-to-markets every open position (one provider quote call
+// per symbol) plus the account/orders/trades snapshot — 20s keeps this
+// comfortably above the shared provider's own ~15s quote cache TTL so a
+// refresh is never faster than a fresh price could actually arrive.
+const LIVE_REFRESH_MS = 20_000;
 
 const QUICK_AMOUNTS = [1_000, 2_500, 5_000, 10_000];
 
@@ -218,6 +224,8 @@ export default function PaperTradingPage() {
   const [simulations, setSimulations] = useState<PaperSimulationSummary[] | null>(null);
   const [openPositions, setOpenPositions] = useState<PaperPosition[] | null>(null);
   const [closedPositions, setClosedPositions] = useState<PaperPosition[] | null>(null);
+  const [orders, setOrders] = useState<PaperOrderRecord[]>([]);
+  const [trades, setTrades] = useState<PaperTradeRecord[]>([]);
   const [error, setError] = useState<unknown>(null);
   const [loadingTooLong, setLoadingTooLong] = useState(false);
   const [form, setForm] = useState({ ticker: "", quantity: "" });
@@ -226,12 +234,17 @@ export default function PaperTradingPage() {
   const [closingId, setClosingId] = useState<number | null>(null);
 
   const load = useCallback(() => {
-    Promise.all([api.paperAccount(), api.paperPositions("open"), api.paperPositions("closed"), api.paperSimulations()])
-      .then(([a, open, closed, sims]) => {
+    Promise.all([
+      api.paperAccount(), api.paperPositions("open"), api.paperPositions("closed"), api.paperSimulations(),
+      api.paperOrders(), api.paperTrades(),
+    ])
+      .then(([a, open, closed, sims, ord, trd]) => {
         setAccount(a);
         setOpenPositions(open);
         setClosedPositions(closed);
         setSimulations(sims);
+        setOrders(ord);
+        setTrades(trd);
         setError(null);
       })
       .catch((e) => setError(e));
@@ -239,6 +252,17 @@ export default function PaperTradingPage() {
 
   useEffect(load, [load]);
   useResyncListener(load); // re-fetch fresh data automatically when connectivity is verified back
+
+  // Live-ish account/position/order refresh — reuses the same combined
+  // snapshot fetch above (one round-trip, backend-side mark-to-market via
+  // the shared provider) rather than opening a per-symbol stream for every
+  // open position, so this never multiplies provider requests with
+  // portfolio size.
+  useEffect(() => {
+    if (account === null || account === undefined) return;
+    const interval = setInterval(load, LIVE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [account, load]);
 
   useEffect(() => {
     if (account !== undefined || error !== null) return;
@@ -292,7 +316,7 @@ export default function PaperTradingPage() {
     }
   };
 
-  const totalUnrealized = (openPositions ?? []).reduce((sum, p) => sum + (p.unrealized_pnl_dollars ?? 0), 0);
+  const accountSummary = account ? computeAccountSummary(account, openPositions ?? [], closedPositions ?? [], orders) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -327,12 +351,7 @@ export default function PaperTradingPage() {
             </div>
           ) : (
             <>
-              <div className="animate-in-stagger grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <StatTile label="Cash balance" value={account.cash_balance} format={(n) => formatUsd(n)} />
-                <StatTile label="Equity" value={account.equity ?? account.cash_balance} format={(n) => formatUsd(n)} />
-                <StatTile label="Starting balance" value={account.starting_balance} format={(n) => formatUsd(n)} />
-                <StatTile label="Open positions" value={openPositions?.length ?? 0} />
-              </div>
+              <AccountSummaryPanel summary={accountSummary!} />
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                 Simulation #{account.simulation_number}
                 {account.label ? ` — ${account.label}` : ""} · started{" "}
@@ -360,8 +379,6 @@ export default function PaperTradingPage() {
                   {account.autonomous_trading_enabled ? "Enabled" : "Disabled"}
                 </label>
               </div>
-
-              <ShadowLearningProgressPanel />
 
               <WhyNoTradePanel />
 
@@ -397,140 +414,17 @@ export default function PaperTradingPage() {
                 )}
               </form>
 
-              <div className="animate-in-stagger grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <StatTile
-                  label="Unrealized P/L"
-                  value={totalUnrealized}
-                  format={(n) => `${n >= 0 ? "+" : ""}${formatUsd(n)}`}
-                />
-              </div>
-
-              <div>
-                <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-                  Open positions
-                </h2>
-                {openPositions && openPositions.length === 0 ? (
-                  <div className="card animate-in flex flex-col items-center gap-2 p-10 text-center">
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>No open paper positions.</p>
-                  </div>
-                ) : (
-                  <div className="card animate-in overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-sm">
-                      <thead>
-                        <tr className="text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)", background: "var(--surface-2)" }}>
-                          <th className="px-4 py-3">Ticker</th>
-                          <th className="px-4 py-3">Qty</th>
-                          <th className="px-4 py-3">Entry</th>
-                          <th className="px-4 py-3">Current</th>
-                          <th className="px-4 py-3">Unrealized P/L</th>
-                          <th className="px-4 py-3">Entry confidence</th>
-                          <th className="px-4 py-3" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(openPositions ?? []).map((p) => (
-                          <tr key={p.id} className="tabular border-t" style={{ borderColor: "var(--gridline)" }}>
-                            <td className="px-4 py-3">
-                              <Link href={`/stock/${p.ticker_symbol}`} className="font-semibold hover:underline">
-                                {p.ticker_symbol}
-                              </Link>
-                              {p.opened_by === "autonomous" && (
-                                <span
-                                  className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
-                                  style={{ color: "var(--accent)", background: "var(--accent-soft)" }}
-                                  title={`Opened autonomously${p.ncs_signal_id ? ` from NCS signal #${p.ncs_signal_id}` : ""}`}
-                                >
-                                  AUTO
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">{p.quantity}</td>
-                            <td className="px-4 py-3">${p.avg_entry_price.toFixed(4)}</td>
-                            <td className="px-4 py-3">{p.current_price ? `$${p.current_price.toFixed(4)}` : "—"}</td>
-                            <td
-                              className="px-4 py-3 font-semibold"
-                              style={{ color: (p.unrealized_pnl_dollars ?? 0) >= 0 ? "var(--status-good)" : "var(--status-critical)" }}
-                            >
-                              {p.unrealized_pnl_dollars != null
-                                ? `${p.unrealized_pnl_dollars >= 0 ? "+" : ""}$${p.unrealized_pnl_dollars.toFixed(2)} (${p.unrealized_pnl_pct?.toFixed(1)}%)`
-                                : "—"}
-                            </td>
-                            <td className="px-4 py-3">{p.entry_confidence_pct != null ? `${p.entry_confidence_pct.toFixed(0)}%` : "—"}</td>
-                            <td className="px-4 py-3">
-                              <button
-                                onClick={() => closePosition(p.id)}
-                                disabled={closingId === p.id}
-                                className="btn btn-ghost btn-sm"
-                                style={{ color: "var(--status-critical)" }}
-                              >
-                                {closingId === p.id ? "Closing…" : "Close"}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
-                  Closed positions
-                </h2>
-                {closedPositions && closedPositions.length === 0 ? (
-                  <div className="card animate-in flex flex-col items-center gap-2 p-10 text-center">
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>No closed paper positions yet.</p>
-                  </div>
-                ) : (
-                  <div className="card animate-in overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-sm">
-                      <thead>
-                        <tr className="text-left text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)", background: "var(--surface-2)" }}>
-                          <th className="px-4 py-3">Ticker</th>
-                          <th className="px-4 py-3">Qty</th>
-                          <th className="px-4 py-3">Entry</th>
-                          <th className="px-4 py-3">Exit</th>
-                          <th className="px-4 py-3">Realized P/L</th>
-                          <th className="px-4 py-3">Closed</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(closedPositions ?? []).map((p) => (
-                          <tr key={p.id} className="tabular border-t" style={{ borderColor: "var(--gridline)" }}>
-                            <td className="px-4 py-3">
-                              <Link href={`/stock/${p.ticker_symbol}`} className="font-semibold hover:underline">
-                                {p.ticker_symbol}
-                              </Link>
-                              {p.opened_by === "autonomous" && (
-                                <span
-                                  className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
-                                  style={{ color: "var(--accent)", background: "var(--accent-soft)" }}
-                                  title={`Opened autonomously${p.ncs_signal_id ? ` from NCS signal #${p.ncs_signal_id}` : ""}`}
-                                >
-                                  AUTO
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">{p.quantity}</td>
-                            <td className="px-4 py-3">${p.avg_entry_price.toFixed(4)}</td>
-                            <td className="px-4 py-3">{p.exit_price ? `$${p.exit_price.toFixed(4)}` : "—"}</td>
-                            <td
-                              className="px-4 py-3 font-semibold"
-                              style={{ color: (p.realized_pnl_dollars ?? 0) >= 0 ? "var(--status-good)" : "var(--status-critical)" }}
-                            >
-                              {p.realized_pnl_dollars != null ? `${p.realized_pnl_dollars >= 0 ? "+" : ""}$${p.realized_pnl_dollars.toFixed(2)}` : "—"}
-                            </td>
-                            <td className="px-4 py-3" style={{ color: "var(--text-muted)" }}>
-                              <LocalTime iso={p.closed_at} options={{ style: "short" }} fallback="—" />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <PaperTradingTerminal
+                openPositions={openPositions ?? []}
+                closedPositions={closedPositions ?? []}
+                orders={orders}
+                trades={trades}
+                summary={accountSummary!}
+                startingBalance={account.starting_balance}
+                onClosePosition={closePosition}
+                closingId={closingId}
+                onRefreshOrders={load}
+              />
             </>
           )}
 

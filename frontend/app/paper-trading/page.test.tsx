@@ -7,6 +7,8 @@ const apiMock = vi.hoisted(() => ({
   paperAccount: vi.fn(),
   paperSimulations: vi.fn(),
   paperPositions: vi.fn(),
+  paperOrders: vi.fn(),
+  paperTrades: vi.fn(),
   startPaperSimulation: vi.fn(),
   openPaperPosition: vi.fn(),
   closePaperPosition: vi.fn(),
@@ -36,6 +38,8 @@ function mockLoad(overrides: { account?: PaperAccount | null; sims?: PaperSimula
   apiMock.paperAccount.mockResolvedValue(overrides.account === undefined ? null : overrides.account);
   apiMock.paperPositions.mockResolvedValue([]);
   apiMock.paperSimulations.mockResolvedValue(overrides.sims ?? []);
+  apiMock.paperOrders.mockResolvedValue([]);
+  apiMock.paperTrades.mockResolvedValue([]);
   // Rendered unconditionally whenever an account exists (ShadowLearningProgressPanel/
   // WhyNoTradePanel) — this page's own tests aren't about either panel's
   // content, so a harmless empty resolution is enough to keep their effects
@@ -55,7 +59,7 @@ describe("PaperTradingPage — Start New Simulation", () => {
 
     await waitFor(() => expect(screen.getByText("Start Your First Paper Simulation")).toBeTruthy());
     expect(screen.getByText(/No active paper simulation yet/)).toBeTruthy();
-    expect(screen.queryByText("Open positions")).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Positions" })).toBeNull();
   });
 
   it("has no hardcoded starting amount pre-filled — the input starts empty", async () => {
@@ -141,7 +145,7 @@ describe("PaperTradingPage — Start New Simulation", () => {
     mockLoad({ account: ACCOUNT, sims: [SIM_HISTORY] });
     render(<PaperTradingPage />);
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Open positions" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Positions" })).toBeTruthy());
     expect(screen.getAllByText(/\$2,500\.00/).length).toBeGreaterThan(0);
   });
 

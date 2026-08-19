@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, getFetchMeta } from "@/lib/api";
 import { useResyncListener } from "@/lib/pwa";
-import type { Deliberation, NewsArticle, SignalPayload, StockAnalysis } from "@/lib/types";
+import type { Deliberation, NewsArticle, PaperAccount, PaperPosition, SignalPayload, StockAnalysis } from "@/lib/types";
 import { ScoreMeter } from "@/components/ui/ScoreMeter";
 import { Badge, riskVariant, scoreVariant } from "@/components/ui/Badge";
 import { DataBadge } from "@/components/ui/DataBadge";
@@ -20,6 +20,7 @@ import { ManipulationPanel } from "@/components/dashboard/ManipulationPanel";
 import { FactorsPanel } from "@/components/dashboard/FactorsPanel";
 import { AgentDeliberationSequence } from "@/components/dashboard/AgentDeliberationSequence";
 import { ChatWidget } from "@/components/chat/ChatWidget";
+import { OrderTicket } from "@/components/paperTrading/OrderTicket";
 import { CacheBadge } from "@/components/pwa/CacheBadge";
 import { LocalTime } from "@/components/ui/LocalTime";
 import { useTimezone } from "@/components/providers/TimezoneProvider";
@@ -36,7 +37,15 @@ export default function StockDetailPage() {
   const [watchlisted, setWatchlisted] = useState(false);
   const [analysisCachedAt, setAnalysisCachedAt] = useState<string | null>(null);
   const [liveSignal, setLiveSignal] = useState<SignalPayload | null>(null);
+  const [paperAccount, setPaperAccount] = useState<PaperAccount | null>(null);
+  const [paperOpenPositions, setPaperOpenPositions] = useState<PaperPosition[]>([]);
   const { effectiveTimeZone, abbreviation, ready: tzReady } = useTimezone();
+
+  const loadPaperContext = useCallback(() => {
+    api.paperAccount().then(setPaperAccount).catch(() => setPaperAccount(null));
+    api.paperPositions("open").then(setPaperOpenPositions).catch(() => setPaperOpenPositions([]));
+  }, []);
+  useEffect(loadPaperContext, [loadPaperContext]);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -264,7 +273,20 @@ export default function StockDetailPage() {
         </p>
       </div>
 
-      <div className="xl:col-span-1">
+      <div className="flex flex-col gap-6 xl:col-span-1">
+        {paperAccount ? (
+          <OrderTicket
+            symbol={a.ticker}
+            companyName={a.company_name}
+            account={paperAccount}
+            openPositions={paperOpenPositions}
+            onOrderPlaced={loadPaperContext}
+          />
+        ) : (
+          <div className="card animate-in p-4 text-xs" style={{ color: "var(--text-muted)" }}>
+            Start a paper trading simulation to place NEXORA INTERNAL PAPER orders on {a.ticker}.
+          </div>
+        )}
         <div className="card animate-in sticky top-6 flex h-[640px] flex-col p-4">
           <h2 className="mb-3 px-1 text-[13px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
             Ask the AI assistant about {a.ticker}

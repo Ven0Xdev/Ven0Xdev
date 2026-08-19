@@ -80,3 +80,15 @@ def test_never_fabricates_shadow_data_for_a_row_that_never_fired(db_session):
     [audited] = decision_audit(db_session, SYMBOL, "1D")
     assert audited.shadow_status is None
     assert audited.shadow_pnl_pct is None
+
+
+def test_decision_audit_endpoint_reports_the_current_platform_drift_status(client):
+    """The HTTP endpoint composes decision_audit() with the same
+    drift_status_label() Red-Team's veto check and Why-No-Trade already
+    use — never a fabricated or hardcoded value."""
+    res = client.get(f"/api/v1/stream/{SYMBOL}/decision-audit")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["current_drift_status"] in {"insufficient_history", "stable", "moderate", "significant"}
+    assert "eligibility_progress" in body
+    assert "rows" in body

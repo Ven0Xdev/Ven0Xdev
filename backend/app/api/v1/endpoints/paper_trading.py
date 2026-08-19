@@ -13,6 +13,7 @@ from app.schemas.paper_trading import (
     PaperPositionOut,
     PaperSimulationSummary,
     PaperStartSimulationRequest,
+    QuoteTicketOut,
     TradeOut,
     WhyNoTradeGateOut,
     WhyNoTradeOut,
@@ -183,6 +184,19 @@ def why_no_trade(
         risk_gate_passed=report.risk_gate_passed, risk_gate_reasons=report.risk_gate_reasons,
         gates=[WhyNoTradeGateOut(name=g.name, passed=g.passed, detail=g.detail) for g in report.gates],
         permitted=report.permitted, blockers=report.blockers,
+    )
+
+
+@router.get("/quote/{symbol}", response_model=QuoteTicketOut)
+def get_ticket_quote(symbol: str, provider: MarketDataProvider = Depends(data_provider)):
+    """Live bid/ask/spread for the chart Order Ticket — the same provider
+    call (and its own caching/rate-limiting) every other endpoint already
+    uses for mark-to-market, never a second independent feed. A
+    ProviderDataUnavailable is left uncaught, same as open_position above."""
+    quote = provider.get_quote(symbol.upper())
+    return QuoteTicketOut(
+        symbol=quote.symbol, last=quote.last, bid=quote.bid, ask=quote.ask, spread=quote.spread,
+        timestamp=quote.timestamp, data_source=provider.name, data_mode=getattr(provider, "data_mode", "unspecified"),
     )
 
 

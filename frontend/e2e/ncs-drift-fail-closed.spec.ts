@@ -56,7 +56,12 @@ test.describe("NCS + drift fail-closed — live verification", () => {
   });
 
   test("Shadow Learning Progress shows a real per-ticker breakdown, never a bare unexplained zero", async ({ page }) => {
+    // Shadow Learning Progress now lives behind the account terminal's own
+    // "Shadow Learning" tab (Phase 2's seven-tab terminal) rather than
+    // always-visible on page load — same panel, same live data, one click
+    // away.
     await page.goto("/paper-trading");
+    await page.getByRole("tab", { name: "Shadow Learning" }).click();
     await expect(page.getByText("Shadow Learning Progress")).toBeVisible();
     // At least one row of the active universe must render with a real
     // ticker symbol — proves this is live backend data, not a static

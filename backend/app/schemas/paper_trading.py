@@ -146,6 +146,22 @@ class TradeOut(BaseModel):
         from_attributes = True
 
 
+class QuoteTicketOut(BaseModel):
+    """Top-of-book quote for the chart Order Ticket — bid/ask/spread from
+    the same shared provider every other endpoint uses. bid/ask/spread are
+    null, never invented, when the underlying vendor doesn't supply quote
+    depth (see services/data_providers/base.py's Quote docstring)."""
+
+    symbol: str
+    last: float
+    bid: float | None
+    ask: float | None
+    spread: float | None
+    timestamp: datetime
+    data_source: str
+    data_mode: str
+
+
 class WhyNoTradeGateOut(BaseModel):
     name: str
     passed: bool

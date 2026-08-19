@@ -406,3 +406,19 @@ def test_order_ticket_api_cannot_see_or_cancel_another_users_order(client, auth_
     # ...and cannot cancel it either.
     cancel_res = client.post(f"/api/v1/paper-trading/orders/{order['id']}/cancel", headers=_auth_header(token_b))
     assert cancel_res.status_code == 400
+
+
+def test_order_ticket_quote_reports_genuine_bid_ask_spread_and_provenance(client, auth_on):
+    """The chart Order Ticket's quote endpoint — bid/ask/spread must come
+    straight from the provider (never fabricated), and provenance
+    (data_source/data_mode) must be present so the ticket can honestly
+    label live vs. delayed vs. synthetic."""
+    token = _register(client, "order-ticket-quote@example.com")
+    res = client.get(f"/api/v1/paper-trading/quote/{PASSES_RISK_GATE}", headers=_auth_header(token))
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["symbol"] == PASSES_RISK_GATE
+    assert body["bid"] is not None and body["ask"] is not None
+    assert body["spread"] == pytest.approx(body["ask"] - body["bid"])
+    assert body["data_source"]
+    assert body["data_mode"]

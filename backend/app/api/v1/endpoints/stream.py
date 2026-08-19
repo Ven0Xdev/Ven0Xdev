@@ -210,6 +210,7 @@ def decision_audit_endpoint(
     with its Shadow observation, Red-Team verdict, and any paper order/
     position it actually produced. Never fabricates a row — a ticker with
     no evaluations yet returns an empty list, honestly."""
+    from app.services.monitoring.drift import drift_status_label
     from app.services.shadow.engine import shadow_learning_progress
     from app.services.signals.decision_audit import decision_audit
 
@@ -218,6 +219,12 @@ def decision_audit_endpoint(
     return {
         "symbol": symbol.upper(),
         "timeframe": timeframe,
+        # Platform-wide (not per-row): the same drift_status_label()
+        # Red-Team's veto check and Why-No-Trade already use — see
+        # services/monitoring/drift.py. A historical row's own veto_reason
+        # already reflects the drift status AT THAT EVALUATION; this is
+        # "is drift currently blocking new entries," not a per-row replay.
+        "current_drift_status": drift_status_label(db),
         "eligibility_progress": {
             "candidate_signals": progress.candidate_signals, "open_observations": progress.open_observations,
             "closed_outcomes": progress.closed_outcomes, "progress_pct": progress.progress_pct,
