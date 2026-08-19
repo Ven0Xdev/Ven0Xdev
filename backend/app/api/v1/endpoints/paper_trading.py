@@ -8,15 +8,19 @@ from app.schemas.paper_trading import (
     AutonomousTradingToggleRequest,
     PaperAccountOut,
     PaperOpenRequest,
+    PaperOrderOut,
+    PaperOrderRequest,
     PaperPositionOut,
     PaperSimulationSummary,
     PaperStartSimulationRequest,
+    TradeOut,
     WhyNoTradeGateOut,
     WhyNoTradeOut,
 )
 from app.services.data_providers.base import MarketDataProvider
 from app.services.paper_trading import engine
 from app.services.paper_trading.engine import PaperTradingError
+from app.services.paper_trading.orders import OrderError
 
 router = APIRouter(prefix="/paper-trading", tags=["paper-trading"])
 
@@ -179,6 +183,67 @@ def why_no_trade(
         risk_gate_passed=report.risk_gate_passed, risk_gate_reasons=report.risk_gate_reasons,
         gates=[WhyNoTradeGateOut(name=g.name, passed=g.passed, detail=g.detail) for g in report.gates],
         permitted=report.permitted, blockers=report.blockers,
+    )
+
+
+@router.post("/orders", response_model=PaperOrderOut)
+def submit_order(
+    request: PaperOrderRequest,
+    db: Session = Depends(db_session),
+    provider: MarketDataProvider = Depends(data_provider),
+    user: User = Depends(get_current_user),
+):
+    """NEXORA INTERNAL PAPER order ticket — never a real broker order.
+    Market orders resolve immediately (see services/paper_trading/
+    orders.py); limit/stop orders come back `pending` and only ever fill
+    from a future quote via app/workers/order_scheduler.py. Idempotent on
+    `idempotency_key`: a retried submission returns the original order."""
+    from app.services.paper_trading.orders import submit_order as do_submit
+
+    try:
+        order = do_submit(
+            user.id, db, provider,
+            symbol=request.ticker_symbol, side=request.side, order_type=request.order_type,
+            quantity=request.quantity, idempotency_key=request.idempotency_key,
+            limit_price=request.limit_price, stop_price=request.stop_price,
+            take_profit=request.take_profit, stop_loss=request.stop_loss,
+            regular_hours_only=request.regular_hours_only, position_id=request.position_id,
+        )
+    except OrderError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return order
+
+
+@router.get("/orders", response_model=list[PaperOrderOut])
+def list_orders(
+    status: str | None = None, db: Session = Depends(db_session), user: User = Depends(get_current_user),
+):
+    from app.services.paper_trading.orders import list_orders as do_list
+
+    return do_list(user.id, db, status=status)
+
+
+@router.post("/orders/{order_id}/cancel", response_model=PaperOrderOut)
+def cancel_order(order_id: int, db: Session = Depends(db_session), user: User = Depends(get_current_user)):
+    from app.services.paper_trading.orders import cancel_order as do_cancel
+
+    try:
+        return do_cancel(user.id, db, order_id)
+    except OrderError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/trades", response_model=list[TradeOut])
+def list_trades(limit: int = 100, db: Session = Depends(db_session), user: User = Depends(get_current_user)):
+    """The immutable fill ledger (Order History tab) — every fill this
+    account's orders have ever produced, oldest action last."""
+    from app.db.models.trade import Trade
+
+    account = engine.get_active_account(user.id, db)
+    if account is None:
+        return []
+    return (
+        db.query(Trade).filter_by(account_id=account.id).order_by(Trade.executed_at.desc()).limit(limit).all()
     )
 
 

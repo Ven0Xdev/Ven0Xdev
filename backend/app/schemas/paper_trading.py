@@ -86,6 +86,66 @@ class AutonomousTradingToggleRequest(BaseModel):
     enabled: bool
 
 
+class PaperOrderRequest(BaseModel):
+    ticker_symbol: str
+    side: str  # buy | sell
+    order_type: str  # market | limit | stop
+    quantity: float = Field(gt=0)
+    idempotency_key: str = Field(min_length=1, max_length=64)
+    limit_price: float | None = Field(default=None, gt=0)
+    stop_price: float | None = Field(default=None, gt=0)
+    take_profit: float | None = Field(default=None, gt=0)
+    stop_loss: float | None = Field(default=None, gt=0)
+    regular_hours_only: bool = False
+    position_id: int | None = None
+
+
+class PaperOrderOut(BaseModel):
+    id: int
+    ticker_symbol: str
+    side: str
+    order_type: str
+    quantity: float
+    limit_price: float | None
+    stop_price: float | None
+    bracket_take_profit: float | None
+    bracket_stop_loss: float | None
+    status: str
+    regular_hours_only: bool
+    created_at: datetime
+    updated_at: datetime
+    filled_at: datetime | None
+    filled_price: float | None
+    rejected_reason: str | None
+    cancelled_reason: str | None
+    origin: str
+    position_id: int | None
+    oco_group_id: str | None
+    ncs_signal_id: int | None
+    data_source: str
+    data_mode: str
+
+    class Config:
+        from_attributes = True
+
+
+class TradeOut(BaseModel):
+    id: int
+    ticker_symbol: str
+    side: str
+    quantity: float
+    price: float
+    executed_at: datetime
+    status: str
+    account_id: int | None
+    position_id: int | None
+    data_source: str
+    data_mode: str
+
+    class Config:
+        from_attributes = True
+
+
 class WhyNoTradeGateOut(BaseModel):
     name: str
     passed: bool

@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     auth,
     backtest,
     billing,
+    chart_drawings,
     chat,
     dashboard,
     models,
@@ -25,6 +26,7 @@ from app.api.v1.endpoints import (
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
+api_router.include_router(chart_drawings.router)
 api_router.include_router(stocks.router)
 api_router.include_router(scan.router)
 api_router.include_router(predictions.router)

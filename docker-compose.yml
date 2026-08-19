@@ -129,6 +129,28 @@ services:
     volumes:
       - model_artifacts:/app/model_artifacts
 
+  # Resting-order trigger sweep (limit/stop/take-profit/stop-loss) — runs
+  # by default: without it, a limit/stop PaperOrder would sit pending
+  # forever, and OCO brackets would never fire. See
+  # backend/app/workers/order_scheduler.py.
+  order-scheduler:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.workers.order_scheduler"]
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://ven0x:ven0x@timescaledb:5432/ven0x_otc
+      USE_SQLITE_FALLBACK: "false"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - model_artifacts:/app/model_artifacts
+
   web:
     build:
       context: ./frontend

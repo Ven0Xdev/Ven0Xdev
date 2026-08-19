@@ -201,6 +201,46 @@ def ncs_history_endpoint(symbol: str, timeframe: str = "1D", limit: int = 100, d
     return {"symbol": symbol.upper(), "timeframe": timeframe, "signals": [_ncs_payload(r) for r in ncs_history(db, symbol, timeframe, limit)]}
 
 
+@router.get("/{symbol}/decision-audit")
+def decision_audit_endpoint(
+    symbol: str, timeframe: str = "1D", limit: int = 50, db: Session = Depends(db_session), _user=Depends(get_current_user),
+):
+    """Unified Decision Audit (item 4 of the professional-terminal build):
+    every real persisted NCS evaluation for this ticker/timeframe, enriched
+    with its Shadow observation, Red-Team verdict, and any paper order/
+    position it actually produced. Never fabricates a row — a ticker with
+    no evaluations yet returns an empty list, honestly."""
+    from app.services.shadow.engine import shadow_learning_progress
+    from app.services.signals.decision_audit import decision_audit
+
+    rows = decision_audit(db, symbol, timeframe, limit)
+    [progress] = shadow_learning_progress(db, [symbol], timeframe=timeframe)
+    return {
+        "symbol": symbol.upper(),
+        "timeframe": timeframe,
+        "eligibility_progress": {
+            "candidate_signals": progress.candidate_signals, "open_observations": progress.open_observations,
+            "closed_outcomes": progress.closed_outcomes, "progress_pct": progress.progress_pct,
+            "win_rate_pct": progress.win_rate_pct, "eligible": progress.eligible, "blockers": progress.blockers,
+        },
+        "rows": [
+            {
+                "id": r.id, "ticker": r.ticker, "timeframe": r.timeframe,
+                "bar_ts": r.bar_ts.isoformat(), "evaluated_at": r.evaluated_at.isoformat(),
+                "raw_verdict": r.raw_verdict, "confirmed_verdict": r.confirmed_verdict, "state": r.state,
+                "fired": r.fired, "confidence_pct": r.confidence_pct, "composite_score": r.composite_score,
+                "risk_score": r.risk_score, "version": r.version, "data_source": r.data_source,
+                "data_mode": r.data_mode, "components": r.components, "vetoed": r.vetoed, "veto_reason": r.veto_reason,
+                "shadow_status": r.shadow_status,
+                "shadow_maturity_bar_ts": r.shadow_maturity_bar_ts.isoformat() if r.shadow_maturity_bar_ts else None,
+                "shadow_pnl_pct": r.shadow_pnl_pct, "shadow_exit_reason": r.shadow_exit_reason,
+                "paper_position_id": r.paper_position_id, "paper_order_id": r.paper_order_id,
+            }
+            for r in rows
+        ],
+    }
+
+
 def _ncs_payload(s: NcsSignal) -> dict:
     return {
         "id": s.id, "ticker": s.ticker_symbol, "timeframe": s.timeframe,
