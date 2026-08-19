@@ -12,7 +12,7 @@ from app.api.deps import data_provider, db_session, require_operator
 from app.db.models.shadow_position import ShadowPosition
 from app.db.models.user import User
 from app.services.data_providers.base import MarketDataProvider
-from app.services.shadow.engine import shadow_stats, sweep_open_positions
+from app.services.shadow.engine import shadow_learning_progress, shadow_stats, sweep_open_positions
 
 router = APIRouter(prefix="/shadow", tags=["shadow"])
 
@@ -53,6 +53,33 @@ def shadow_track_record(ticker: str | None = None, timeframe: str | None = None,
         "count_closed": s.count_closed, "count_open": s.count_open,
         "win_rate_pct": s.win_rate_pct, "avg_pnl_pct": s.avg_pnl_pct,
         "avg_mfe_pct": s.avg_mfe_pct, "avg_mae_pct": s.avg_mae_pct,
+    }
+
+
+@router.get("/progress")
+def shadow_progress(timeframe: str = "1D", db: Session = Depends(db_session)):
+    """Read-only "Shadow Learning Progress" data for the whole active
+    universe on `timeframe` — candidate signals, open/closed observations,
+    progress toward autonomous-trading eligibility, win rate, last
+    evaluation, NCS version, and the exact blocker for any ticker not yet
+    eligible. Never opens or closes anything."""
+    from app.services.universe.manager import get_active_universe
+
+    tickers = [a.symbol for a in get_active_universe(db)]
+    rows = shadow_learning_progress(db, tickers, timeframe=timeframe)
+    return {
+        "timeframe": timeframe,
+        "tickers": [
+            {
+                "ticker": r.ticker, "timeframe": r.timeframe, "ncs_version": r.ncs_version,
+                "candidate_signals": r.candidate_signals, "open_observations": r.open_observations,
+                "closed_outcomes": r.closed_outcomes, "progress_pct": r.progress_pct,
+                "win_rate_pct": r.win_rate_pct,
+                "last_evaluation": r.last_evaluation.isoformat() if r.last_evaluation else None,
+                "eligible": r.eligible, "blockers": r.blockers,
+            }
+            for r in rows
+        ],
     }
 
 

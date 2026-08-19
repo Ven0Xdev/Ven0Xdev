@@ -252,3 +252,69 @@ def shadow_stats(
         avg_mae_pct=sum(p.mae_pct for p in closed) / len(closed),
         count_open=count_open,
     )
+
+
+@dataclass
+class TickerShadowProgress:
+    """One ticker/timeframe's progress toward autonomous-trading
+    eligibility — see services/paper_trading/autonomous.py's
+    MIN_SHADOW_CLOSED_SAMPLE/MIN_SHADOW_WIN_RATE_PCT gate, which this
+    mirrors read-only. Powers the "Shadow Learning Progress" panel."""
+
+    ticker: str
+    timeframe: str
+    ncs_version: str
+    candidate_signals: int  # every fired NCS signal that ever became a shadow observation (open + closed)
+    open_observations: int
+    closed_outcomes: int
+    progress_pct: float  # min(closed_outcomes / MIN_SHADOW_CLOSED_SAMPLE, 1) * 100
+    win_rate_pct: float | None
+    last_evaluation: datetime | None
+    eligible: bool
+    blockers: list[str]
+
+
+def shadow_learning_progress(db: Session, tickers: list[str], timeframe: str = "1D") -> list[TickerShadowProgress]:
+    """Read-only progress report for every given ticker on `timeframe` —
+    never mutates anything, never opens/closes a position. Distinguishes
+    the honest reasons a ticker shows zero progress (no signal has fired
+    yet vs. signals fired but haven't closed vs. genuinely close to
+    eligible) rather than a bare "0"."""
+    # Deferred import: services/paper_trading/autonomous.py imports
+    # shadow_stats from this module, so importing its constants back here
+    # at module load time would be circular.
+    from app.services.paper_trading.autonomous import MIN_SHADOW_CLOSED_SAMPLE, MIN_SHADOW_WIN_RATE_PCT
+    from app.services.signals.ncs import NCS_VERSION, latest_ncs
+
+    out = []
+    for ticker in tickers:
+        stats = shadow_stats(db, ticker=ticker, timeframe=timeframe, ncs_version=NCS_VERSION)
+        latest = latest_ncs(db, ticker, timeframe)
+
+        blockers = []
+        if stats.count_closed == 0 and stats.count_open == 0:
+            if latest is None:
+                blockers.append("No NCS evaluation has run yet for this ticker/timeframe.")
+            elif latest.vetoed:
+                blockers.append(f"Most recent signal was Red-Team vetoed: {latest.veto_reason}")
+            elif not latest.fired:
+                blockers.append("No BUY/SELL signal has fired yet — nothing to observe.")
+        elif stats.count_closed < MIN_SHADOW_CLOSED_SAMPLE:
+            blockers.append(
+                f"Only {stats.count_closed}/{MIN_SHADOW_CLOSED_SAMPLE} closed observations "
+                f"({stats.count_open} still open, incomplete holding period)."
+            )
+        elif (stats.win_rate_pct or 0) < MIN_SHADOW_WIN_RATE_PCT:
+            blockers.append(f"Win rate {stats.win_rate_pct:.0f}% is below the {MIN_SHADOW_WIN_RATE_PCT:.0f}% floor.")
+
+        out.append(TickerShadowProgress(
+            ticker=ticker.upper(), timeframe=timeframe, ncs_version=NCS_VERSION,
+            candidate_signals=stats.count_open + stats.count_closed,
+            open_observations=stats.count_open, closed_outcomes=stats.count_closed,
+            progress_pct=round(min(stats.count_closed / MIN_SHADOW_CLOSED_SAMPLE, 1.0) * 100, 1),
+            win_rate_pct=stats.win_rate_pct,
+            last_evaluation=latest.created_at if latest else None,
+            eligible=not blockers,
+            blockers=blockers,
+        ))
+    return out

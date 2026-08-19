@@ -8,6 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields
 
+# Bumped whenever FEATURE_NAMES' membership, order, or meaning changes —
+# services/monitoring/drift.py keys its cohort isolation on this so a
+# schema change can never silently compare feature values computed under
+# two different definitions of "rsi_14" (or a differently-ordered vector)
+# as if they were the same distribution.
+FEATURE_SCHEMA_VERSION = "features-v1"
+
 FEATURE_NAMES: list[str] = [
     "rsi_14",
     "macd_histogram",

@@ -42,6 +42,36 @@ class AutonomousTradingOut(BaseModel):
     operational: bool
 
 
+class DriftCohortRowOut(BaseModel):
+    """One row of the drift-cohort audit (item 1 of the drift-incident
+    review) — a distinct (cohort dimensions, ticker, day) combination and
+    its record count. See services/monitoring/drift.py's cohort_breakdown()."""
+
+    engine_mode: str
+    model_version: str | None
+    risk_policy_version: str | None
+    feature_schema_version: str | None
+    provider_class: str | None
+    data_source: str | None
+    data_mode: str | None
+    ticker_symbol: str
+    date: str
+    count: int
+
+
+class DriftReportOut(BaseModel):
+    status: str
+    cohort: dict | None = None
+    note: str | None = None
+    baseline_established_at: str | None = None
+    baseline_sample_size: int | None = None
+    recent_window: int | None = None
+    model_drift: dict | None = None
+    top_feature_drift: dict | None = None
+    worst_model_psi: float | None = None
+    worst_feature_psi: float | None = None
+
+
 class AdminUserOut(BaseModel):
     id: int
     email: str

@@ -21,6 +21,7 @@ import type {
   NewsHealth,
   NewsPipelineArticle,
   ShadowPosition,
+  ShadowProgressResponse,
   ShadowStats,
   OhlcvBar,
   PaperAccount,
@@ -380,6 +381,8 @@ export const api = {
     request<{ count: number; positions: ShadowPosition[] }>(
       `/shadow/positions?ticker=${ticker}&limit=${limit}${status ? `&status=${status}` : ""}`,
     ),
+  shadowProgress: (timeframe = "1D") =>
+    request<ShadowProgressResponse>(`/shadow/progress?timeframe=${timeframe}`),
 
   // Admin/Operator — Phase 11. Reads are operator-only server-side; the
   // frontend additionally hides the /admin route client-side for UX, but

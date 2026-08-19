@@ -664,3 +664,24 @@ export interface ShadowStats {
   avg_mfe_pct: number | null;
   avg_mae_pct: number | null;
 }
+
+/** One ticker's progress toward autonomous-trading eligibility — see
+ * backend/app/services/shadow/engine.py's shadow_learning_progress(). */
+export interface ShadowTickerProgress {
+  ticker: string;
+  timeframe: string;
+  ncs_version: string;
+  candidate_signals: number;
+  open_observations: number;
+  closed_outcomes: number;
+  progress_pct: number;
+  win_rate_pct: number | null;
+  last_evaluation: string | null;
+  eligible: boolean;
+  blockers: string[];
+}
+
+export interface ShadowProgressResponse {
+  timeframe: string;
+  tickers: ShadowTickerProgress[];
+}

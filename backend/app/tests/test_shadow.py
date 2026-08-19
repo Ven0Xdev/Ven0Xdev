@@ -309,3 +309,129 @@ def test_evaluate_ncs_firing_opens_a_real_shadow_position(db_session):
     assert position is not None
     assert position.entry_price == c.close_price
     assert position.direction == ("LONG" if bucket == "BUY" else "SHORT")
+
+
+def test_shadow_still_opens_a_position_while_the_autonomous_trading_emergency_stop_is_engaged(db_session):
+    """Emergency Stop must block autonomous PAPER entries only — never
+    Shadow's passive observation. services/signals/ncs.py's evaluate_ncs()
+    calls shadow_engine.on_ncs_fired() unconditionally, before it ever
+    checks is_autonomous_trading_paused() for the separate autonomous-
+    trading call further down; this is a regression guard on that
+    ordering, not a retest of autonomous.py's own gating (see
+    test_autonomous.py / test_ncs_scheduler.py for that)."""
+    from app.services.paper_trading import engine as paper_engine
+    from app.services.platform_settings import set_autonomous_trading_paused
+    from app.services.signals.ncs import _bucket, compute_ncs
+
+    class _FakeOperator:
+        id = 999
+
+    set_autonomous_trading_paused(db_session, True, _FakeOperator())
+
+    symbol = "TSLA"
+    provider = MockOTCProvider()
+    c = compute_ncs(symbol, provider, db_session, timeframe="1D")
+    bucket = _bucket(c.raw_verdict)
+    if bucket == "NEUTRAL":
+        return  # nothing to fire — matches this file's own convention above
+
+    prior = NcsSignal(
+        ticker_symbol=symbol, timeframe="1D", bar_ts=c.bar_ts - timedelta(days=1),
+        raw_verdict=c.raw_verdict, confirmed_verdict=None, fired=False,
+        composite_score=0.3, confidence_pct=60.0, risk_score=20.0, explanation="seed",
+        components=[], vetoed=False, veto_reason=None, version=NCS_VERSION,
+        data_source="mock", data_mode="synthetic",
+    )
+    db_session.add(prior)
+    db_session.commit()
+
+    account = paper_engine.start_new_simulation(user_id=555, starting_capital=50_000.0, db=db_session)
+    account.autonomous_trading_enabled = True
+    db_session.add(account)
+    db_session.commit()
+
+    row = evaluate_ncs(symbol, provider, db_session, timeframe="1D", cooldown_minutes=60)
+    assert row.fired is True
+
+    # Shadow observation happened despite the emergency stop.
+    position = db_session.query(ShadowPosition).filter_by(ncs_signal_id=row.id).one_or_none()
+    assert position is not None
+
+    # But no autonomous PAPER position was opened.
+    assert paper_engine.list_open_positions(555, db_session) == []
+
+
+# ---------- shadow_learning_progress ---------------------------------------
+
+
+def test_progress_reports_no_signal_fired_yet_when_nothing_has_ever_evaluated(db_session):
+    from app.services.shadow.engine import shadow_learning_progress
+
+    [progress] = shadow_learning_progress(db_session, ["ZZZZ"], timeframe="1D")
+    assert progress.ticker == "ZZZZ"
+    assert progress.candidate_signals == 0
+    assert progress.open_observations == 0
+    assert progress.closed_outcomes == 0
+    assert progress.progress_pct == 0.0
+    assert progress.eligible is False
+    assert "no ncs evaluation" in progress.blockers[0].lower()
+
+
+def test_progress_distinguishes_vetoed_from_never_evaluated(db_session):
+    from app.services.shadow.engine import shadow_learning_progress
+
+    # Not SYMBOL ("AAPL"): test_ncs.py's `client`-fixture tests permanently
+    # commit a real, non-vetoed NcsSignal row for (AAPL, 1D, today's bar)
+    # to this shared DB (see test_evaluate_ncs_firing_opens_a_real_shadow_
+    # position's docstring above) — its bar_ts is always later than this
+    # test's fixed BASE_TS, so latest_ncs() would silently return that
+    # row instead of this test's own.
+    ticker = "SHADOWTEST"
+    _ncs_row(db_session, ticker_symbol=ticker, confirmed_verdict="BUY", fired=False, vetoed=True, veto_reason="Drift status is 'significant'.")
+
+    [progress] = shadow_learning_progress(db_session, [ticker], timeframe="1D")
+    assert progress.candidate_signals == 0
+    assert "vetoed" in progress.blockers[0].lower()
+    assert "significant" in progress.blockers[0].lower()
+
+
+def test_progress_counts_open_and_closed_observations_and_reports_partial_progress(db_session):
+    from app.services.shadow.engine import shadow_learning_progress
+
+    _open_position(db_session, direction="LONG", entry_price=100.0)
+    closed_pos = _open_position(
+        db_session, direction="LONG", entry_price=100.0, entry_bar_ts=BASE_TS + timedelta(days=1),
+    )
+    closed_pos.status = "CLOSED"
+    closed_pos.pnl_pct = 0.05
+    db_session.commit()
+
+    [progress] = shadow_learning_progress(db_session, [SYMBOL], timeframe="1D")
+    assert progress.candidate_signals == 2
+    assert progress.open_observations == 1
+    assert progress.closed_outcomes == 1
+    assert progress.progress_pct == 5.0  # 1/20 * 100
+    assert progress.eligible is False
+    assert "1/20 closed" in progress.blockers[0]
+    assert progress.last_evaluation is not None
+
+
+def test_progress_reports_eligible_once_both_gates_clear(db_session, monkeypatch):
+    from app.services.paper_trading import autonomous as autonomous_module
+    from app.services.shadow.engine import shadow_learning_progress
+
+    monkeypatch.setattr(autonomous_module, "MIN_SHADOW_CLOSED_SAMPLE", 2)
+    monkeypatch.setattr(autonomous_module, "MIN_SHADOW_WIN_RATE_PCT", 55.0)
+
+    for i in range(2):
+        pos = _open_position(db_session, direction="LONG", entry_price=100.0, entry_bar_ts=BASE_TS + timedelta(days=i))
+        pos.status = "CLOSED"
+        pos.pnl_pct = 0.05
+    db_session.commit()
+
+    [progress] = shadow_learning_progress(db_session, [SYMBOL], timeframe="1D")
+    assert progress.closed_outcomes == 2
+    assert progress.win_rate_pct == pytest.approx(100.0)
+    assert progress.progress_pct == 100.0
+    assert progress.eligible is True
+    assert progress.blockers == []

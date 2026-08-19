@@ -3,8 +3,10 @@ must write byte-identical snapshots, so the mapping lives exactly once.
 """
 from __future__ import annotations
 
+from app.core.config import get_settings
 from app.db.models.prediction import Prediction
 from app.schemas.stock import StockAnalysis
+from app.services.ml.feature_vector import FEATURE_SCHEMA_VERSION
 from app.services.risk.policy import RiskPolicy
 
 
@@ -18,6 +20,15 @@ def build_prediction_row(analysis: StockAnalysis) -> Prediction:
         engine_mode=analysis.engine_mode,
         model_version=analysis.model_version,
         risk_policy_version=RiskPolicy.from_settings().version,
+        # Cohort-isolation provenance for services/monitoring/drift.py —
+        # provider_class is the *configured* provider (stable across a
+        # deployment epoch), data_source/data_mode are this specific call's
+        # self-reported provenance (data_mode is also a cohort key; see
+        # Prediction's own field comments for why data_source is not).
+        feature_schema_version=FEATURE_SCHEMA_VERSION,
+        provider_class=get_settings().market_data_provider,
+        data_source=analysis.data_source,
+        data_mode=analysis.data_mode,
         current_price=analysis.current_price,
         liquidity_score=analysis.liquidity_score,
         manipulation_risk=analysis.manipulation_risk,

@@ -54,6 +54,31 @@ class Prediction(Base):
     engine_mode: Mapped[str] = mapped_column(String(16), default="HEURISTIC", index=True)
     model_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     risk_policy_version: Mapped[str] = mapped_column(String(48), default="unversioned")
+    # Cohort-isolation fields for drift monitoring (services/monitoring/drift.py)
+    # — added after a live incident where drift was computed by comparing
+    # ANY two time-sliced windows of predictions.rows regardless of whether
+    # they came from a comparable feature schema, provider configuration, or
+    # data freshness. NULL for every row logged before this field existed
+    # (never backfilled/guessed — see UTCDateTime's own no-fabrication
+    # discipline) — those rows are preserved for audit but excluded from
+    # any cohort-filtered drift comparison, which is the correct behavior
+    # for provenance nobody actually recorded.
+    feature_schema_version: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    # The *configured* provider (settings.market_data_provider at write
+    # time, e.g. "alpaca") — stable across a whole deployment epoch, unlike
+    # `data_source` below which self-reports whichever specific vendor in a
+    # fallback chain actually answered THIS call and can flip request to
+    # request (see services/data_providers/market_data_fallback.py). Used
+    # as a cohort key; `data_source` is not, since keying on it would
+    # fragment the cohort on routine fallback rather than a real
+    # configuration change.
+    provider_class: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    # Per-call self-reported provenance (StockAnalysis.data_source/.data_mode)
+    # — captured for audit ("report record counts grouped by ... provider,
+    # data mode") even though only data_mode (live/delayed/cached/synthetic)
+    # is part of the cohort key; data_source is informational only.
+    data_source: Mapped[str | None] = mapped_column(String(48), nullable=True)
+    data_mode: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
 
     current_price: Mapped[float] = mapped_column(Float)
     liquidity_score: Mapped[float] = mapped_column(Float)

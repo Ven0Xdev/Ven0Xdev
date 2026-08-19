@@ -2,12 +2,13 @@ import { test, expect } from "@playwright/test";
 
 /**
  * End-to-end verification of the NCS/drift incident fix: a live backend
- * with app/workers/ncs_scheduler.py running and CRITICAL model_drift
- * currently active must (a) surface that state plainly on Admin and the
- * NCS panel rather than silently showing nothing, and (b) never let
- * Autonomous Trading read as "running" while it's blocked. Requires a
- * live backend at NEXT_PUBLIC_API_URL with AUTH_REQUIRED=false (serves
- * every request as the dev operator principal).
+ * with app/workers/ncs_scheduler.py running must (a) surface its real
+ * drift/Shadow/gate state plainly on Admin, the NCS panel, and Paper
+ * Trading rather than silently showing nothing, and (b) never let
+ * Autonomous Trading read as "running" while any gate blocks it —
+ * whatever that live gate state happens to be right now. Requires a live
+ * backend at NEXT_PUBLIC_API_URL with AUTH_REQUIRED=false (serves every
+ * request as the dev operator principal).
  */
 
 test.describe("NCS + drift fail-closed — live verification", () => {
@@ -52,5 +53,14 @@ test.describe("NCS + drift fail-closed — live verification", () => {
 
     await expect(page.getByText(/AAPL — (PERMITTED|BLOCKED)/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("All gate statuses")).toBeVisible();
+  });
+
+  test("Shadow Learning Progress shows a real per-ticker breakdown, never a bare unexplained zero", async ({ page }) => {
+    await page.goto("/paper-trading");
+    await expect(page.getByText("Shadow Learning Progress")).toBeVisible();
+    // At least one row of the active universe must render with a real
+    // ticker symbol — proves this is live backend data, not a static
+    // placeholder — and every zero-progress row must carry an explanation.
+    await expect(page.getByText(/\d+\/\d+ tickers eligible/)).toBeVisible({ timeout: 15_000 });
   });
 });

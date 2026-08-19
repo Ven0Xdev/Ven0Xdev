@@ -11,6 +11,8 @@ const apiMock = vi.hoisted(() => ({
   openPaperPosition: vi.fn(),
   closePaperPosition: vi.fn(),
   setAutonomousTrading: vi.fn(),
+  whyNoTrade: vi.fn(),
+  shadowProgress: vi.fn(),
 }));
 vi.mock("@/lib/api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
@@ -34,6 +36,12 @@ function mockLoad(overrides: { account?: PaperAccount | null; sims?: PaperSimula
   apiMock.paperAccount.mockResolvedValue(overrides.account === undefined ? null : overrides.account);
   apiMock.paperPositions.mockResolvedValue([]);
   apiMock.paperSimulations.mockResolvedValue(overrides.sims ?? []);
+  // Rendered unconditionally whenever an account exists (ShadowLearningProgressPanel/
+  // WhyNoTradePanel) — this page's own tests aren't about either panel's
+  // content, so a harmless empty resolution is enough to keep their effects
+  // from throwing on an undefined mock.
+  apiMock.shadowProgress.mockResolvedValue({ timeframe: "1D", tickers: [] });
+  apiMock.whyNoTrade.mockResolvedValue(null);
 }
 
 describe("PaperTradingPage — Start New Simulation", () => {

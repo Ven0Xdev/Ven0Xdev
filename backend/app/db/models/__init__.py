@@ -2,6 +2,7 @@ from app.db.models.alert import AlertEvent, AlertRule
 from app.db.models.asset import Asset
 from app.db.models.backtest import BacktestResult, BacktestTrade
 from app.db.models.chat import ChatMessage, ChatSession
+from app.db.models.drift_baseline import DriftBaseline
 from app.db.models.edgar import EdgarCompanyFacts
 from app.db.models.market import OHLCVBar, Ticker
 from app.db.models.model_version import ModelVersion
@@ -25,6 +26,7 @@ __all__ = [
     "BacktestTrade",
     "ChatMessage",
     "ChatSession",
+    "DriftBaseline",
     "EdgarCompanyFacts",
     "ModelVersion",
     "NcsSignal",

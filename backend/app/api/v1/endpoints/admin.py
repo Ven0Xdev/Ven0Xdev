@@ -28,6 +28,8 @@ from app.schemas.admin import (
     AdminUserOut,
     AutonomousTradingOut,
     AutonomousTradingUpdate,
+    DriftCohortRowOut,
+    DriftReportOut,
     SafeModeOut,
     SafeModeUpdate,
     UserPlanUpdate,
@@ -97,6 +99,42 @@ def set_autonomous_trading(
 ):
     set_autonomous_trading_paused(db, payload.paused, operator)
     return _serialize_autonomous(db)
+
+
+@router.get("/drift/report", response_model=DriftReportOut)
+def get_drift_report(db: Session = Depends(db_session), _operator: User = Depends(require_operator)):
+    """The full cohort-isolated drift report — see
+    services/monitoring/drift.py's module docstring for what "cohort" and
+    "baseline" mean here."""
+    from app.services.monitoring.drift import drift_report
+
+    return drift_report(db)
+
+
+@router.get("/drift/cohorts", response_model=list[DriftCohortRowOut])
+def get_drift_cohorts(db: Session = Depends(db_session), _operator: User = Depends(require_operator)):
+    """Audit report: every distinct (cohort dimensions, ticker, day)
+    combination actually present in `predictions`, with counts — proves
+    or disproves "the drift reading was caused by mixed cohorts" from real
+    data rather than a guess."""
+    from app.services.monitoring.drift import cohort_breakdown
+
+    return cohort_breakdown(db)
+
+
+@router.post("/drift/rebaseline", response_model=DriftReportOut)
+def rebaseline_drift(db: Session = Depends(db_session), _operator: User = Depends(require_operator)):
+    """Explicitly rebuilds the ACTIVE cohort's drift baseline from
+    whatever matured (closed, outcome-graded) predictions exist right now
+    — never fabricates one from an insufficient sample; the returned
+    report honestly says "insufficient_history" if that's still true
+    after the rebuild."""
+    from app.services.monitoring.drift import active_cohort_key, drift_report, rebuild_baseline
+
+    key = active_cohort_key(db)
+    if key is not None:
+        rebuild_baseline(db, key)
+    return drift_report(db)
 
 
 @router.get("/users", response_model=list[AdminUserOut])
