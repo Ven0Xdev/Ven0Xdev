@@ -9,8 +9,10 @@ import type {
   BillingStatus,
   CalibrationReport,
   CandlesResponse,
+  ChartDrawingRecord,
   ChatMetadata,
   DashboardSummary,
+  DecisionAuditResponse,
   Deliberation,
   IndicatorSeriesResponse,
   MarketOverviewResponse,
@@ -25,8 +27,10 @@ import type {
   ShadowStats,
   OhlcvBar,
   PaperAccount,
+  PaperOrderRecord,
   PaperPosition,
   PaperSimulationSummary,
+  PaperTradeRecord,
   PlanCatalog,
   PlatformHealthReport,
   PortfolioPosition,
@@ -383,6 +387,37 @@ export const api = {
     ),
   shadowProgress: (timeframe = "1D") =>
     request<ShadowProgressResponse>(`/shadow/progress?timeframe=${timeframe}`),
+
+  // Chart drawings — ownership-enforced server-side by the authenticated
+  // user's own id (see backend/app/api/v1/endpoints/chart_drawings.py).
+  chartDrawings: (ticker: string, timeframe: string) =>
+    request<ChartDrawingRecord[]>(`/chart-drawings?ticker=${ticker}&timeframe=${timeframe}`),
+  createChartDrawing: (payload: {
+    ticker_symbol: string; timeframe: string; drawing_type: string; data: unknown; locked?: boolean; hidden?: boolean;
+  }) => request<ChartDrawingRecord>(`/chart-drawings`, { method: "POST", body: JSON.stringify(payload) }),
+  updateChartDrawing: (id: number, payload: { data?: unknown; locked?: boolean; hidden?: boolean }) =>
+    request<ChartDrawingRecord>(`/chart-drawings/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteChartDrawing: (id: number) => request<{ deleted: number }>(`/chart-drawings/${id}`, { method: "DELETE" }),
+  deleteAllChartDrawings: (ticker: string, timeframe: string) =>
+    request<{ deleted: number }>(`/chart-drawings?ticker=${ticker}&timeframe=${timeframe}`, { method: "DELETE" }),
+
+  // Paper order ticket — NEXORA INTERNAL PAPER only, never a real broker
+  // order (see backend/app/services/paper_trading/orders.py).
+  submitPaperOrder: (payload: {
+    ticker_symbol: string; side: "buy" | "sell"; order_type: "market" | "limit" | "stop"; quantity: number;
+    idempotency_key: string; limit_price?: number; stop_price?: number; take_profit?: number; stop_loss?: number;
+    regular_hours_only?: boolean; position_id?: number;
+  }) => request<PaperOrderRecord>(`/paper-trading/orders`, { method: "POST", body: JSON.stringify(payload) }),
+  paperOrders: (status?: string) =>
+    request<PaperOrderRecord[]>(`/paper-trading/orders${status ? `?status=${status}` : ""}`),
+  cancelPaperOrder: (id: number) => request<PaperOrderRecord>(`/paper-trading/orders/${id}/cancel`, { method: "POST" }),
+  paperTrades: (limit = 100) => request<PaperTradeRecord[]>(`/paper-trading/trades?limit=${limit}`),
+
+  // Decision Audit — every real persisted NCS evaluation for this
+  // ticker/timeframe, enriched with Shadow/order outcome (see
+  // backend/app/services/signals/decision_audit.py).
+  decisionAudit: (symbol: string, timeframe = "1D", limit = 50) =>
+    request<DecisionAuditResponse>(`/stream/${symbol}/decision-audit?timeframe=${timeframe}&limit=${limit}`),
 
   // Admin/Operator — Phase 11. Reads are operator-only server-side; the
   // frontend additionally hides the /admin route client-side for UX, but

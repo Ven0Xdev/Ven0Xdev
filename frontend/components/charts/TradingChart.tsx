@@ -34,7 +34,12 @@ import type {
 } from "@/lib/types";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { DrawingToolbar, type DrawTool } from "@/components/charts/DrawingToolbar";
+import { DrawingToolbar } from "@/components/charts/drawings/DrawingToolbar";
+import { DrawingStyleEditor } from "@/components/charts/drawings/DrawingStyleEditor";
+import { DrawingsPrimitive } from "@/components/charts/drawings/DrawingsPrimitive";
+import { useDrawings } from "@/components/charts/drawings/useDrawings";
+import { withStyle, type Anchor } from "@/components/charts/drawings/types";
+import type { PriceToCoord, TimeToCoord } from "@/components/charts/drawings/geometry";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -162,24 +167,6 @@ function defaultRangeForInterval(tf: ChartTimeframe): ChartRange | null {
   return isIntradayRangeInterval(tf) ? DEFAULT_INTRADAY_RANGE : DEFAULT_DAILY_RANGE;
 }
 
-type Drawing =
-  | { id: string; type: "trendline"; p1: { time: UTCTimestamp; price: number }; p2: { time: UTCTimestamp; price: number } }
-  | { id: string; type: "hline"; price: number };
-
-function drawingsStorageKey(symbol: string): string {
-  return `nexora:chart-drawings:${symbol}`;
-}
-
-function loadDrawings(symbol: string): Drawing[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(drawingsStorageKey(symbol));
-    return raw ? (JSON.parse(raw) as Drawing[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 export function TradingChart({
   symbol,
   tradePlan,
@@ -201,8 +188,8 @@ export function TradingChart({
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const pendingBar = useRef<StreamBar | null>(null);
   const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
-  const trendlineSeriesRef = useRef<Map<string, ISeriesApi<"Line">>>(new Map());
-  const hlinePriceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
+  const drawingsPrimitiveRef = useRef<DrawingsPrimitive | null>(null);
+  const dragActiveRef = useRef(false);
 
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("1D");
   const [range, setRange] = useState<ChartRange | null>(defaultRangeForInterval("1D"));
@@ -220,12 +207,15 @@ export function TradingChart({
   const markerTooltipsRef = useRef<Map<number, MarkerTooltipInfo>>(new Map());
   const [hoveredMarker, setHoveredMarker] = useState<{ x: number; y: number; info: MarkerTooltipInfo } | null>(null);
 
-  // Drawing toolbar — trendline/horizontal-line, persisted per symbol in
-  // localStorage (client-side only: not shared across devices/sessions,
-  // which is an honest, explicitly scoped limitation, not a hidden one).
-  const [drawTool, setDrawTool] = useState<DrawTool>("none");
-  const [drawings, setDrawings] = useState<Drawing[]>([]);
-  const [pendingPoint, setPendingPoint] = useState<{ time: UTCTimestamp; price: number } | null>(null);
+  // Professional drawing workspace — persisted per authenticated user,
+  // symbol and timeframe through the real ChartDrawing backend model (see
+  // components/charts/drawings/useDrawings.ts). Anchors are always real
+  // {time, price}, never screen pixels.
+  const drawingsApi = useDrawings(symbol, timeframe, true);
+  const drawingsApiRef = useRef<ReturnType<typeof useDrawings> | null>(null);
+  useEffect(() => {
+    drawingsApiRef.current = drawingsApi;
+  });
 
   // Live-mode-only state (timeframe === LIVE_TIMEFRAME).
   const [conn, setConn] = useState<ConnState>("connecting");
@@ -262,15 +252,6 @@ export function TradingChart({
   if (timeframe !== prevIntervalForRange) {
     setPrevIntervalForRange(timeframe);
     setRange(defaultRangeForInterval(timeframe));
-  }
-
-  // Load this symbol's saved drawings (if any) whenever the symbol changes.
-  const [prevSymbolForDrawings, setPrevSymbolForDrawings] = useState<string | null>(null);
-  if (symbol !== prevSymbolForDrawings) {
-    setPrevSymbolForDrawings(symbol);
-    setDrawings(loadDrawings(symbol));
-    setDrawTool("none");
-    setPendingPoint(null);
   }
 
   const [retryTick, setRetryTick] = useState(0);
@@ -351,6 +332,10 @@ export function TradingChart({
     candleRef.current = candleSeries;
     markersPluginRef.current = createSeriesMarkers(candleSeries, []);
 
+    const drawingsPrimitive = new DrawingsPrimitive();
+    candleSeries.attachPrimitive(drawingsPrimitive);
+    drawingsPrimitiveRef.current = drawingsPrimitive;
+
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceScaleId: "vol", priceFormat: { type: "volume" }, color: neutralLine,
     }, 0);
@@ -369,8 +354,6 @@ export function TradingChart({
     macdRefs.current.signal = chart.addSeries(LineSeries, { color: bad, lineWidth: 1, priceLineVisible: false }, 2);
 
     const overlaySeries = overlaySeriesRef.current;
-    const trendlineSeries = trendlineSeriesRef.current;
-    const hlinePriceLines = hlinePriceLinesRef.current;
     return () => {
       chart.remove();
       chartRef.current = null;
@@ -381,8 +364,7 @@ export function TradingChart({
       macdRefs.current = {};
       priceLinesRef.current = [];
       markersPluginRef.current = null;
-      trendlineSeries.clear();
-      hlinePriceLines.clear();
+      drawingsPrimitiveRef.current = null;
     };
   }, [symbol]);
 
@@ -641,100 +623,146 @@ export function TradingChart({
     }
   }, [tradePlan, candles, isLive, signal]);
 
-  // Render drawn trendlines/horizontal lines. Diffs against the previous
-  // render (removes series/price-lines whose id disappeared, adds new
-  // ones) rather than clearing everything every time — a trendline is
-  // just a 2-point LineSeries connecting its two clicked points.
+  // Push the current drawing set/selection into the canvas primitive
+  // whenever either changes — the primitive itself only ever converts
+  // {time, price} to pixels at draw time via the chart's own current
+  // scale, so pan/zoom/resize/theme changes stay correct with no extra
+  // wiring here.
+  useEffect(() => {
+    drawingsPrimitiveRef.current?.setDrawings(drawingsApi.drawings, drawingsApi.selectedId);
+  }, [drawingsApi.drawings, drawingsApi.selectedId]);
+
+  // Click handling: cursor mode hit-tests for selection, any drawing tool
+  // places anchors (one click for hline/vline/text, two clicks for the
+  // rest). Magnet mode (when on) snaps the raw click to the nearest real
+  // candle OHLC value — never an interpolated price.
   useEffect(() => {
     const chart = chartRef.current;
     const candleSeries = candleRef.current;
     if (!chart || !candleSeries) return;
 
-    const wantedIds = new Set(drawings.map((d) => d.id));
-    for (const [id, s] of trendlineSeriesRef.current) {
-      if (!wantedIds.has(id)) {
-        chart.removeSeries(s);
-        trendlineSeriesRef.current.delete(id);
-      }
-    }
-    for (const [id, line] of hlinePriceLinesRef.current) {
-      if (!wantedIds.has(id)) {
-        candleSeries.removePriceLine(line);
-        hlinePriceLinesRef.current.delete(id);
-      }
-    }
-
-    for (const d of drawings) {
-      if (d.type === "trendline") {
-        if (trendlineSeriesRef.current.has(d.id)) continue;
-        const s = chart.addSeries(LineSeries, { color: "#f59e0b", lineWidth: 2, priceLineVisible: false, lastValueVisible: false }, 0);
-        s.setData([
-          { time: d.p1.time, value: d.p1.price },
-          { time: d.p2.time, value: d.p2.price },
-        ]);
-        trendlineSeriesRef.current.set(d.id, s);
-      } else {
-        if (hlinePriceLinesRef.current.has(d.id)) continue;
-        const line = candleSeries.createPriceLine({
-          price: d.price, color: "#f59e0b", lineStyle: 0, lineWidth: 2, title: "drawn",
-        });
-        hlinePriceLinesRef.current.set(d.id, line);
-      }
-    }
-  }, [drawings]);
-
-  // Persist this symbol's drawings — client-side only (see the state
-  // declaration above for why that's an intentional, honest scope).
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(drawingsStorageKey(symbol), JSON.stringify(drawings));
-  }, [symbol, drawings]);
-
-  // Drawing-tool click handling: trendline needs two clicks (first click
-  // stores a pending point, second click completes the drawing and clears
-  // the pending point + tool); horizontal line completes on one click.
-  // Disabled while `drawTool === "none"` so ordinary chart interaction
-  // (panning, the crosshair) is completely unaffected when no tool is active.
-  useEffect(() => {
-    const chart = chartRef.current;
-    const candleSeries = candleRef.current;
-    if (!chart || !candleSeries || drawTool === "none") return;
+    const timeToCoord: TimeToCoord = (t) => chart.timeScale().timeToCoordinate(t as Time);
+    const priceToCoord: PriceToCoord = (p) => candleSeries.priceToCoordinate(p);
 
     const handler = (param: MouseEventParams<Time>) => {
       if (!param.point || param.time === undefined) return;
+      const api = drawingsApiRef.current;
+      if (!api) return;
       const price = candleSeries.coordinateToPrice(param.point.y);
       if (price === null) return;
-      const time = param.time as UTCTimestamp;
-
-      if (drawTool === "hline") {
-        setDrawings((prev) => [...prev, { id: `hline-${Date.now()}`, type: "hline", price }]);
-        setDrawTool("none");
-        return;
-      }
-
-      // trendline
-      setPendingPoint((prev) => {
-        if (prev === null) return { time, price };
-        setDrawings((d) => [...d, { id: `trendline-${Date.now()}`, type: "trendline", p1: prev, p2: { time, price } }]);
-        setDrawTool("none");
-        return null;
-      });
+      let anchor: Anchor = { time: param.time as UTCTimestamp, price };
+      if (candles?.bars.length) anchor = api.applyMagnet(anchor, candles.bars, toTime);
+      api.handleClick(anchor, param.point, timeToCoord, priceToCoord);
     };
 
     chart.subscribeClick(handler);
     return () => chart.unsubscribeClick(handler);
-  }, [drawTool]);
+  }, [symbol, candles]);
 
-  const handleSelectDrawTool = useCallback((tool: DrawTool) => {
-    setDrawTool(tool);
-    setPendingPoint(null);
+  // Drag-to-edit: mousedown on a selected drawing's handle or body grabs
+  // it (cursor mode only), mousemove updates its anchors live, mouseup
+  // persists the final position. Chart panning/zooming is disabled for the
+  // duration of the drag so the two gestures never fight each other.
+  useEffect(() => {
+    const chart = chartRef.current;
+    const candleSeries = candleRef.current;
+    const container = containerRef.current;
+    if (!chart || !candleSeries || !container) return;
+
+    const timeToCoord: TimeToCoord = (t) => chart.timeScale().timeToCoordinate(t as Time);
+    const priceToCoord: PriceToCoord = (p) => candleSeries.priceToCoordinate(p);
+
+    const pointFromEvent = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    const anchorFromPixel = (pixel: { x: number; y: number }): Anchor | null => {
+      const time = chart.timeScale().coordinateToTime(pixel.x);
+      const price = candleSeries.coordinateToPrice(pixel.y);
+      if (time === null || price === null) return null;
+      const raw: Anchor = { time: time as UTCTimestamp, price };
+      const api = drawingsApiRef.current;
+      return api && candles?.bars.length ? api.applyMagnet(raw, candles.bars, toTime) : raw;
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      const api = drawingsApiRef.current;
+      if (!api || api.tool !== "cursor") return;
+      const started = api.beginDrag(pointFromEvent(e), timeToCoord, priceToCoord);
+      if (started) {
+        dragActiveRef.current = true;
+        chart.applyOptions({ handleScroll: false, handleScale: false });
+      }
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragActiveRef.current) return;
+      const anchor = anchorFromPixel(pointFromEvent(e));
+      if (anchor) drawingsApiRef.current?.dragTo(anchor);
+    };
+    const onMouseUp = () => {
+      if (!dragActiveRef.current) return;
+      dragActiveRef.current = false;
+      drawingsApiRef.current?.endDrag();
+      chart.applyOptions({ handleScroll: true, handleScale: true });
+    };
+
+    container.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      container.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [symbol, candles]);
+
+  // Keyboard shortcuts — Escape cancels a pending multi-click placement or
+  // clears the selection, Delete removes the selected drawing, Ctrl+Z /
+  // Ctrl+Shift+Z undo/redo. Skipped while focus is inside a text input
+  // (the style editor's text/level fields, or anything else on the page)
+  // so native input editing/undo keeps working.
+  useEffect(() => {
+    const isTyping = () => {
+      const el = document.activeElement as HTMLElement | null;
+      return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+    };
+    const handler = (e: KeyboardEvent) => {
+      const api = drawingsApiRef.current;
+      if (!api) return;
+      if (e.key === "Escape") {
+        if (api.hasPendingFirstPoint()) {
+          api.cancelPending();
+          return;
+        }
+        api.setSelectedId(null);
+        api.setTool("cursor");
+        return;
+      }
+      if (isTyping()) return;
+      if (e.key === "Delete" && api.selectedId) {
+        api.deleteDrawing(api.selectedId);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) api.redo();
+        else api.undo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const handleClearDrawings = useCallback(() => {
-    setDrawings([]);
-    setDrawTool("none");
-    setPendingPoint(null);
+  const zoomBy = useCallback((factor: number) => {
+    const ts = chartRef.current?.timeScale();
+    const range = ts?.getVisibleLogicalRange();
+    if (!ts || !range) return;
+    const center = (range.from + range.to) / 2;
+    const half = ((range.to - range.from) / 2) * factor;
+    ts.setVisibleLogicalRange({ from: center - half, to: center + half });
   }, []);
+  const zoomIn = useCallback(() => zoomBy(0.7), [zoomBy]);
+  const zoomOut = useCallback(() => zoomBy(1.4), [zoomBy]);
+  const resetView = useCallback(() => chartRef.current?.timeScale().fitContent(), []);
 
   // Live streaming — mounted only while timeframe === "1m". Paint throttled
   // to ~4fps (backend accuracy is preserved — only rendering is throttled).
@@ -938,22 +966,13 @@ export function TradingChart({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          {OVERLAYS.map((o) => (
-            <label key={o.key} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
-              <input type="checkbox" checked={activeOverlays.has(o.key)} onChange={() => toggleOverlay(o.key)} />
-              {o.label}
-            </label>
-          ))}
-        </div>
-        <DrawingToolbar
-          activeTool={drawTool}
-          onSelectTool={handleSelectDrawTool}
-          onClear={handleClearDrawings}
-          hasDrawings={drawings.length > 0}
-          pendingFirstPoint={pendingPoint !== null}
-        />
+      <div className="flex flex-wrap gap-3">
+        {OVERLAYS.map((o) => (
+          <label key={o.key} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
+            <input type="checkbox" checked={activeOverlays.has(o.key)} onChange={() => toggleOverlay(o.key)} />
+            {o.label}
+          </label>
+        ))}
       </div>
 
       {error ? (
@@ -971,9 +990,57 @@ export function TradingChart({
         </p>
       )}
 
-      <div className="relative">
-        <div ref={containerRef} className="content-reveal w-full" style={{ height: 420 }} />
-        {hoveredMarker && <MarkerTooltip x={hoveredMarker.x} y={hoveredMarker.y} info={hoveredMarker.info} />}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <DrawingToolbar
+          tool={drawingsApi.tool}
+          onSelectTool={(t) => {
+            drawingsApi.setTool(t);
+            drawingsApi.cancelPending();
+          }}
+          magnet={drawingsApi.magnet}
+          onToggleMagnet={() => drawingsApi.setMagnet((m) => !m)}
+          allLocked={drawingsApi.allLocked}
+          onToggleLockAll={drawingsApi.toggleLockAll}
+          canUndo={drawingsApi.canUndo()}
+          canRedo={drawingsApi.canRedo()}
+          onUndo={drawingsApi.undo}
+          onRedo={drawingsApi.redo}
+          hasDrawings={drawingsApi.drawings.length > 0}
+          onDeleteAll={() => {
+            if (window.confirm("Delete all drawings on this chart?")) drawingsApi.deleteAll();
+          }}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onResetView={resetView}
+          pendingFirstPoint={drawingsApi.hasPendingFirstPoint()}
+        />
+        <div className="relative flex-1">
+          <div ref={containerRef} className="content-reveal w-full" style={{ height: 420 }} />
+          {hoveredMarker && <MarkerTooltip x={hoveredMarker.x} y={hoveredMarker.y} info={hoveredMarker.info} />}
+          {drawingsApi.selected && drawingsApi.tool === "cursor" && (
+            <div className="absolute right-2 top-2 z-20">
+              <DrawingStyleEditor
+                drawing={drawingsApi.selected}
+                onChangeStyle={(style) => {
+                  const id = drawingsApi.selected!.localId;
+                  drawingsApi.updateDrawing(id, (d) => ({ ...d, payload: withStyle(d.payload, style) }));
+                }}
+                onChangeText={(text) => {
+                  const id = drawingsApi.selected!.localId;
+                  drawingsApi.updateDrawing(id, (d) => (d.payload.type === "text" ? { ...d, payload: { ...d.payload, text } } : d));
+                }}
+                onChangeLevels={(levels) => {
+                  const id = drawingsApi.selected!.localId;
+                  drawingsApi.updateDrawing(id, (d) => (d.payload.type === "fibonacci" ? { ...d, payload: { ...d.payload, levels } } : d));
+                }}
+                onToggleLock={() => drawingsApi.toggleLock(drawingsApi.selected!.localId)}
+                onToggleHidden={() => drawingsApi.toggleHidden(drawingsApi.selected!.localId)}
+                onDelete={() => drawingsApi.deleteDrawing(drawingsApi.selected!.localId)}
+                onClose={() => drawingsApi.setSelectedId(null)}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

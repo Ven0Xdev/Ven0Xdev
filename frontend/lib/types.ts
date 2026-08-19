@@ -187,6 +187,107 @@ export interface PaperPosition {
   ncs_signal_id: number | null;
 }
 
+/** NEXORA INTERNAL PAPER order — never a real broker order. See
+ * backend/app/db/models/paper_order.py for the full lifecycle. */
+export interface PaperOrderRecord {
+  id: number;
+  ticker_symbol: string;
+  side: "buy" | "sell";
+  order_type: "market" | "limit" | "stop" | "take_profit" | "stop_loss";
+  quantity: number;
+  limit_price: number | null;
+  stop_price: number | null;
+  bracket_take_profit: number | null;
+  bracket_stop_loss: number | null;
+  status: "pending" | "accepted" | "partially_filled" | "filled" | "cancelled" | "rejected" | "expired" | "triggered";
+  regular_hours_only: boolean;
+  created_at: string;
+  updated_at: string;
+  filled_at: string | null;
+  filled_price: number | null;
+  rejected_reason: string | null;
+  cancelled_reason: string | null;
+  origin: "manual" | "autonomous";
+  position_id: number | null;
+  oco_group_id: string | null;
+  ncs_signal_id: number | null;
+  data_source: string;
+  data_mode: string;
+}
+
+export interface PaperTradeRecord {
+  id: number;
+  ticker_symbol: string;
+  side: "buy" | "sell";
+  quantity: number;
+  price: number;
+  executed_at: string;
+  status: string;
+  account_id: number | null;
+  position_id: number | null;
+  data_source: string;
+  data_mode: string;
+}
+
+/** One persisted chart drawing (trendline/hline/vline/ray/rectangle/
+ * fibonacci/text/arrow) — see backend/app/db/models/chart_drawing.py.
+ * `data` is the type-specific payload (see components/charts/drawings/
+ * types.ts's DrawingPayload on the frontend side); anchors inside it are
+ * always real {time, price}, never screen pixels. */
+export interface ChartDrawingRecord {
+  id: number;
+  ticker_symbol: string;
+  timeframe: string;
+  drawing_type: string;
+  data: Record<string, unknown>;
+  locked: boolean;
+  hidden: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DecisionAuditRow {
+  id: number;
+  ticker: string;
+  timeframe: string;
+  bar_ts: string;
+  evaluated_at: string;
+  raw_verdict: string;
+  confirmed_verdict: string | null;
+  state: "fired" | "vetoed" | "awaiting_confirmation" | "no_trade";
+  fired: boolean;
+  confidence_pct: number;
+  composite_score: number;
+  risk_score: number;
+  version: string;
+  data_source: string;
+  data_mode: string;
+  components: NcsComponent[];
+  vetoed: boolean;
+  veto_reason: string | null;
+  shadow_status: "OPEN" | "CLOSED" | null;
+  shadow_maturity_bar_ts: string | null;
+  shadow_pnl_pct: number | null;
+  shadow_exit_reason: string | null;
+  paper_position_id: number | null;
+  paper_order_id: number | null;
+}
+
+export interface DecisionAuditResponse {
+  symbol: string;
+  timeframe: string;
+  eligibility_progress: {
+    candidate_signals: number;
+    open_observations: number;
+    closed_outcomes: number;
+    progress_pct: number;
+    win_rate_pct: number | null;
+    eligible: boolean;
+    blockers: string[];
+  };
+  rows: DecisionAuditRow[];
+}
+
 export interface AutonomousTradingStatus {
   paused: boolean;
   updated_at: string | null;
