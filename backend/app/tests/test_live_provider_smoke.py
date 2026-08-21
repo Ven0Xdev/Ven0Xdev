@@ -48,7 +48,7 @@ def live_provider():
 def test_live_quote(live_provider, symbol):
     quote = live_provider.get_quote(symbol)
     assert quote.symbol == symbol
-    assert quote.price > 0
+    assert quote.last > 0
     assert live_provider.data_mode in ("delayed", "cached")
 
 

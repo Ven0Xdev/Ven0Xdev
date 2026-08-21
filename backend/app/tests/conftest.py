@@ -1,8 +1,34 @@
 import os
 
-os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("USE_SQLITE_FALLBACK", "true")
+# Forced (not setdefault) — this container's real env has ENVIRONMENT=
+# development exported directly (confirmed live, same leak path as every
+# other variable below). main.py's lifespan handler treats
+# environment == "test" as an explicit hard stop before opening a live
+# Alpaca news WebSocket connection; with the leaked "development" value
+# every client-fixture test in this container has been opening a REAL
+# live WebSocket, not skipping it as intended.
+os.environ["ENVIRONMENT"] = "test"
 os.environ.setdefault("SQLITE_PATH", "sqlite:///./test_ven0x.db")
+# Settings.sqlalchemy_url returns the real DATABASE_URL whenever
+# USE_SQLITE_FALLBACK is falsy OR DATABASE_URL is explicitly set —
+# correct for this container's normal (live-Postgres) operation, but this
+# container's real backend/.env now legitimately sets BOTH
+# USE_SQLITE_FALLBACK=false and a real, reachable DATABASE_URL for the
+# live research/production stack, and docker compose loads that straight
+# into the process environment (confirmed live), not just into
+# pydantic-settings' own .env parsing. A plain setdefault() is a no-op
+# against an already-exported value, which is exactly how this went
+# undetected: app.main.py's lifespan handler builds its own module-level
+# SessionLocal()/engine from settings.sqlalchemy_url at import time, a
+# completely separate code path from the client/db_session fixtures'
+# dependency-injected test_engine below — so every test using the
+# `client` fixture in this container has been seeding/querying the REAL
+# production timescaledb on startup, not a throwaway database. Both
+# variables must be force-overridden (not setdefault), matching
+# MARKET_DATA_PROVIDER's fix below, so sqlalchemy_url genuinely resolves
+# to the harmless SQLITE_PATH file above in every test session.
+os.environ["USE_SQLITE_FALLBACK"] = "true"
+os.environ.pop("DATABASE_URL", None)
 # The test suite must never depend on whatever's in the developer's real
 # backend/.env — that file now legitimately holds live TWELVE_DATA_API_KEY/
 # ALPHA_VANTAGE_API_KEY credentials and MARKET_DATA_PROVIDER=twelvedata for
@@ -11,9 +37,31 @@ os.environ.setdefault("SQLITE_PATH", "sqlite:///./test_ven0x.db")
 # chat assistant, etc.) would silently make real vendor HTTP calls during
 # `pytest` — burning quota, flaky on network, and a real safety gap (MOCK
 # must never accidentally become LIVE just because `pytest` ran on a
-# machine with keys configured). Same setdefault pattern as the three
-# variables above.
-os.environ.setdefault("MARKET_DATA_PROVIDER", "mock")
+# machine with keys configured). setdefault() alone is NOT enough here —
+# confirmed live: this container's env genuinely has MARKET_DATA_PROVIDER
+# exported (docker compose loads backend/.env straight into the process
+# environment, not just into pydantic-settings' own .env parsing), so
+# setdefault silently no-ops and 23 tests failed against live vendors
+# before this was force-overridden instead.
+os.environ["MARKET_DATA_PROVIDER"] = "mock"
+# Same reasoning as MARKET_DATA_PROVIDER above, for a different real leak
+# path: this container's real ./model_artifacts directory can legitimately
+# hold a live-trained ensemble_latest.pkl (the production Shadow/champion
+# pipeline saves there once enough closed outcomes accumulate — a real,
+# desired production event, not a bug). Tests like test_scorer.py's
+# "honestly heuristic with no trained artifact" assume a pristine
+# filesystem; without this override they'd load that real artifact and
+# fail — not because of a code regression, but because they're sharing a
+# volume with live production state they were never meant to see. Points
+# at a directory that is never created (nothing in the test suite calls
+# training_pipeline.save_model()), so load_latest_model() always sees
+# nothing here, matching what a genuinely fresh/isolated test run — CI's —
+# would see.
+# Forced (not setdefault) — this container's real env also has
+# MODEL_ARTIFACT_DIR=./model_artifacts exported directly (confirmed live,
+# same leak path as the two variables above), so setdefault alone was
+# silently a no-op here too.
+os.environ["MODEL_ARTIFACT_DIR"] = "./test_model_artifacts_isolated"
 
 import pytest
 from fastapi.testclient import TestClient
