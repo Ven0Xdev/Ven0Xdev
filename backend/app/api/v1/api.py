@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     portfolio,
     predictions,
     providers,
+    research,
     scan,
     shadow,
     stocks,
@@ -44,5 +45,6 @@ api_router.include_router(news.router)
 api_router.include_router(shadow.router)
 api_router.include_router(providers.router)
 api_router.include_router(universe.router)
+api_router.include_router(research.router)
 api_router.include_router(admin.router)
 api_router.include_router(billing.router)
