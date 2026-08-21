@@ -76,7 +76,13 @@ def _check_errors(payload: dict, vendor: str, context: str) -> None:
         return
     for key in ("Error Message", "Note", "Information"):
         if payload.get(key):
-            raise ProviderDataUnavailable(f"{vendor} {context}: {payload[key]}")
+            from app.core.logging import sanitize_secrets
+
+            # Alpha Vantage's own rate-limit body echoes the literal API
+            # key back ("...detected your API key as <key>...") — confirmed
+            # live. Never forward vendor text into an exception message
+            # unredacted, since that message can reach an API response.
+            raise ProviderDataUnavailable(f"{vendor} {context}: {sanitize_secrets(str(payload[key]))}")
 
 
 class AlphaVantageProvider(MarketDataProvider):
@@ -267,6 +273,49 @@ class AlphaVantageProvider(MarketDataProvider):
                     sentiment=float(row.get("overall_sentiment_score") or 0.0),
                     is_press_release=source.lower() in {"prnewswire", "globenewswire", "businesswire"},
                     is_promotional=False,  # requires the platform's own promotion classifier
+                )
+            )
+        return articles
+
+    def get_historical_news_range(self, symbol: str, time_from: datetime, time_to: datetime, limit: int = 200) -> list[NewsArticle]:
+        """Real, original-timestamped news within an explicit historical
+        window — for the low-priority research backfill worker
+        (services/research/lowpri_backfill.py), which only ever spends a
+        handful of Alpha Vantage calls per day (this quota is shared with
+        the live NCS scheduler). Separate from `get_news` above (which is
+        "most recent N articles," used by the live platform) so that
+        method's behavior is completely unchanged. NEWS_SENTIMENT genuinely
+        supports `time_from`/`time_to`; nothing here is inferred or
+        back-dated — an empty result means no article for this window, not
+        an error.
+        """
+        symbol = symbol.upper()
+        payload = self._get(
+            {
+                "function": "NEWS_SENTIMENT", "tickers": symbol,
+                "time_from": time_from.strftime("%Y%m%dT%H%M"), "time_to": time_to.strftime("%Y%m%dT%H%M"),
+                "sort": "EARLIEST", "limit": str(limit),
+            },
+            ("news_range", symbol, time_from.isoformat(), time_to.isoformat()),
+            "NEWS_SENTIMENT",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
+        )
+        feed = payload.get("feed") or []
+        articles = []
+        for row in feed[:limit]:
+            published = row.get("time_published")
+            try:
+                published_at = datetime.strptime(published, "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
+            except (TypeError, ValueError):
+                continue  # no genuine timestamp — never guess one
+            source = row.get("source") or "unknown"
+            articles.append(
+                NewsArticle(
+                    symbol=symbol, published_at=published_at, source=source,
+                    headline=row.get("title") or "", url=row.get("url") or "",
+                    sentiment=float(row.get("overall_sentiment_score") or 0.0),
+                    is_press_release=source.lower() in {"prnewswire", "globenewswire", "businesswire"},
+                    is_promotional=False,
                 )
             )
         return articles

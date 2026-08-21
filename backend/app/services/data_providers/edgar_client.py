@@ -144,6 +144,67 @@ class EdgarClient:
                 return history
         return []
 
+    # Concepts pulled for the historical research pipeline's point-in-time
+    # fundamentals feature (services/research/backfill_fundamentals.py) —
+    # deliberately a small, high-signal set of standard us-gaap tags most
+    # operating companies report. ETFs/commodities in the Nexora universe
+    # (SPY, QQQ, GLD, ...) file none of these — that is reported as
+    # "no fundamentals available for this instrument," never an error and
+    # never a fabricated zero.
+    _POINT_IN_TIME_CONCEPTS = (
+        ("us-gaap", "Revenues"),
+        ("us-gaap", "NetIncomeLoss"),
+        ("us-gaap", "Assets"),
+        ("us-gaap", "Liabilities"),
+        ("us-gaap", "StockholdersEquity"),
+        ("us-gaap", "EarningsPerShareDiluted"),
+        ("us-gaap", "CommonStockSharesOutstanding"),
+    )
+
+    def get_point_in_time_facts(self, cik: str) -> list[dict]:
+        """Every observation of every `_POINT_IN_TIME_CONCEPTS` tag this
+        issuer has ever filed, each carrying its own `filed` date — the
+        field `get_share_history()` above never reads. This is the
+        genuinely point-in-time-correct read: a feature computed at
+        timestamp T may only use a row whose `filed_date <= T`, since the
+        market did not know a fact until the filing that disclosed it was
+        actually submitted (commonly 40-45+ days after the fact's own
+        `period_end`). Using `end` instead of `filed` — the bug this
+        method exists to avoid repeating — would be lookahead.
+
+        Returns a flat list of dicts (taxonomy, concept, unit, period_
+        start, period_end, filed, form, value) ready to persist as
+        PointInTimeFundamental rows. Concepts the issuer never reports
+        are silently absent from the result — never guessed.
+        """
+        payload = self._get_json(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json")
+        if not payload or not isinstance(payload, dict):
+            return []
+        facts = payload.get("facts", {})
+
+        out: list[dict] = []
+        for taxonomy, concept in self._POINT_IN_TIME_CONCEPTS:
+            concept_data = facts.get(taxonomy, {}).get(concept, {})
+            units = concept_data.get("units", {})
+            for unit_name, observations in units.items():
+                for item in observations:
+                    filed = item.get("filed")
+                    end = item.get("end")
+                    val = item.get("val")
+                    if not filed or not end or val is None:
+                        continue
+                    out.append({
+                        "taxonomy": taxonomy,
+                        "concept": concept,
+                        "unit": unit_name,
+                        "period_start": item.get("start"),
+                        "period_end": end,
+                        "filed": filed,
+                        "form": item.get("form"),
+                        "value": float(val),
+                    })
+        return out
+
     @staticmethod
     def compute_dilution_12m(history: list[tuple[datetime, float]], as_of: datetime | None = None) -> tuple[float | None, float | None, float | None]:
         """Returns (dilution_12m_pct, latest_shares, year_ago_shares).

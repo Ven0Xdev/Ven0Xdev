@@ -39,6 +39,26 @@ def register_secret(value: str | None) -> None:
         _registered_secrets.append(value)
 
 
+def sanitize_secrets(text: str) -> str:
+    """Redact API keys/tokens from arbitrary text — the same rules
+    _RedactSecretsFilter applies to log records, but usable at the point an
+    exception message is *constructed* from raw vendor text. Needed because
+    a vendor's own error body can echo the literal key back (confirmed
+    live: Alpha Vantage's rate-limit "Information" field reads "...detected
+    your API key as <key> and our standard API rate limit is..."), and that
+    text becomes a ProviderDataUnavailable message that may reach an API
+    response or a caller's log line the redacting Filter never sees (it
+    only filters records that pass through this process's own configured
+    handler).
+    """
+    redacted = _SECRET_QUERY_PARAM_RE.sub(r"\1=***", text)
+    redacted = _SECRET_JSON_FIELD_RE.sub(r'\1: "***"', redacted)
+    for secret in _registered_secrets:
+        if secret in redacted:
+            redacted = redacted.replace(secret, "***")
+    return redacted
+
+
 class _RedactSecretsFilter(logging.Filter):
     """Belt-and-suspenders redaction applied to *every* log record reaching
     this handler, not just this codebase's own log calls.
@@ -62,11 +82,7 @@ class _RedactSecretsFilter(logging.Filter):
             message = record.getMessage()
         except Exception:
             return True
-        redacted = _SECRET_QUERY_PARAM_RE.sub(r"\1=***", message)
-        redacted = _SECRET_JSON_FIELD_RE.sub(r'\1: "***"', redacted)
-        for secret in _registered_secrets:
-            if secret in redacted:
-                redacted = redacted.replace(secret, "***")
+        redacted = sanitize_secrets(message)
         if redacted != message:
             record.msg = redacted
             record.args = ()

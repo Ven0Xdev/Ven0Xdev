@@ -65,8 +65,13 @@ def _check_errors(payload, vendor: str, context: str) -> None:
     RateLimitedHttpClient), but some failures (unknown symbol, bad params)
     come back as HTTP 200 with a `status: "error"` body instead."""
     if isinstance(payload, dict) and payload.get("status") == "error":
+        from app.core.logging import sanitize_secrets
+
         message = payload.get("message") or "unknown error"
-        raise ProviderDataUnavailable(f"{vendor} {context}: {message}")
+        # Defense-in-depth: some vendor error bodies echo the caller's own
+        # API key back verbatim (confirmed on Alpha Vantage — see its
+        # _check_errors) — never forward raw vendor text unredacted.
+        raise ProviderDataUnavailable(f"{vendor} {context}: {sanitize_secrets(str(message))}")
 
 
 class TwelveDataProvider(MarketDataProvider):
@@ -189,6 +194,46 @@ class TwelveDataProvider(MarketDataProvider):
         )
         # No bid/ask columns: /time_series carries no quote depth.
         return df.tail(lookback_days)
+
+    # --- historical research backfill --------------------------------------------
+    def get_historical_daily_range(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+        """Explicit date-ranged daily bars for the historical research
+        pipeline (services/research/backfill_daily.py) — deliberately
+        separate from `get_ohlcv` above (which the live scoring/NCS path
+        uses unchanged) so this new call can request `adjust=splits`
+        explicitly rather than depend on whatever `/time_series` defaults
+        to, per the platform's "split-adjusted OHLCV so corporate actions
+        cannot distort returns" requirement. `outputsize=5000` is a safety
+        cap (Twelve Data's per-call max) that comfortably covers a single
+        `start_date`..`end_date` range spanning several years of daily bars.
+        """
+        symbol = symbol.upper()
+        payload = self._get(
+            "/time_series",
+            {
+                "symbol": symbol, "interval": "1day", "start_date": start_date, "end_date": end_date,
+                "outputsize": "5000", "adjust": "splits",
+            },
+            ("time_series_range", symbol, start_date, end_date),
+            "/time_series",
+            ttl_seconds=LOW_FREQUENCY_TTL_SECONDS,
+        )
+        values = payload.get("values")
+        if not values:
+            raise ProviderDataUnavailable(f"TwelveData has no daily series for {symbol} in [{start_date}, {end_date}]")
+
+        rows = sorted(values, key=lambda v: v["datetime"])  # vendor returns newest-first
+        index = pd.to_datetime([v["datetime"] for v in rows], utc=True)
+        return pd.DataFrame(
+            {
+                "open": [float(v["open"]) for v in rows],
+                "high": [float(v["high"]) for v in rows],
+                "low": [float(v["low"]) for v in rows],
+                "close": [float(v["close"]) for v in rows],
+                "volume": [float(v.get("volume") or 0) for v in rows],
+            },
+            index=pd.DatetimeIndex(index, name="ts"),
+        )
 
     # --- quotes -----------------------------------------------------------------
     def get_quote(self, symbol: str) -> Quote:

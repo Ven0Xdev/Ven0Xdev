@@ -74,7 +74,12 @@ def _check_errors(payload, vendor: str, context: str) -> None:
     error on an otherwise-200 response, same discipline as every other
     adapter here."""
     if isinstance(payload, dict) and payload.get("code") and payload.get("message") and "symbol" not in payload:
-        raise ProviderDataUnavailable(f"{vendor} {context}: {payload['message']}")
+        from app.core.logging import sanitize_secrets
+
+        # Defense-in-depth: some vendor error bodies echo the caller's own
+        # API key back verbatim (confirmed on Alpha Vantage — see its
+        # _check_errors) — never forward raw vendor text unredacted.
+        raise ProviderDataUnavailable(f"{vendor} {context}: {sanitize_secrets(str(payload['message']))}")
 
 
 def _bars_to_df(bars: list[dict]) -> pd.DataFrame:
@@ -237,6 +242,46 @@ class AlpacaProvider(MarketDataProvider):
         if not bars:
             raise ProviderDataUnavailable(f"Alpaca has no intraday bars for {symbol} on the {_FEED} feed")
         return _bars_to_df(bars).tail(lookback_minutes)
+
+    def get_historical_minute_range(self, symbol: str, start: datetime, end: datetime) -> pd.DataFrame:
+        """Real, fully paginated 1-minute bars across an arbitrary date
+        range, for the historical research pipeline's 30m/60m resampling
+        (services/research/backfill_intraday.py). `get_intraday_bars`
+        above is a different, deliberately narrow tool — a single-page
+        "most recent session" tail for live chart backfill; this method
+        exists because that one has no way to reach further back than one
+        page (10,000 minute-bars, `next_page_token` never followed).
+
+        IEX-only, same as every other call in this adapter — Alpaca's
+        Basic plan has no SIP (full consolidated-tape) access. Callers
+        must report this as *partial* market coverage, never as
+        equivalent to full-tape historical data.
+        """
+        symbol = symbol.upper()
+        all_bars: list[dict] = []
+        page_token: str | None = None
+        while True:
+            params = {
+                "timeframe": "1Min",
+                "start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "feed": _FEED,
+                "limit": "10000",
+                "adjustment": "split",
+            }
+            if page_token:
+                params["page_token"] = page_token
+            payload = self._get(
+                f"/v2/stocks/{symbol}/bars", params,
+                ("intraday_range", symbol, start.isoformat(), end.isoformat(), page_token), "bars",
+            )
+            all_bars.extend(payload.get("bars") or [])
+            page_token = payload.get("next_page_token")
+            if not page_token:
+                break
+        if not all_bars:
+            raise ProviderDataUnavailable(f"Alpaca has no 1-minute bars for {symbol} in [{start}, {end}] on the {_FEED} feed")
+        return _bars_to_df(all_bars)
 
     # --- quotes -----------------------------------------------------------------
     def get_quote(self, symbol: str) -> Quote:
