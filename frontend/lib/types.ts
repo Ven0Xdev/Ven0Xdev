@@ -800,3 +800,146 @@ export interface ShadowProgressResponse {
   timeframe: string;
   tickers: ShadowTickerProgress[];
 }
+
+// --- Historical Research pipeline (Phase 1-7) --------------------------
+
+export interface ResearchBarCoverage {
+  ticker_symbol: string;
+  timeframe: string;
+  data_source: string;
+  feed: string;
+  coverage_start: string | null;
+  coverage_end: string | null;
+  row_count: number;
+}
+
+export interface ResearchBackfillCheckpoint {
+  provider: string;
+  dataset: string;
+  ticker_symbol: string;
+  status: "pending" | "in_progress" | "done" | "failed";
+  rows_ingested: number;
+  last_error: string | null;
+  updated_at: string | null;
+}
+
+export interface ResearchCoverageResponse {
+  bars: ResearchBarCoverage[];
+  fundamentals_rows_by_symbol: Record<string, number>;
+  news_rows_by_symbol: Record<string, number>;
+  corporate_actions_rows_by_symbol: Record<string, number>;
+  news_honestly_unavailable: boolean;
+  backfill_checkpoints: ResearchBackfillCheckpoint[];
+  horizons: string[];
+}
+
+export type ResearchModelState =
+  | "RESEARCH" | "HISTORICALLY_QUALIFIED" | "REJECTED_OVERFIT" | "LIVE_SHADOW" | "LIVE_QUALIFIED" | "RETIRED";
+
+export interface ResearchModelSummary {
+  id: number;
+  family: string;
+  horizon: string;
+  version: string;
+  state: ResearchModelState;
+  rejection_reason: string | null;
+  trained_at: string;
+  qualified_at: string | null;
+  retired_at: string | null;
+  dataset_summary: {
+    horizon: string;
+    n_samples: number;
+    n_symbols_with_data: number;
+    date_range: [string, string] | null;
+    label_distribution: { BUY: number; SELL: number; NO_TRADE: number };
+  };
+}
+
+export interface ResearchFamilyResult {
+  family: string;
+  n_train: number;
+  n_test: number;
+  buy_auc: number | null;
+  sell_auc: number | null;
+  buy_brier: number | null;
+  buy_calibration_gap: number | null;
+  n_trades: number;
+  total_return_pct: number;
+  sharpe_per_trade: number;
+  sortino_per_trade: number;
+  max_drawdown_pct: number;
+  max_drawdown_duration_trades: number;
+  calmar: number;
+  profit_factor: number;
+  expectancy_pct: number;
+  win_rate_pct: number;
+  turnover: number;
+}
+
+export interface ResearchFoldReport {
+  train_through_year: number;
+  test_year: number;
+  n_train_before_purge: number;
+  n_train_after_purge: number;
+  families: ResearchFamilyResult[];
+}
+
+export interface ResearchModelDetail extends ResearchModelSummary {
+  walk_forward_report: {
+    folds: ResearchFoldReport[];
+    selected_family: string | null;
+    selection_rationale: string | null;
+    deflated_sharpe_probability: number | null;
+    n_trials_for_dsr: number | null;
+  };
+  holdout_report: {
+    train_through: string;
+    holdout_range: [string, string];
+    family: string;
+    result: ResearchFamilyResult;
+    note: string;
+  } | Record<string, never>;
+  stress_test_report: {
+    normal_costs: ResearchFamilyResult;
+    doubled_costs: ResearchFamilyResult;
+  } | Record<string, never>;
+  leakage_checks: Record<string, unknown>;
+}
+
+export interface CanaryPositionSummary {
+  id: number;
+  ticker_symbol: string;
+  horizon: string;
+  quantity: number;
+  avg_entry_price: number;
+  opened_at: string;
+  stop_loss: number;
+  take_profit: number | null;
+  max_holding_until: string;
+}
+
+export interface CanaryDecisionSummary {
+  id: number;
+  ticker_symbol: string;
+  horizon: string;
+  evaluated_at: string;
+  verdict: "BUY" | "SELL" | "NO_TRADE";
+  probability: number;
+  fired: boolean;
+  no_trade_reason: string | null;
+  drift_status: string | null;
+  data_stale: boolean;
+}
+
+export interface CanaryStatusResponse {
+  enabled: boolean;
+  auto_paused: boolean;
+  auto_pause_reason: string | null;
+  cash_balance: number;
+  starting_balance: number;
+  peak_equity: number;
+  positions_opened_today: number;
+  realized_pnl_today_dollars: number;
+  open_positions: CanaryPositionSummary[];
+  recent_decisions: CanaryDecisionSummary[];
+}

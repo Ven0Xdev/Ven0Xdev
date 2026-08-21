@@ -9,6 +9,7 @@ import type {
   BillingStatus,
   CalibrationReport,
   CandlesResponse,
+  CanaryStatusResponse,
   ChartDrawingRecord,
   ChatMetadata,
   DashboardSummary,
@@ -36,6 +37,9 @@ import type {
   PortfolioPosition,
   ProviderHealth,
   QuoteTicket,
+  ResearchCoverageResponse,
+  ResearchModelDetail,
+  ResearchModelSummary,
   SafeModeStatus,
   SchemaStatus,
   WhyNoTrade,
@@ -470,4 +474,24 @@ export const api = {
     request<{ session_key: string; ticker: string | null }>(`/chat/sessions/${session_key}/ticker`, {
       method: "DELETE",
     }),
+
+  // Historical Research pipeline (Phase 1-7) — NEXORA INTERNAL PAPER
+  // Research Canary only, see services/research/*.py.
+  researchCoverage: () => request<ResearchCoverageResponse>(`/research/coverage`),
+  researchModels: (horizon?: string, state?: string) => {
+    const params = new URLSearchParams();
+    if (horizon) params.set("horizon", horizon);
+    if (state) params.set("state", state);
+    const qs = params.toString();
+    return request<ResearchModelSummary[]>(`/research/models${qs ? `?${qs}` : ""}`);
+  },
+  researchModelDetail: (id: number) => request<ResearchModelDetail>(`/research/models/${id}`),
+  trainResearchModel: (horizon: string) =>
+    request<{ id: number; family: string; horizon: string; state: string; rejection_reason: string | null }>(
+      `/research/train/${horizon}`, { method: "POST" },
+    ),
+  canaryStatus: () => request<CanaryStatusResponse>(`/research/canary/status`),
+  enableCanary: () => request<{ enabled: boolean }>(`/research/canary/enable`, { method: "POST" }),
+  disableCanary: () => request<{ enabled: boolean }>(`/research/canary/disable`, { method: "POST" }),
+  clearCanaryAutoPause: () => request<{ auto_paused: boolean }>(`/research/canary/clear-auto-pause`, { method: "POST" }),
 };
