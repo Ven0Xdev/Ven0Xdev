@@ -151,6 +151,22 @@ services:
     volumes:
       - model_artifacts:/app/model_artifacts
 
+  lowpri-backfill-worker:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.workers.lowpri_backfill_worker"]
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://ven0x:ven0x@timescaledb:5432/ven0x_otc
+      USE_SQLITE_FALLBACK: "false"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   web:
     build:
       context: ./frontend

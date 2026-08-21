@@ -13,6 +13,7 @@ pandas>=2.2
 # not a version this project is otherwise trying to avoid. Revisit once
 # mypy or numpy's stubs resolve it.
 numpy>=1.26,<2.5
+scipy>=1.13
 scikit-learn>=1.5
 lightgbm>=4.5
 xgboost>=2.1
