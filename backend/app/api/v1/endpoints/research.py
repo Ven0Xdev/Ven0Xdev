@@ -157,6 +157,34 @@ def train_research_model(
     }
 
 
+@router.post("/train-strategy/{horizon}")
+def train_strategy_models(
+    horizon: str,
+    db: Session = Depends(db_session),
+    operator: User = Depends(require_operator),
+    _rate: User = Depends(expensive_rate_limit),
+):
+    """Same walk-forward + Phase 5 gate as /train/{horizon}, but for the
+    five transparent rule-based strategy families (strategies.py)
+    instead of a fitted ML model — reuses registry.qualify_candidate()
+    unchanged, so a strategy is held to the identical bar as an ML
+    candidate, never a looser one."""
+    if horizon not in HORIZONS:
+        raise HTTPException(status_code=400, detail=f"horizon must be one of {HORIZONS}")
+
+    from app.services.research.registry import qualify_candidate
+    from app.services.research.strategy_evaluation import run_strategy_walk_forward
+    from app.services.universe.manager import get_active_universe
+
+    symbols = [a.symbol for a in get_active_universe(db)]
+    report = run_strategy_walk_forward(db, horizon, symbols)
+    model = qualify_candidate(db, horizon, report)
+    return {
+        "id": model.id, "family": model.family, "horizon": model.horizon, "state": model.state,
+        "rejection_reason": model.rejection_reason,
+    }
+
+
 @router.get("/canary/status")
 def canary_status(db: Session = Depends(db_session), _user: User = Depends(get_current_user)):
     account = get_or_create_account(db)
