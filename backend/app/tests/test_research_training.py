@@ -52,19 +52,77 @@ class TestPurgeEmbargo:
     def test_a_sample_whose_exit_lands_inside_the_test_window_is_purged(self):
         test_start = datetime(2023, 1, 1, tzinfo=timezone.utc)
         train = [self._sample(datetime(2022, 12, 20, tzinfo=timezone.utc), datetime(2023, 1, 5, tzinfo=timezone.utc))]
-        assert _purge_embargo(train, test_start) == []
+        assert _purge_embargo(train, test_start, "1d") == []
 
     def test_a_sample_whose_exit_is_safely_before_the_embargo_boundary_survives(self):
         test_start = datetime(2023, 1, 1, tzinfo=timezone.utc)
         train = [self._sample(datetime(2022, 6, 1, tzinfo=timezone.utc), datetime(2022, 6, 5, tzinfo=timezone.utc))]
-        assert len(_purge_embargo(train, test_start)) == 1
+        assert len(_purge_embargo(train, test_start, "1d")) == 1
 
     def test_a_sample_inside_the_embargo_window_is_dropped_even_if_its_own_exit_is_fine(self):
         test_start = datetime(2023, 1, 1, tzinfo=timezone.utc)
         # exit is comfortably before test_start, but entry is only 2 days
         # before test_start — inside the 5-day embargo buffer.
         train = [self._sample(datetime(2022, 12, 30, tzinfo=timezone.utc), datetime(2022, 12, 31, tzinfo=timezone.utc))]
-        assert _purge_embargo(train, test_start) == []
+        assert _purge_embargo(train, test_start, "1d") == []
+
+    def test_embargo_scales_up_for_longer_horizons_not_a_flat_5_days(self):
+        """Real bug found during the 2026-08-23 20d investigation: a flat
+        5-day embargo is shorter than the 10d/20d horizons themselves,
+        violating "embargo at least as long as the horizon". A sample
+        entered 10 calendar days before test_start survives the OLD flat
+        5-day embargo but must now be purged for the 20d horizon (whose
+        embargo floor is 20 trading days * 7/5 = 28 calendar days)."""
+        test_start = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        entry = datetime(2022, 12, 22, tzinfo=timezone.utc)  # 10 calendar days before test_start
+        train = [self._sample(entry, entry + timedelta(days=1))]
+        assert len(_purge_embargo(train, test_start, "1d")) == 1  # 1d's embargo floor (5d) doesn't reach this far back
+        assert _purge_embargo(train, test_start, "20d") == []  # 20d's embargo floor (28d) does
+
+
+class TestLeakageChecksAgainstAHolidaySpanningSample:
+    """Real false positive caught live on the very first 5d retrain after
+    the embargo fix: a 5-trading-day horizon can span more than 7
+    calendar days across a market holiday, so a raw sample can genuinely
+    have entry < embargo_cutoff yet exit >= test_start. An earlier
+    version of _run_leakage_checks flagged this as leakage — it isn't:
+    _purge_embargo's own exit_ts < test_start condition already excludes
+    that exact sample from training regardless of the embargo. This
+    proves the fixed check (which asserts the invariant on
+    _purge_embargo's REAL output) no longer false-positives here."""
+
+    def _sample(self, entry_ts, exit_ts):
+        snap = FeatureSnapshot(ticker_symbol="X", as_of=entry_ts, values=dict.fromkeys(RESEARCH_FEATURE_NAMES, 0.0))
+        return ResearchSample("X", "5d", entry_ts, exit_ts, "NO_TRADE", 0, 0, 0.0, 100.0, snap)
+
+    def test_a_holiday_spanning_sample_near_the_boundary_is_not_a_false_positive(self):
+        from app.services.research.training import FoldReport, _run_leakage_checks
+
+        test_start = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        # Entry is 8 calendar days before test_start — outside 5d's 7-day
+        # embargo cutoff — but its exit (entry + a holiday-widened span)
+        # lands ON test_start, exactly the case that tripped the bug.
+        entry = test_start - timedelta(days=8)
+        exit_ts = test_start
+        samples = [self._sample(entry, exit_ts)]
+        folds = [FoldReport(train_through_year=2022, test_year=2023, n_train_before_purge=1, n_train_after_purge=0)]
+
+        checks = _run_leakage_checks(samples, folds, "5d")
+        assert checks["no_post_embargo_training_sample_resolves_in_test_window"] is True
+        assert checks["all_passed"] is True
+
+    def test_embargo_days_for_intraday_horizons_is_the_flat_floor(self):
+        from app.services.research.training import _embargo_days_for
+
+        assert _embargo_days_for("30m") == 5.0
+        assert _embargo_days_for("eod") == 5.0
+
+    def test_embargo_days_for_swing_horizons_scales_with_trading_days(self):
+        from app.services.research.training import _embargo_days_for
+
+        assert _embargo_days_for("5d") == pytest.approx(7.0)
+        assert _embargo_days_for("10d") == pytest.approx(14.0)
+        assert _embargo_days_for("20d") == pytest.approx(28.0)
 
 
 class TestDeflatedSharpe:
@@ -110,6 +168,9 @@ def test_full_walk_forward_pipeline_runs_end_to_end_on_synthetic_daily_history(d
     assert report["dataset_summary"]["n_samples"] > 0
     assert report["leakage_checks"]["every_sample_exit_after_entry"] is True
     assert report["leakage_checks"]["folds_are_chronological"] is True
+    assert report["leakage_checks"]["no_post_embargo_training_sample_resolves_in_test_window"] is True
+    assert report["leakage_checks"]["embargo_at_least_as_long_as_horizon"] is True
+    assert report["leakage_checks"]["embargo_days_used"] == 5.0  # 1d horizon: flat floor applies
     assert report["leakage_checks"]["all_passed"] is True
 
     ran_folds = [f for f in report["folds"] if f["families"]]
@@ -135,6 +196,15 @@ def test_full_walk_forward_pipeline_runs_end_to_end_on_synthetic_daily_history(d
             stressed = report["stress_test"]["doubled_costs"]
             # Doubling costs can only ever hurt or match expectancy, never help it.
             assert stressed["expectancy_pct"] <= normal["expectancy_pct"] + 1e-9
+
+
+def test_20d_horizon_uses_a_horizon_scaled_embargo_not_the_flat_5_day_floor(db_session):
+    _seed_daily_bars(db_session, SYMBOL)
+    report = run_calendar_walk_forward(db_session, "20d", [SYMBOL])
+
+    assert report["leakage_checks"]["embargo_days_used"] == pytest.approx(28.0)
+    assert report["leakage_checks"]["embargo_at_least_as_long_as_horizon"] is True
+    assert report["leakage_checks"]["all_passed"] is True
 
 
 def test_reports_honest_insufficient_data_note_instead_of_crashing_on_too_little_history(db_session):

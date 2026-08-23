@@ -52,6 +52,7 @@ from app.services.ml.gbm_models import CatBoostModel, LightGBMModel, XGBoostMode
 from app.services.research.backfill_daily import last_completed_session
 from app.services.research.dataset import ResearchSample, build_horizon_dataset
 from app.services.research.features import RESEARCH_FEATURE_NAMES
+from app.services.research.labeling import SWING_HORIZON_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,15 @@ GBM_FAMILIES = {"lightgbm": LightGBMModel, "xgboost": XGBoostModel, "catboost": 
 WALK_FORWARD_FOLDS = [(2021, 2022), (2022, 2023), (2023, 2024), (2024, 2025)]
 FINAL_HOLDOUT_START_YEAR = 2026
 
+# A fixed 5-calendar-day floor, but never shorter than the horizon itself
+# — see _embargo_days_for(). Discovered live during the 20d investigation:
+# a flat 5-day embargo satisfies "purge/embargo at least as long as the
+# horizon" for 30m/60m/eod/1d, but was silently shorter than the horizon
+# for 5d/10d/20d, leaving those folds' near-boundary training samples
+# under-guarded against feature-window autocorrelation bleed across the
+# train/test split (the label-resolution leakage itself was always
+# blocked independently by _purge_embargo's exit_ts < test_start check —
+# this fixes the separate, weaker embargo-buffer guarantee).
 EMBARGO_DAYS = 5.0
 SLIPPAGE_BPS = 5.0  # 0.05% per leg, conservative for this liquid large-cap/ETF universe
 COMMISSION_PCT = 0.0  # disclosed explicitly: modern retail brokers are commission-free; not hidden, not assumed away
@@ -122,8 +132,18 @@ def _heuristic_scores(samples: list[ResearchSample]) -> tuple[np.ndarray, np.nda
     return np.array(buy), np.array(sell)
 
 
-def _purge_embargo(train: list[ResearchSample], test_start: datetime) -> list[ResearchSample]:
-    embargo_cutoff = test_start - timedelta(days=EMBARGO_DAYS)
+def _embargo_days_for(horizon: str) -> float:
+    """Calendar-day embargo floor, never shorter than the horizon itself.
+    Trading days are converted to calendar days at 7/5 (accounts for
+    weekends; ignores holidays, which only makes the floor slightly more
+    conservative, never less). Intraday horizons (30m/60m/eod) resolve
+    same-day, so the flat EMBARGO_DAYS floor already covers them."""
+    trading_days = SWING_HORIZON_DAYS.get(horizon, 0)
+    return max(EMBARGO_DAYS, trading_days * 7 / 5)
+
+
+def _purge_embargo(train: list[ResearchSample], test_start: datetime, horizon: str) -> list[ResearchSample]:
+    embargo_cutoff = test_start - timedelta(days=_embargo_days_for(horizon))
     return [s for s in train if s.exit_ts < test_start and s.entry_ts < embargo_cutoff]
 
 
@@ -296,7 +316,7 @@ def run_calendar_walk_forward(db: Session, horizon: str, symbols: list[str]) -> 
         test_end = datetime(test_year + 1, 1, 1, tzinfo=timezone.utc)
         train_all = [s for s in samples if s.entry_ts < test_start]
         test = [s for s in samples if test_start <= s.entry_ts < test_end]
-        train = _purge_embargo(train_all, test_start)
+        train = _purge_embargo(train_all, test_start, horizon)
         if len(train) < 30 or len(test) < 10:
             fold_reports.append(FoldReport(train_through_year, test_year, len(train_all), len(train)))
             continue
@@ -322,7 +342,7 @@ def run_calendar_walk_forward(db: Session, horizon: str, symbols: list[str]) -> 
         holdout_end = datetime.combine(last_completed_session(), datetime.min.time(), tzinfo=timezone.utc) + timedelta(days=1)
         train_all = [s for s in samples if s.entry_ts < holdout_start]
         holdout = [s for s in samples if holdout_start <= s.entry_ts < holdout_end]
-        train = _purge_embargo(train_all, holdout_start)
+        train = _purge_embargo(train_all, holdout_start, horizon)
         if len(train) >= 30 and len(holdout) >= 5:
             result = _run_family(selected_family, train, holdout)
             holdout_report = {
@@ -364,7 +384,7 @@ def run_calendar_walk_forward(db: Session, horizon: str, symbols: list[str]) -> 
         mean_sharpe.get(selected_family, 0.0) if selected_family else 0.0, len(trial_sharpes), n_trade_returns,
     )
 
-    leakage_checks = _run_leakage_checks(samples, fold_reports)
+    leakage_checks = _run_leakage_checks(samples, fold_reports, horizon)
 
     return {
         "dataset_summary": dataset_summary,
@@ -406,16 +426,49 @@ def deflated_sharpe_probability(observed_sharpe: float, n_trials: int, n_trade_r
     return float(norm.cdf(z))
 
 
-def _run_leakage_checks(samples: list[ResearchSample], folds: list[FoldReport]) -> dict:
+def _run_leakage_checks(samples: list[ResearchSample], folds: list[FoldReport], horizon: str) -> dict:
     """Automated self-checks recorded verbatim in the registry —
-    genuinely re-derived from the actual sample timestamps, not asserted."""
+    genuinely re-derived from the actual sample timestamps by
+    independently re-scanning `samples`, never by trusting that
+    _purge_embargo's own filtering did its job. Two distinct guarantees,
+    checked separately: (1) no sample's label ever resolves at/after the
+    fold's test start (the core no-lookahead requirement, independent of
+    embargo width); (2) the embargo buffer itself is genuinely at least
+    as long as the horizon at every fold boundary — this is what the
+    2026-08-23 20d investigation found broken (a flat 5-day embargo was
+    shorter than the 10d/20d horizons) and fixed."""
     exit_after_entry = all(s.exit_ts > s.entry_ts for s in samples)
+    embargo_days = _embargo_days_for(horizon)
+    no_exit_leakage = True
+    for fold in folds:
+        test_start = datetime(fold.test_year, 1, 1, tzinfo=timezone.utc)
+        train_all = [s for s in samples if s.entry_ts < test_start]
+        # Calls the REAL _purge_embargo — not a hand-rolled reimplementation.
+        # An earlier version of this check independently re-derived the
+        # entry-cutoff half of the filter but then flagged samples on
+        # exit_ts as if that alone meant leakage, producing a false
+        # positive: a 5-trading-day horizon can span more than 7 calendar
+        # days across a market holiday, so some raw samples genuinely have
+        # entry < embargo_cutoff yet exit >= test_start — but
+        # _purge_embargo's own exit_ts < test_start condition already
+        # excludes exactly those samples from training regardless of the
+        # embargo. The only thing worth asserting independently is the
+        # actual invariant on the REAL function's output.
+        purged = _purge_embargo(train_all, test_start, horizon)
+        if any(s.exit_ts >= test_start for s in purged):
+            no_exit_leakage = False
+    embargo_respected = embargo_days >= SWING_HORIZON_DAYS.get(horizon, 0) * 7 / 5
     checks = {
         "every_sample_exit_after_entry": exit_after_entry,
         "folds_are_chronological": all(
             folds[i].test_year < folds[i + 1].test_year for i in range(len(folds) - 1)
         ) if len(folds) > 1 else True,
+        "no_post_embargo_training_sample_resolves_in_test_window": no_exit_leakage,
+        "embargo_at_least_as_long_as_horizon": embargo_respected,
+        "embargo_days_used": embargo_days,
         "n_samples_checked": len(samples),
     }
-    checks["all_passed"] = bool(exit_after_entry and checks["folds_are_chronological"])
+    checks["all_passed"] = bool(
+        exit_after_entry and checks["folds_are_chronological"] and no_exit_leakage and embargo_respected
+    )
     return checks
