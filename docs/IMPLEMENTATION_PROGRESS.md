@@ -1,0 +1,971 @@
+# Nexora — Beta Hardening Implementation Progress
+
+Continuation ledger for the multi-phase "advanced MVP → safe, verifiable, real-data,
+paper-trading-ready beta" effort. Update this file after every completed phase (or
+meaningful chunk of one). A new session should read this file before re-auditing
+anything.
+
+---
+
+## Current phase
+
+**Phase 9 — chart timeframes + technical indicators** — complete, see
+below. Ready to start **Phase 10 — user alerts** next.
+
+Phases 1 (1.1/1.3 implemented, 1.2 honestly blocked), 2 (2.1, 2.2), 3
+(3.1, 3.2, 3.3), 4 (unified risk/signal policy engine), 5 (frontend
+reliability), 6 (Paper Trading), 7 (prediction ledger + performance
+proof), and 8 (Champion/Challenger promotion gate) — all done. See their
+entries further down for full detail.
+
+## Baseline (Phase 0 — completed 2026-08-14)
+
+- Branch: `claude/otc-ai-trading-platform-7i3zon`
+- HEAD at start of this effort: `b4ab461` (exactly the last audited commit — `git diff --stat b4ab461 HEAD` was empty, `git log b4ab461..HEAD` was empty). Working tree was clean.
+- Repo instruction files checked: `frontend/CLAUDE.md` → `frontend/AGENTS.md` ("this is not the Next.js you know, read `node_modules/next/dist/docs/` before writing code"). No root or backend `CLAUDE.md`/`AGENTS.md`.
+- Confirmed audit findings still hold against current source (spot-checked `backend/app/core/config.py` line numbers match the prior audit exactly — no drift).
+- Environment: fresh container, no Python/Node deps pre-installed. Installed `backend/requirements.txt` (pip) and `frontend` (`npm install`) once — this was a first install, not a reinstall (`pip list`/`node_modules` were empty beforehand).
+- **No live market-data credentials available in this environment** (`env | grep -iE "TWELVE_DATA|ALPHA_VANTAGE|FINNHUB|POLYGON"` → empty, no `backend/.env`/`frontend/.env.local` present). Phase 1.2 (live provider verification against AAPL/NVDA/SPY/GLD) is therefore **BLOCKED by missing credentials**, not skipped — the integration code and its mocked-transport test suites are being kept/extended regardless.
+
+### Baseline verification results
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **280 passed**, 0 failed, 151.00s |
+| `cd frontend && npm run lint` | clean, 0 errors |
+| `cd frontend && npx tsc --noEmit` | clean, 0 errors |
+| `cd frontend && npm run build` | succeeds, 12 routes generated |
+| `cd frontend && npm test` (vitest) | **14 passed** (2 files) |
+
+This is the baseline every subsequent phase's verification is measured against — a regression is anything that drops below these numbers without an explicit, documented reason (e.g. a test intentionally moved/renamed).
+
+---
+
+## Completed tasks
+
+- [x] Phase 0 — baseline check, ledger created.
+- [x] Phase 1.1 — production guard against silently booting on synthetic/mock market data.
+  - New `Settings.allow_synthetic_data: bool = False` (`backend/app/core/config.py`).
+  - `app/main.py`'s existing production boot-guard block extended: builds the
+    configured provider at boot and refuses to start if
+    `environment=="production"` and the resolved provider's `data_mode ==
+    "synthetic"` unless `ALLOW_SYNTHETIC_DATA=true` is explicitly set. A
+    misconfigured *real* provider (missing API key) is deliberately NOT
+    caught by this guard — it already fails loudly per-request via the
+    existing `ProviderDataUnavailable` -> 503 path, which is itself the
+    "clearly labelled unavailable mode" the spec asks for, so gating it at
+    boot too would be redundant, not safer.
+  - Updated `DEPLOYMENT.md` and `backend/.env.example` to document the new
+    variable; the documented Railway quick-start still works, it now needs
+    one extra explicit line (`ALLOW_SYNTHETIC_DATA=true`) to keep using the
+    mock demo provider in `ENVIRONMENT=production` — this is the intended
+    fix, not a regression (that undocumented-silent-mock-in-prod path was
+    audit finding #2).
+  - New test file `backend/app/tests/test_production_guards.py` (6 tests,
+    all real subprocess boots — `python -c "import app.main"` with a
+    controlled env — since the guard is top-level module code and can only
+    be honestly exercised from a fresh process, not by monkeypatching the
+    already-imported, `lru_cache`d settings the rest of the test session
+    shares). Covers: default-SECRET_KEY refusal, AUTH_REQUIRED refusal,
+    silent-mock refusal (new), explicit-opt-in success (new), misconfigured
+    real-provider is NOT blocked (new), dev/test environments unaffected
+    (new).
+- [x] Phase 1.2 — live provider verification: **BLOCKED, reported honestly, not
+  fabricated.** No `TWELVE_DATA_API_KEY`/`ALPHA_VANTAGE_API_KEY` (or any
+  other vendor key) exists in this environment. Added
+  `backend/app/tests/test_live_provider_smoke.py` — a real (not mocked)
+  end-to-end smoke test against AAPL/NVDA/SPY/GLD (quote, OHLCV, invalid
+  symbol, no-secrets-in-error-message) that self-`skipif`s when no vendor
+  key is present, so it is honestly reported as **10 skipped**, never as
+  passed. Will run for real the moment a future session has real
+  credentials — no code changes needed, just set the env vars and run
+  `pytest app/tests/test_live_provider_smoke.py -v -s`. The mocked-transport
+  provider test suites (`test_twelvedata_provider.py`,
+  `test_alphavantage_provider.py`, `test_market_data_fallback.py` — all
+  pre-existing, all still green) already cover this phase's other required
+  scenarios (fallback, cache, rate-limit, timeout, both-unavailable) at the
+  logic level.
+- [x] Phase 1.3 — engine_mode / model_version provenance (scoped: the
+  HEURISTIC-vs-TRAINED_ML labeling specifically, not yet the full
+  analysis_id/asset_type/feature_version/risk_policy_version/warnings field
+  set the spec eventually wants — those depend on infrastructure Phases 4
+  and 8 build, e.g. a versioned risk policy and a real dataset/training
+  pipeline; adding empty version-stub fields for systems that don't exist
+  yet would itself be a form of fabricated precision, so they're deferred
+  to when Phase 4/8 give them real values).
+  - `EnsemblePrediction.is_trained: bool` (`backend/app/services/ml/ensemble.py`)
+    — true only if every requested horizon threshold was served by an
+    actually-fitted LightGBM/XGBoost/CatBoost trio; false the moment even
+    one threshold falls back to `_heuristic_prior()`.
+  - `EnsembleModel.version: str | None`, set by
+    `training_pipeline.save_model()`'s existing timestamp version tag (was
+    computed before but never attached to the model object itself).
+  - `StockAnalysis.engine_mode: "HEURISTIC" | "TRAINED_ML"` and
+    `.model_version: str | None` (`backend/app/schemas/stock.py`), populated
+    in `scorer.py`'s `_analyze_ticker_uncached()`.
+  - Frontend: `frontend/lib/types.ts`'s `StockAnalysis` type extended;
+    `DataBadge` component (`frontend/components/ui/DataBadge.tsx`) grew an
+    optional second badge ("HEURISTIC ENGINE" / "TRAINED ML MODEL") wired
+    into the stock detail page's existing provenance strip and its
+    sources-and-timestamps footer — the one place in the UI a heuristic
+    number could plausibly be read as a trained-model number now says
+    otherwise explicitly.
+  - New tests: `backend/app/tests/test_ensemble_provenance.py` (3 tests:
+    untrained→heuristic, fully-fitted→trained, partially-fitted→still
+    heuristic — the "partial" case is the one that actually matters, since
+    a half-trained ensemble silently reporting TRAINED_ML would be exactly
+    the dishonest labeling this field exists to prevent) and one new
+    assertion added to the existing `test_scorer.py` confirming today's
+    real, current state: every live analysis is honestly `HEURISTIC` with
+    `model_version=None`, because no trained artifact exists in this repo.
+
+- [x] Phase 5 — frontend reliability.
+  - **Watchlist & Portfolio stuck-loading bug (the originally-audited
+    issue)**: both pages' `load()` had zero `.catch()` — a failed
+    `GET /watchlist`/`GET /portfolio` left the page on its skeleton
+    forever, with no way out for the user. Rewrote both
+    (`frontend/app/watchlist/page.tsx`, `frontend/app/portfolio/page.tsx`)
+    with the same pattern already established on Dashboard/Stock-Detail:
+    `useCallback`-wrapped `load()` with a real `.catch()`, an 8s
+    `loadingTooLong` fallback independent of the network-layer timeout, a
+    `retry()` handler, `useResyncListener(load)` for PWA-reconnect refetch,
+    and mutation handlers (`add`/`remove`/`openPosition`) that route
+    failures into the same `error` state instead of throwing unhandled.
+  - **Shared `ErrorState` component** (new,
+    `frontend/components/ui/ErrorState.tsx`) — extracted from a
+    Dashboard-only local function so every page shows the identical,
+    correctly-classified message for the identical failure (network
+    unreachable / timeout / provider unavailable / unauthorized /
+    rate-limited / backend 5xx), via the existing `classifyApiError`.
+    Standardized onto Watchlist, Portfolio, Dashboard (was already using
+    its own copy — now the shared one), Opportunities, Backtest, and Stock
+    Detail — six of eight data-fetching routes now render errors through
+    one component instead of five different one-off inline blocks. Chat
+    and Login/Register were left as-is: Chat already degrades per-message
+    (a failed send shows inline in the transcript, not a page-level
+    error), and the auth forms' inline field-level error text is the
+    correct UX for a login/register failure, not a full-page error state.
+  - **Real bug found and fixed while verifying this phase in a live
+    browser** (backend, not originally in this phase's file list, but a
+    direct instance of exactly what "shared error states" is for): opening
+    any of the platform's real 20-asset-universe tickers (e.g. `AAPL`)
+    from the Stock Detail page — the Dashboard's own Market Overview
+    widget links directly to it — showed a confusing, unclassified
+    `ApiError: API 404 ... Unknown symbol 'AAPL'` dump instead of the
+    already-correct, already-tested "Market data is currently unavailable"
+    message the Dashboard's sector-heatmap widget shows for the identical
+    root cause. Root cause: `backend/app/main.py` already registers a
+    global `@app.exception_handler(ProviderDataUnavailable)` that answers
+    with a proper structured 503 (`{code: "provider_unavailable", ...}`) —
+    but `backend/app/api/v1/endpoints/stocks.py`'s `get_stock_analysis`,
+    `get_stock_deliberation`, and `get_stock_candles` each wrapped their
+    logic in a local `except Exception` that caught `ProviderDataUnavailable`
+    *before* it reached that handler and converted it into an unstructured
+    404 instead. This was **not** a case of "make the mock provider
+    fabricate large-cap data" — `MockOTCProvider.get_ticker_meta()`
+    correctly refusing to invent a company for a real-market ticker it
+    doesn't carry is itself audited, deliberate, tested behavior (see
+    `test_multi_asset_scanner.py::test_mock_provider_correctly_refuses_symbols_outside_its_universe`,
+    left untouched). The fix only changes *which HTTP status/shape* an
+    already-honest refusal is reported with, and only for symbols that are
+    real, tracked assets: added `_is_tracked_asset(symbol, db)` (checks
+    Asset Universe Manager membership) to `stocks.py`; a `ProviderDataUnavailable`
+    now only escalates to the app-level 503 handler when the symbol is a
+    tracked asset (a provider capability gap, honestly reported as
+    degraded service) — a genuinely unknown symbol (e.g. `ZZZZZZ`, not in
+    any universe) still gets 404 ("this doesn't exist"), preserving every
+    existing test's behavior for that case exactly.
+  - **Mobile responsiveness — verified, not just asserted**: ran a real
+    dev-server + Playwright check (`/opt/pw-browsers/chromium`) across all
+    8 static routes at two mobile viewports (375×812, 414×896), asserting
+    `document.documentElement.scrollWidth === clientWidth` (no horizontal
+    page overflow) plus a manual visual screenshot review of
+    Dashboard/Watchlist/Portfolio/Stock-Detail. Result: **zero routes had
+    real horizontal overflow** — the only elements flagged by a naive
+    per-element `scrollWidth` scan were the intentionally-horizontally-
+    scrolling ticker tape and decorative ambient-background blobs, both
+    already contained by their own `overflow:hidden` wrappers. `Sidebar`/
+    `MobileNav` (`frontend/components/layout/`) already implement a proper
+    responsive nav pattern (persistent left rail ≥`sm`, top bar + slide-in
+    drawer with focus trap below it); every table (`OpportunityTable`,
+    Backtest's trade table, Portfolio's position table) already wraps in
+    `overflow-x-auto`; every stat/card grid already collapses via
+    `grid-cols-2 sm:grid-cols-4`-style breakpoints. The prior ledger note
+    calling this "not addressed" was based on the original text audit, not
+    a live check — corrected here. **Not changed**: base `.btn`/`.btn-sm`
+    touch-target heights (40px/32px, under the 44px WCAG-recommended
+    minimum) — left as-is deliberately; this is an existing, deliberately-
+    designed premium desktop-first density (matches the `ui-ux-pro-max`
+    skill's own design-system output for this product), and a global
+    control-sizing change is a design-system-wide visual change outside
+    this phase's "fix what's broken" scope, not a "mobile is broken" bug.
+  - **Explicitly deferred, not silently skipped**: component/page-level
+    frontend tests for the fixed error paths. The frontend test suite
+    today (`lib/motion.test.ts`, `lib/apiError.test.ts`) is pure
+    utility-function tests under plain `vitest run` — no
+    `@testing-library/react`, no DOM test environment, no `vitest.config.ts`
+    exist yet. Standing up real component-render testing (choosing a DOM
+    environment, installing testing-library, mocking `fetch`/routing) is
+    itself meaningful infrastructure work that belongs to **Phase 12**
+    (frontend/E2E testing expansion) as originally scoped in this ledger's
+    own 13-phase list, not a two-line addition here — adding a shallow
+    test now just to check a box would not meaningfully verify anything
+    beyond what `classifyApiError`'s existing unit tests already do.
+
+- [x] Phase 6 — Paper Trading system. The platform's **only** trading
+  execution mode — no real-money broker integration exists or is planned.
+  - **New DB tables**: `PaperTradingAccount` (one virtual cash account per
+    user, `paper_trading_starting_balance` setting, default $100,000) and
+    `PaperPosition` (open/closed simulated long positions). Extended the
+    existing, previously-unused `Trade` model (`db/models/trade.py` —
+    audit finding: "no trading beyond a partial DB model") with
+    `account_id`/`position_id` linkage and `data_source`/`data_mode`
+    provenance, reusing it as the immutable fill log rather than adding a
+    redundant parallel table.
+  - **Execution safety — the actual point of this phase**:
+    `services/paper_trading/engine.py`'s `open_position()` calls the exact
+    same `evaluate_risk()` function (`services/risk/engine.py`) the
+    scanner and Signal Engine already use for the POSSIBLE_ENTRY gate —
+    including the platform-wide Safe Mode kill switch. A setup the
+    platform's own analysis would flag NO_TRADE/AVOID cannot be paper-
+    traded either. This is also the **first real caller** of
+    `evaluate_risk()`'s `position_risk_pct` parameter (every existing
+    caller only has a candidate, not a sized order, so it was always
+    omitted before) — computed as `quantity * |fill_price - stop_loss| /
+    account.cash_balance * 100` and checked against
+    `risk_max_portfolio_risk_per_trade_pct`.
+  - **Fill pricing**: a market buy fills at the provider's current best
+    ask, a market sell/close fills at the current best bid — the real
+    cost of crossing the spread. When bid/ask depth isn't available
+    (`Quote.bid`/`.ask` are `None` for some vendors), honestly falls back
+    to `last` rather than inventing a spread.
+  - **Cash-only v1**: no shorting, no margin, no fees — a position can
+    never cost more than the account's current cash balance (checked
+    *after* the risk gate, since a refused setup shouldn't even reach the
+    affordability check).
+  - **Explicitly out of scope, documented, not silently missing**:
+    automatic stop-loss/take-profit-triggered position closing. This
+    version closes only on an explicit user action; `planned_stop_loss`/
+    `planned_take_profit`/entry-time confidence/reward:risk are captured
+    on every position for a **future** periodic outcome-evaluation job —
+    which Phase 7 (prediction ledger) is building anyway, so building a
+    second, duplicate background-evaluation mechanism here would be
+    wasted, divergent infrastructure.
+  - New endpoints (`api/v1/endpoints/paper_trading.py`, prefix
+    `/paper-trading`): `GET /account`, `GET /positions?status=open|closed`
+    (mark-to-market unrealized P/L computed live from a fresh quote, never
+    stored/stale), `POST /positions` (open, 400 with the risk gate's exact
+    named reason on refusal), `POST /positions/{id}/close`.
+  - New frontend route `frontend/app/paper-trading/page.tsx` (added to
+    the sidebar nav) — account summary stat tiles, open-positions table
+    with live unrealized P/L and a Close action, closed-positions history
+    with realized P/L, using the same `ErrorState`/loading-too-long/retry
+    pattern Phase 5 standardized. Verified live in a real browser (not
+    just unit tests): opened a position that clears the risk gate (cash
+    debited, position appears, live mark-to-market shown), attempted one
+    that fails it (refused with the exact reason inline, account state
+    unchanged), and closed the open position (moved to history, cash
+    credited back, realized P/L computed correctly).
+  - **Real dev-environment issue found and worked around while verifying
+    this phase, not a code bug**: SQLite's `create_all()` (the documented
+    dev-only path, distinct from Alembic which is what actually runs in
+    production per Phase 2) only creates *missing* tables — it never
+    alters an existing table's columns. A stale local `ven0x_dev.db` left
+    over from before this phase's `Trade` model change caused a real
+    "table trades has no column named account_id" error the first two
+    times the dev server was restarted (some orphaned prior uvicorn
+    processes from rapid successive manual restarts kept serving stale
+    schema). Deleting the gitignored local dev DB file and confirming
+    exactly one server process was running resolved it; this has no
+    bearing on real deployments, which are exclusively Alembic-managed.
+  - New `backend/app/tests/test_paper_trading.py` (12 tests): account
+    creation/reuse; open succeeds against a real generated analysis that
+    clears the risk gate (found deterministically by iterating the mock
+    provider's fixed universe once — not hardcoded/fabricated); open is
+    refused (cash unchanged, no position created) for one that fails it;
+    non-positive quantity rejected; insufficient-cash refusal isolated
+    from the position-sizing gate (they'd otherwise always co-trigger
+    under the default 1% risk-per-trade policy, since both scale with
+    quantity identically — monkeypatches a permissive risk policy to
+    isolate the affordability check specifically); close realizes P&L and
+    credits cash correctly; closing an unknown/already-closed/someone-
+    else's position is refused; entry-time provenance
+    (stop/target/confidence/reward:risk) is captured for the future
+    Phase 7 evaluation job; and 3 full API-level lifecycle tests
+    (open→list→account→close, a risk-gate refusal via the API returning
+    400 with the exact reason, and an invalid status-filter 400).
+
+- [x] Phase 7 — prediction ledger + performance proof. **Major discovery
+  before writing any code**: this phase's core scaffolding — `Prediction`/
+  `Outcome` models with DB-enforced honesty CHECK constraints,
+  `build_prediction_row()`, `services/evaluation/outcome_evaluator.py`
+  (`evaluate_due_predictions`, `build_calibration_report`), and
+  `/predictions/*` endpoints — **already existed**, not flagged in the
+  original audit. It was a smaller, more targeted job than a from-scratch
+  build: audit what exists, find and close the real gaps, wire it into the
+  mainstream product.
+  - **The critical gap**: the only code path that ever called
+    `build_prediction_row()` was `app/workers/scan_scheduler.py`, which is
+    gated behind `otc_module_enabled` (false by default) — meaning in the
+    actual running mainstream platform (real 20-asset universe), **nothing
+    was ever logged into the prediction ledger automatically**. The
+    calibration report and any future Champion/Challenger comparison would
+    have had zero data to work with in a real deployment. Fixed with a new
+    **`app/workers/prediction_scheduler.py`** — a periodic worker for the
+    mainstream multi-asset universe specifically (not OTC-gated, runs by
+    default), snapshotting every active asset's analysis into the ledger
+    on a `prediction_log_interval_seconds` interval (default 3600s —
+    hourly, deliberately slow: a prediction logged every few minutes
+    against slow-moving fundamentals is noise, not signal) and then
+    calling the existing `evaluate_due_predictions()`. Wired into
+    `docker-compose.yml` as `prediction-logger` (unlike the OTC `scanner`
+    service, **not** profile-gated) and documented in `DEPLOYMENT.md`.
+  - **Missing provenance, closed**: `Prediction` had no `engine_mode`/
+    `model_version`/`risk_policy_version` columns — meaning even once
+    predictions started being logged, there'd be no way to ever compare
+    "how did HEURISTIC do vs. TRAINED_ML historically," the exact
+    capability Phase 8's Champion/Challenger gate needs. Added all three
+    (`build_prediction_row()` now stamps them from `StockAnalysis.
+    engine_mode`/`.model_version`, Phase 1's fields, and
+    `RiskPolicy.from_settings().version`, Phase 4's).
+  - **Missing a real Brier score**: the existing calibration report had
+    bucket-level "calibration gap" but no single honest reliability
+    number. Added `_brier_score()` (mean squared error between predicted
+    probability and the realized binary outcome) to
+    `build_calibration_report()`'s output, computed both overall and
+    **broken down by `engine_mode`** — the direct, load-bearing input to
+    Phase 8's promotion rule ("a trained model may only be promoted if it
+    beats the heuristic's Brier score here, out-of-sample").
+  - New frontend route `frontend/app/performance/page.tsx` (added to the
+    sidebar nav, using Phase 5's `ErrorState`/loading pattern) — stat
+    tiles (predictions scored, Brier score, stop rate, avg realized
+    return), a predicted-vs-realized calibration bar per probability
+    bucket, and a per-`engine_mode` comparison section. No such page or
+    API integration existed before this phase (verified: `grep`ping
+    `frontend/lib/api.ts` for "prediction"/"calibration" before this
+    phase returned nothing).
+  - **Explicitly out of scope, documented, not silently deferred**: wiring
+    Phase 6 Paper Trading's planned automatic stop/target-triggered
+    closing into this same periodic cycle. The hook point (this worker
+    now runs regularly and already touches every active asset's fresh
+    analysis) is real, but adding it now would have expanded this phase's
+    surface into Paper Trading's again; left as a clearly-named follow-up
+    rather than rushed in.
+  - New Alembic migration (`predictions` table's 3 new provenance
+    columns, `server_default`s for the two NOT NULL ones since the table
+    may be non-empty). New tests: `test_prediction_log.py` (2),
+    `test_prediction_scheduler.py` (4, including a test-isolation fix
+    identical in spirit to `test_multi_asset_scanner.py`'s — scoped
+    assertions to the 20 seed symbols specifically, not raw
+    active-universe counts, after the full suite surfaced a shared-DB
+    flake other test files' uncommitted-rollback client fixtures cause),
+    and 3 new assertions in `test_outcome_evaluator.py` (Brier score
+    rewards confident-correct predictions, per-engine-mode breakdown is a
+    real split not a shared number, and the empty-report shape always
+    carries the `by_engine_mode` key so the frontend never has to guard
+    against its absence).
+  - Verified live: `GET /predictions/calibration` returns the correct
+    honest empty shape on a fresh deployment (never fabricates a
+    number to fill the gap); `POST /predictions/log/{symbol}` correctly
+    stamps `engine_mode: "HEURISTIC"`, `model_version: null`,
+    `risk_policy_version: "risk-policy-v1"` on a real logged row; the new
+    `/performance` page renders the empty state correctly with no crash.
+    Populating and visually verifying the *matured*-outcome rendering
+    path wasn't practical live (the mock provider's synthetic history
+    treats "now" as the last bar, so nothing matures without manipulating
+    system time) — covered instead by the 10 backend tests that construct
+    exact scripted price paths and assert the graded result precisely.
+
+- [x] Phase 8 — ML dataset + training + Champion/Challenger promotion
+  gate. **Another major discovery before writing code, same pattern as
+  Phases 6-7**: `services/ml/champion_challenger.py` (leakage-resistant
+  dataset construction from frozen `feature_snapshot`s, temporal 25%
+  holdout, LightGBM/XGBoost/CatBoost training, human-approval-only
+  promotion, in-process model-cache invalidation) and
+  `services/backtest/walkforward.py` (expanding-window walk-forward
+  validation, wired to `/backtest/*` and already tested) **already
+  existed, fully working, already tested** — not flagged in the original
+  audit. Verified: `test_champion_challenger.py` (5 tests) and
+  `test_walkforward.py` (2 tests) both passed before any change here.
+  - **The real gap**: the existing comparison only ever checked "does the
+    challenger beat the *previous ML champion*" — and since no trained
+    artifact exists in this repo, that comparison was always vacuous
+    (`{"note": "no champion artifact exists yet"}`). There was no check
+    against the HEURISTIC engine actually running in production today, or
+    against any simple statistical baseline — meaning a first promotion
+    could technically happen having only ever been compared to nothing.
+    This is precisely the standing non-negotiable rule ("do NOT activate a
+    trained ML model unless it beats the existing heuristic and baseline
+    in valid out-of-sample testing") not yet enforced.
+  - **Fix — heuristic comparison, reusing real production code**: a
+    fresh, never-`.fit()`-called `EnsembleModel()` transparently falls
+    back to the exact production `_heuristic_prior()` formula for every
+    prediction (this is literally how `engine_mode="HEURISTIC"` gets set
+    in production) — so evaluating one on the same temporal holdout IS
+    evaluating the real heuristic, not a re-implementation of it that
+    could silently drift from the real one.
+  - **Fix — three simple statistical baselines**, computed on the exact
+    same train/holdout split as the challenger
+    (`services/ml/champion_challenger.py::_evaluate_baselines()`):
+    **logistic regression** (sklearn, fit on the same feature matrix —
+    if the 3-model ensemble can't beat plain logistic regression, that's
+    a real red flag), **momentum** (a naive single-indicator rule off
+    `rsi_14` alone, no other feature considered), and **"always take the
+    trade"** (predicts the training-set base rate unconditionally — the
+    buy-and-hold baseline the spec names, which is mathematically
+    identical to a majority-class predictor in this touch-probability
+    label framing; documented as such rather than fabricating an
+    artificially "different" number).
+  - **Fix — the promotion gate is now hard-enforced in code, not just
+    informational**: `promote_model()` re-derives (never trusts a cached
+    boolean) whether the challenger's out-of-sample AUC on the platform's
+    primary +10% threshold *strictly beats* the heuristic AND every one
+    of the three baselines, from the exact metrics stored on the
+    `ModelVersion` row at training time. Refuses with a new
+    `PromotionRefused` (mapped to HTTP 409, same pattern as the existing
+    `NotEnoughHistory`) if any comparison is missing, ungradeable, or
+    simply lost. A human can still *approve* a promotion, but can never
+    override this floor by calling the endpoint anyway — the gate lives
+    in `promote_model()` itself, not in the operator's judgment call.
+  - Brier score added to every comparison subject's per-threshold metrics
+    (challenger/champion/heuristic/each baseline all now report it, not
+    just AUC and calibration gap) — consistent with Phase 7's own choice
+    of Brier score as the platform's primary reliability metric.
+  - Dataset construction, leakage prevention, and walk-forward validation
+    were already correct and are unchanged — verified, not rebuilt.
+  - Tests: extended `test_challenger_registered_inactive_with_comparison`
+    to assert the new heuristic/baseline fields are always present; added
+    `test_promotion_refused_when_challenger_does_not_beat_heuristic_or_baselines`
+    (using the existing 60-row synthetic fixture, which — correctly and
+    expectedly — does NOT reliably beat the baselines at that data volume,
+    proving the gate is real, not a rubber stamp); rewrote
+    `test_promotion_is_explicit_and_atomic` to construct a hand-crafted
+    passing `ModelVersion` directly, isolating promotion *mechanics* from
+    whether a real ensemble happens to win on any given training run; and
+    added `test_promotion_refused_for_a_version_with_no_recorded_comparison`
+    (a legacy-shaped `ModelVersion` missing the new fields — must refuse,
+    never silently treat "no data" as "passed").
+  - No schema/migration changes needed — `ModelVersion.training_metrics`
+    is an existing free-form JSON column.
+  - Verified live: `GET /models` (empty registry on a fresh deployment),
+    `POST /models/train-challenger` on a fresh DB correctly returns 409
+    "Only 0 graded predictions... requires >= 40" — the exact honest
+    blocked-state the spec asks for, not a fabricated result. A live
+    end-to-end "challenger clearly beats everything, gets promoted" run
+    wasn't practical in this session (would need >=40 real graded
+    predictions, which only accumulate over real hours/days now that
+    Phase 7's `prediction_scheduler` is running) — covered instead by the
+    7 backend tests, including the hand-crafted-metrics atomicity test
+    that exercises the exact same `promote_model()` code path a real
+    promotion would.
+  - **Explicitly out of scope, left for Phase 11**: a frontend page for
+    browsing the model registry / triggering training / approving
+    promotions. `/models` is API-only today; a UI for it belongs with the
+    rest of Phase 11's Admin/Operator surface (Safe Mode toggle, provider
+    health, migration status), not bolted onto this phase.
+
+- [x] Phase 9 — chart timeframes + technical indicators. **The backend
+  half was already done**: `GET /stocks/{symbol}/candles` already
+  supported the full 9-timeframe set (1m/5m/15m/1H/1D/1W/1M/1Y/ALL) with
+  honest provenance (real streamed intraday bars, never fabricated
+  history) — verified before touching anything, no changes needed there.
+  **The real gap was entirely frontend**: `components/charts/PriceChart.tsx`
+  (the only chart on the Stock Detail page) was a hand-rolled SVG line
+  chart with no timeframe concept at all, wired to the older
+  `/{symbol}/ohlcv` endpoint (daily bars only) — no timeframe selector, no
+  indicator overlays, no candlesticks/volume existed anywhere outside the
+  separate 1m-only `LiveChart.tsx`.
+  - **New backend endpoint**: `GET /stocks/{symbol}/indicators?timeframe=X&indicators=...`
+    — per-bar SMA(20/50), EMA(9/21), RSI(14), MACD(line/signal/histogram),
+    Bollinger Bands(upper/middle/lower), ATR(14), VWAP, aligned 1:1 with
+    `/candles` at the same timeframe. Pure composition over the technical
+    indicator math `services/features/technical.py` already had — no new
+    indicator formulas written, just exposed as full series instead of
+    collapsed to scoring's single latest value. A value not yet defined
+    (a 50-period SMA on bar 3) is `null`, never a fabricated number
+    standing in for "not enough history yet." Reuses the same
+    tracked-asset-vs-unknown-symbol 404-vs-503 distinction from Phase 5's
+    `stocks.py` fix, and the same timeframe/indicator-name validation
+    pattern as the existing `/candles` endpoint.
+  - **New frontend component `components/charts/TradingChart.tsx`**,
+    replacing `PriceChart.tsx` entirely (deleted — nothing else referenced
+    it, and the new component is a strict superset of its functionality):
+    built on `lightweight-charts` (already a dependency, already proven
+    in `LiveChart.tsx`), not the old hand-rolled SVG. Real candlesticks +
+    volume (pane 0), a 9-button timeframe selector, toggleable price-pane
+    overlays (SMA 20/50, EMA 9/21, Bollinger Bands, VWAP — checkboxes),
+    an always-visible RSI sub-pane with 30/70 reference lines (pane 1),
+    an always-visible MACD sub-pane with line/signal/histogram (pane 2) —
+    all three panes share one chart instance's time scale/crosshair via
+    `lightweight-charts` v5's `addSeries(..., paneIndex)`, not three
+    separately-synced charts. AI trade-plan levels (Entry/Stop/TP1-3)
+    render as labeled price lines on the candle series, reusing the exact
+    literal-hex-color pattern `LiveChart.tsx` already established (canvas
+    rendering can't resolve `var(--x)` CSS custom properties).
+  - Uses Phase 5's `ErrorState`/retry pattern for a failed fetch, matching
+    every other data-fetching surface in the app.
+  - Verified live in a real browser (not just unit tests): timeframe
+    switching (1D → 1W) correctly reloads candles+indicators and refits
+    the visible range; toggling the Bollinger Bands checkbox correctly
+    adds/removes the band overlay live; RSI and MACD sub-panes both
+    render real computed values with correct reference lines/histogram
+    coloring; trade-plan price lines (TP3/TP2/TP1/Entry/Stop) render with
+    correct labels/colors/values matching the analysis panel above the
+    chart.
+  - New `backend/app/tests/test_stock_indicators.py` (8 tests): default
+    indicator set returned and aligned with `/candles`' bar count; filtering
+    to a subset via `?indicators=`; RSI stays in [0,100] where defined;
+    an immature rolling window is honestly `null`, not fabricated;
+    unknown indicator/timeframe both rejected (400); unknown symbol
+    honestly errors, never returns fabricated indicator values.
+  - No schema/migration changes — this phase touched no DB models.
+
+## Files changed (this effort, cumulative)
+
+Phase 1:
+- `backend/app/core/config.py` — `allow_synthetic_data` setting
+- `backend/app/main.py` — production synthetic-data boot guard
+- `backend/.env.example`, `DEPLOYMENT.md` — document `ALLOW_SYNTHETIC_DATA`
+- `backend/app/schemas/stock.py` — `engine_mode`, `model_version` fields
+- `backend/app/services/scoring/scorer.py` — populates the two new fields
+- `backend/app/services/ml/ensemble.py` — `EnsemblePrediction.is_trained`, `EnsembleModel.version`
+- `backend/app/services/ml/training_pipeline.py` — tags saved artifacts with their version
+- `frontend/lib/types.ts` — `StockAnalysis.engine_mode`/`.model_version`
+- `frontend/components/ui/DataBadge.tsx` — engine-mode badge
+- `frontend/app/stock/[ticker]/page.tsx` — wires the badge + footer copy
+- `backend/app/tests/test_production_guards.py`, `test_live_provider_smoke.py`,
+  `test_ensemble_provenance.py` (new); one new test added to `test_scorer.py`
+
+Phase 2:
+- `backend/scripts/run_migrations.py` (new) — `alembic upgrade head` as a
+  distinct pre-start deploy step, Postgres-advisory-lock-protected against
+  concurrent replicas, SQLite passthrough for dev.
+- `backend/Dockerfile` — `CMD` now runs the migration script before `exec uvicorn`.
+- `backend/app/main.py` — lifespan's `create_all()` now SQLite-only (Postgres
+  is exclusively Alembic-managed); production boot guard extended with
+  `DEBUG`, `CORS_ORIGINS`-default, `DATABASE_URL`-default refusals and an
+  `ALLOW_REGISTRATION` warning (not a refusal — bootstrap needs it open once).
+- `backend/app/services/deployment/__init__.py`,
+  `backend/app/services/deployment/schema_status.py` (new) — schema
+  readiness (Alembic head vs. applied revision), separate from liveness.
+- New `GET /health/ready` route in `backend/app/main.py`.
+- `docker-compose.yml` — `api` service gets a real `/health/ready`
+  healthcheck; `web` now waits on `api` being healthy, not just started.
+- `docs/DATABASE.md` §5 rewritten to describe the now-implemented (not just
+  planned) migration strategy; `DEPLOYMENT.md` verification checklist
+  mentions `/health/ready`.
+- `backend/app/tests/test_production_guards.py` — extended with 5 new
+  tests (DEBUG, CORS default, DATABASE_URL default, full-valid-config
+  success, ALLOW_REGISTRATION warning-not-refusal) and `BASE_ENV` fixed to
+  set `DEBUG=false` so the pre-existing success-case tests keep passing
+  under the new guard.
+- `backend/app/tests/test_schema_readiness.py` (new, 6 tests) — exercises
+  `schema_status.py`'s Postgres-branch logic (missing/stale/matching
+  `alembic_version`) against a real throwaway SQLite engine via the
+  module's `url`/`db_engine` override parameters, since no live Postgres
+  instance exists in this environment; the SQLite branch and the
+  `/health/ready` route itself are tested directly, no override needed.
+
+Phase 3:
+- `backend/app/core/config.py` — new `auth_rate_limit_per_minute` setting
+  (default 10/min, deliberately stricter than the existing
+  `rate_limit_expensive_per_minute`).
+- `backend/app/api/v1/endpoints/auth.py` — `login_rate_limit`/
+  `register_rate_limit`/`refresh_rate_limit` dependencies wired onto
+  `/auth/login`, `/auth/register`, `/auth/refresh`. Two independent
+  token-bucket keys per login/register attempt (per-source-IP, per-targeted-
+  email) so neither a single-IP brute force nor a distributed attack against
+  one account slips through; refresh is IP-only (no credential pair to key
+  on). Reuses the existing `RATE_LIMIT_ENABLED` flag and `check_rate_limit`
+  primitive — no new infrastructure. The 429 body is identical regardless of
+  which bucket tripped, so it can't be used to enumerate accounts. (First
+  attempt read the request body as a second differently-named Pydantic
+  parameter, which silently broke the wire contract — FastAPI embeds
+  multiple distinctly-named body params as separate JSON keys. Fixed by
+  reading the raw body directly via `await request.json()` instead.)
+- `backend/app/api/v1/endpoints/monitoring.py` — `GET /monitoring/health`
+  (drift/calibration/provider-failure/latency detail) now requires
+  `require_operator`, matching every other operator-only route's pattern.
+  The app-root `GET /health` (already minimal, no internals) stays public;
+  confirmed nothing in the frontend calls `/monitoring/*` at all.
+- `backend/app/services/chat/sanitize.py` (new) — `sanitize_untrusted_text()`
+  (control-character stripping, length capping, logged-not-blocked
+  suspicious-instruction-phrase detection) and `wrap_untrusted()` (explicit
+  structural "this is data, not instructions" framing). Applied in
+  `backend/app/services/chat/tools.py` to every untrusted external string a
+  tool can return: news headlines/sources (`get_recent_news`, whose whole
+  result is now `wrap_untrusted()`-wrapped) and vendor company names
+  (`get_stock_analysis`, `search_universe`).
+- `backend/app/services/chat/assistant.py` — `SYSTEM_PROMPT` gained an
+  explicit rule 8: tool-result content (especially anything marked
+  `untrusted_external_content`) is data to summarize, never a command;
+  only the user's own messages are instructions. Added a 30s request
+  timeout to the Anthropic `messages.create()` call (the 6-round tool-loop
+  bound and 900-token cap already existed).
+- New `backend/app/tests/test_chat_sanitize.py` (8 tests) — includes a
+  from-scratch adversarial `MarketDataProvider` stub whose news content
+  embeds real prompt-injection phrasing ("ignore all previous
+  instructions", "you are now DAN", control characters, a 1000-char
+  headline) run through the actual `execute_tool("get_recent_news", ...)`
+  path, not just the sanitizer in isolation.
+- `backend/app/tests/test_auth.py` — new `auth_rate_limit_on` fixture + 6
+  tests (disabled-by-default, blocks after threshold, never reveals which
+  bucket tripped, register/refresh also covered, recovery after reset).
+- `backend/app/tests/test_monitoring.py` — 2 new tests: anonymous/regular-
+  user 401/403, and a DB-promoted operator account getting 200 (mirrors
+  `test_auth.py::test_revocation_via_token_version`'s direct-DB-mutation
+  pattern, since registration order alone can't guarantee an "operator"
+  account on the shared test DB).
+
+Phase 4:
+- `backend/app/core/config.py` — 7 new settings bundling every threshold
+  the scanner and Signal Engine each need:
+  `risk_min_signal_confidence_pct` (30.0 — the loose "trust this signal at
+  all" floor), `risk_max_spread_pct` (12.0), `risk_min_liquidity_score`
+  (25.0), `risk_min_dollar_volume` (10,000), `risk_max_manipulation_risk`
+  (60.0), `risk_min_bars_for_signal` (20) — all previously hardcoded only
+  inside `signals/engine.py` — plus `safe_mode_enabled` (new kill switch).
+- `backend/app/services/risk/policy.py` (new) — `RiskPolicy` dataclass
+  bundling every threshold above plus the existing
+  `risk_min_confidence_pct`/`risk_min_reward_risk_ratio`/
+  `risk_max_portfolio_risk_per_trade_pct`, with an explicit
+  `POLICY_VERSION` ("risk-policy-v1") persisted on every `Signal` row.
+- `backend/app/services/risk/engine.py` — `evaluate_risk()` now checks
+  `settings.safe_mode_enabled` first and rejects unconditionally when set,
+  before any other threshold — the platform-wide kill switch, enforced in
+  the one function both the scanner and Signal Engine already call.
+- `backend/app/services/signals/engine.py` — **the actual fix**: removed
+  its own separately-hardcoded `MAX_SPREAD_PCT`/`MIN_LIQUIDITY`/
+  `MIN_DOLLAR_VOLUME`/`MAX_MANIPULATION`/`MIN_CONFIDENCE`/
+  `MIN_BARS_FOR_SIGNAL` constants; `apply_safety_rules()` now takes an
+  optional `policy: RiskPolicy` (defaults to the live one) and reads every
+  threshold from it. More importantly, `_status_for()`'s `POSSIBLE_ENTRY`
+  tier — which previously only checked its own ad-hoc `reward_risk >= 1.5`
+  with no confidence floor beyond the weak 30% signal-trust gate — now
+  additionally calls `evaluate_risk()` (the exact same function
+  `services/scanner/multi_asset.py` calls) and requires it to pass. A
+  setup strong by score/probability but too weak by confidence/reward:risk
+  now downgrades to `SETUP_FORMING`/`WATCH` with the risk engine's own
+  named rejection reason folded into `rejection_reasons`, instead of
+  reaching `POSSIBLE_ENTRY` on a bar the scanner would have rejected. Also
+  now stamps `risk_policy_version` on every persisted `Signal`.
+- `backend/app/db/models/signal.py` — new `risk_policy_version` column
+  (`default="unversioned"` for any row from before this migration).
+- `backend/alembic/versions/5b5ab8be5d21_add_risk_policy_version_to_signals.py`
+  (new) — additive, `server_default='unversioned'` (backfill-safe on a
+  non-empty table, matching the established pattern from
+  `aceab66d1590`). Autogenerated against a real migrated SQLite DB, then
+  hand-verified with a second autogenerate pass reporting an empty diff
+  (model and migration confirmed in sync) before the throwaway check file
+  was deleted.
+- `backend/app/api/v1/endpoints/stream.py` / `frontend/lib/types.ts` — the
+  live-signal SSE payload and its frontend type both gained
+  `risk_policy_version` for full provenance visibility.
+- `backend/app/tests/test_risk_policy.py` (new, 7 tests) — `RiskPolicy`
+  bundles every setting correctly; Safe Mode rejects an otherwise-perfect
+  setup unconditionally; **the core regression test**: a synthetic
+  "strong by score (90/100), weak by risk gate (40% confidence)" analysis
+  can no longer reach `POSSIBLE_ENTRY` (it could have under the old, looser
+  local threshold); the mirror-image "strong by score AND clears the risk
+  gate" case does reach `POSSIBLE_ENTRY`; and a direct assertion that
+  `scanner.multi_asset.evaluate_risk is signals.engine.evaluate_risk` — not
+  two separate implementations, the literal same function object.
+- `backend/app/tests/test_signal_engine.py` — one new assertion that every
+  persisted signal carries a non-empty `risk_policy_version`.
+- Re-ran `test_signal_engine.py`, `test_risk_engine.py`,
+  `test_signal_ai_indicator.py`, `test_multi_asset_scanner.py`,
+  `test_multi_asset_scan_endpoint.py`, `test_scanner_v2.py`,
+  `test_streaming.py` together (53 tests) to confirm the tightened
+  `POSSIBLE_ENTRY` gate caused zero regressions in existing scanner/signal
+  behavior — none of them hardcode an exact expected status for specific
+  synthetic data, only valid-status-set / not-POSSIBLE_ENTRY-style
+  assertions, so all 53 passed unchanged.
+
+Phase 5:
+- `frontend/components/ui/ErrorState.tsx` (new) — shared error card, used
+  by six routes now.
+- `frontend/app/watchlist/page.tsx`, `frontend/app/portfolio/page.tsx` —
+  rewritten with real error handling (see above); the originally-audited
+  stuck-on-skeleton bug.
+- `frontend/app/page.tsx` — now imports the shared `ErrorState` instead of
+  its own local copy (behavior unchanged, duplication removed).
+- `frontend/app/stock/[ticker]/page.tsx` — error state now holds the raw
+  `unknown` error (was `String(e)`, discarding classification) and renders
+  via `ErrorState` with a working retry button.
+- `frontend/app/opportunities/page.tsx`, `frontend/app/backtest/page.tsx`
+  — same standardization (raw error + `ErrorState` + retry) applied for
+  consistency across every data-fetching route.
+- `backend/app/api/v1/endpoints/stocks.py` — `_is_tracked_asset()` helper;
+  `get_stock_analysis` (now takes `db`), `get_stock_deliberation`,
+  `get_stock_candles` (now takes `db`) distinguish "tracked asset, provider
+  can't serve it" (503, structured, honest) from "genuinely unknown
+  symbol" (404) — see the bug writeup above.
+- `backend/app/tests/test_api_stocks.py` — 2 new tests
+  (`test_get_stock_analysis_for_a_real_tracked_asset_is_503_not_404`,
+  `test_get_stock_candles_for_a_real_tracked_asset_is_503_not_404`) proving
+  the fix; existing `test_get_stock_analysis_unknown_symbol_handles_gracefully`
+  (genuinely-unknown-symbol case) untouched and still passing.
+
+Phase 6:
+- `backend/app/core/config.py` — `paper_trading_starting_balance` setting
+  ($100,000 default).
+- `backend/app/db/models/paper_trading.py` (new) — `PaperTradingAccount`,
+  `PaperPosition`.
+- `backend/app/db/models/trade.py` — extended with `account_id`,
+  `position_id`, `data_source`, `data_mode`.
+- `backend/app/db/models/__init__.py` — registers the two new models.
+- `backend/app/services/paper_trading/engine.py` (new) —
+  `get_or_create_account`, `open_position`, `close_position`,
+  `list_open_positions`, `list_closed_positions`, `PaperTradingError`.
+- `backend/app/schemas/paper_trading.py` (new) — `PaperAccountOut`,
+  `PaperPositionOut`, `PaperOpenRequest`.
+- `backend/app/api/v1/endpoints/paper_trading.py` (new) — `/paper-trading`
+  routes; registered in `backend/app/api/v1/api.py`.
+- `backend/alembic/versions/6f1d3edac330_paper_trading_accounts_and_positions.py`
+  (new) — see migrations section below.
+- `backend/app/tests/test_paper_trading.py` (new, 12 tests).
+- `frontend/lib/types.ts` — `PaperAccount`, `PaperPosition` interfaces.
+- `frontend/lib/api.ts` — `paperAccount`, `paperPositions`,
+  `openPaperPosition`, `closePaperPosition`.
+- `frontend/app/paper-trading/page.tsx` (new route).
+- `frontend/components/layout/Sidebar.tsx` — nav entry for the new route.
+
+Phase 7:
+- `backend/app/db/models/prediction.py` — `Prediction` gains
+  `engine_mode`, `model_version`, `risk_policy_version`.
+- `backend/app/services/scoring/prediction_log.py` — `build_prediction_row()`
+  stamps the three new provenance fields.
+- `backend/app/services/evaluation/outcome_evaluator.py` — `_brier_score()`,
+  `_bucket_report()` (extracted, reused per-mode), `build_calibration_report()`
+  now returns `brier_score` and `by_engine_mode`.
+- `backend/app/workers/prediction_scheduler.py` (new) — mainstream (non-OTC)
+  periodic prediction logger + outcome evaluator; `run_prediction_cycle()`.
+- `backend/app/core/config.py` — `prediction_log_interval_seconds` (3600).
+- `backend/app/schemas/prediction.py`,
+  `backend/app/api/v1/endpoints/predictions.py` — `PredictionOut` and its
+  two construction sites carry the new provenance fields.
+- `backend/alembic/versions/2f065e542a7c_prediction_provenance_fields.py`
+  (new) — see migrations section below.
+- `backend/app/tests/test_prediction_log.py` (new, 2 tests),
+  `backend/app/tests/test_prediction_scheduler.py` (new, 4 tests),
+  `backend/app/tests/test_outcome_evaluator.py` (+3 tests).
+- `docker-compose.yml` — new `prediction-logger` service (default-on, not
+  profile-gated).
+- `DEPLOYMENT.md`, `backend/.env.example` — document the new worker/setting.
+- `frontend/lib/types.ts` — `CalibrationBucket`, `CalibrationBucketReport`,
+  `CalibrationReport`.
+- `frontend/lib/api.ts` — `calibrationReport()`.
+- `frontend/app/performance/page.tsx` (new route).
+- `frontend/components/layout/Sidebar.tsx` — nav entry.
+
+Phase 8:
+- `backend/app/services/ml/champion_challenger.py` — `_metrics_from_predictions()`
+  (extracted, adds Brier score), `_momentum_baseline()`, `_evaluate_baselines()`
+  (logistic regression / momentum / always-take-the-trade), `PRIMARY_THRESHOLD_KEY`,
+  `_primary_auc()`, `_beats()`, new `PromotionRefused` exception.
+  `train_challenger()` now records `heuristic`, `baselines`,
+  `beats_on_primary_threshold`, `eligible_for_promotion` on every
+  `ModelVersion`. `promote_model()` hard-refuses on a failing/missing
+  comparison.
+- `backend/app/api/v1/endpoints/models.py` — maps `PromotionRefused` to 409.
+- `backend/app/tests/test_champion_challenger.py` — extended/rewritten (7
+  tests, was 5).
+
+Phase 9:
+- `backend/app/api/v1/endpoints/stocks.py` — new `GET /{symbol}/indicators`
+  route, `_series_out()`, `_VALID_INDICATORS`.
+- `backend/app/tests/test_stock_indicators.py` (new, 8 tests).
+- `frontend/components/charts/TradingChart.tsx` (new) — replaces
+  `frontend/components/charts/PriceChart.tsx` (deleted).
+- `frontend/app/stock/[ticker]/page.tsx` — uses `TradingChart` instead of
+  `PriceChart`; removed the now-unneeded `/ohlcv` fetch and `bars` state.
+- `frontend/lib/types.ts` — `ChartTimeframe`, `CandlesResponse`,
+  `IndicatorSeriesResponse`.
+- `frontend/lib/api.ts` — `candles()`, `indicators()`.
+
+## Database migrations created (this effort)
+
+- `5b5ab8be5d21_add_risk_policy_version_to_signals.py` (Phase 4) — additive,
+  backfill-safe (`server_default='unversioned'`), reversible. Verified
+  against a fresh SQLite DB, an existing-DB upgrade from the prior head,
+  and a follow-up autogenerate confirming zero remaining model/migration
+  drift. Phases 1–3 and 5 needed no schema changes.
+- `6f1d3edac330_paper_trading_accounts_and_positions.py` (Phase 6) — new
+  tables `paper_trading_accounts`/`paper_positions`; adds
+  `account_id`/`position_id`/`data_source`/`data_mode` to the existing
+  `trades` table (`server_default='unknown'`/`'unspecified'` on the two
+  new NOT NULL string columns — backfill-safe on a non-empty table).
+  Named the new FK constraints explicitly (`fk_trades_account_id`,
+  `fk_trades_position_id`) after autogenerate's default unnamed
+  constraints failed SQLite's batch-alter mode ("Constraint must have a
+  name") — matches the existing `fk_<table>_<column>` convention from
+  `9b1a60567a48`. Verified: fresh-DB upgrade, upgrade-from-prior-head
+  (`5b5ab8be5d21`), downgrade back one revision, and a follow-up
+  autogenerate confirming zero remaining model/migration drift.
+- `2f065e542a7c_prediction_provenance_fields.py` (Phase 7) — adds
+  `engine_mode`/`model_version`/`risk_policy_version` to the existing
+  `predictions` table (`server_default='HEURISTIC'`/`'unversioned'` on the
+  two new NOT NULL columns). Verified: fresh-DB upgrade, upgrade-from-
+  prior-head (`6f1d3edac330`), downgrade back one revision, and a
+  follow-up autogenerate confirming zero remaining drift. Phase 8 needed no
+  schema changes at all (`ModelVersion.training_metrics` is an existing
+  free-form JSON column, sufficient for the new heuristic/baseline data).
+  Phase 9 touched no DB models — no migration.
+
+## Verification commands run (after Phase 13)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **396 passed, 10 skipped** (up from 382+10 at the end of Phase 12; +14 new passing tests) |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 13 migrations in order, exit 0 |
+| same, upgrading from prior head (`a772e90e7e90`) only | applies only `dd1d83f0b571_user_plan_field` (with `server_default='free'` — a NOT NULL column added to the existing non-empty `users` table), exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm test && npm run build` | all clean; Vitest **40/40** across 8 files; build generates 17 routes (new `/billing`) |
+| `cd frontend && npx playwright test` (live backend, `workers: 1`) | **5/5 E2E specs passed**, including a new `billing.spec.ts` proving the free-plan watchlist quota is genuinely enforced (402) and an operator's plan change via the Admin UI genuinely lifts it |
+| Live dev-server: filled the free-plan watchlist quota (10 items) via the real API, confirmed the 11th is refused `402` with the real "...Contact us to upgrade your plan." message, then `PATCH /admin/users/1/plan {"plan":"pro"}` and confirmed the same request that was just refused now succeeds | exact behavior verified end-to-end, screenshotted before/after on `/billing` |
+| Two real bugs found and fixed during verification: (1) a stale local `ven0x_dev.db` from an earlier manual run — missing the new `plan` column — broke a test that exercises the app's real lifespan (`TestClient(app)` directly, not the shared in-memory test fixture); (2) `test_admin_users.py`'s direct-DB user creation (not `/auth/register`) still counted toward `real_users` in `auth.py`'s bootstrap check, since that check counts any non-dev-email row regardless of how it was created — colliding with `test_auth.py`'s "first registration becomes operator" assumption | (1) fixed by deleting the stale dev DB file; (2) fixed by renaming the file to `test_user_plans.py`, which sorts after `test_auth.py` — same discipline established in Phase 11 for `test_platform_settings.py`, and the file's own prior docstring claim ("avoids it by never calling `/auth/register`") was corrected to reflect the real mechanism |
+| `git diff` scanned for secret-shaped strings | none found (only the standard `correct-horse-battery` test-fixture password already used throughout every other test file) |
+| `git diff \| grep -iE "broker\|crypto\|forex\|options_trading\|real.money\|live.trading"` | only the new Beta badge's own comment describing this as a "paper-trading-only" platform — no regression |
+
+## Verification commands run (after Phase 12)
+
+| Command | Result |
+|---|---|
+| `cd frontend && npm test` (Vitest) | **7 test files, 37 tests, all passed** (up from 2 files/14 tests that pre-existed but were never wired into CI) |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 16 routes generated (test files correctly excluded from the production bundle — not a Next.js route-naming convention) |
+| `cd frontend && npx playwright test` (live backend + dev-mode frontend, `workers: 1`) | **4/4 E2E specs passed** — alerts create/reject/toggle, and the Admin Safe Mode toggle genuinely blocking then un-blocking a paper trade |
+| First E2E run (2 workers, `fullyParallel: true`) surfaced a real flake: concurrent spec files straining the dev server's first-compile step timed out an unrelated navigation, redirecting it to `/login` | fixed by forcing `workers: 1` — these specs share one live backend and one dev-mode frontend, not per-test-isolated environments, so parallelism was never sound here |
+| Same run also caught a Playwright text-matcher bug in my own spec: `getByText("ACTIVE")` (default case-insensitive substring match) matched the "**Inactive**" badge too | fixed with `{ exact: true }` |
+| `cd backend && python3 -m pytest app/tests -q` (unaffected by this phase, re-run per discipline) | **382 passed, 10 skipped** — unchanged from Phase 11, confirming no backend regression |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
+## Verification commands run (after Phase 11)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **382 passed, 10 skipped** (up from 373+10 at the end of Phase 10; +9 new passing tests) |
+| `cd backend && python3 -m pytest app/tests/test_platform_settings.py -q` | 9/9 passed (isolated) |
+| Full-suite run surfaced two cross-file test-isolation collisions in the new test file: (1) collection-order collision with `test_auth.py`'s "first real registration becomes operator" bootstrap assumption, (2) an email reused from `test_auth.py`'s own shared-DB fixture data | fixed by renaming the file to `test_platform_settings.py` (sorts after `test_auth.py`) and scoping test emails uniquely — same shared-in-memory-DB discipline established in `test_universe_endpoint.py`/`test_prediction_scheduler.py` |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 12 migrations in order, exit 0 |
+| same, upgrading from prior head (`131cd2bbc4f4`) only | applies only `a772e90e7e90_platform_settings`, exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 16 routes generated (new `/admin`) |
+| Live dev-server + Playwright: registered a fresh account (first real registration → operator via the existing bootstrap rule), `/admin` renders Safe Mode / provider health / schema status / database health / platform alerts (empty) / model registry (empty) / the full 20-asset universe table | all sections render with real data, no fabricated values |
+| Live dev-server: clicked "Force ON" in the Admin UI, then `POST /paper-trading/positions` for a mock-universe symbol | refused with `400 "...Safe Mode is active platform-wide..."` — the toggle genuinely gates trading, not just a visual switch |
+| Live dev-server: cleared the override, retried the same trade | proceeded to its normal risk-gate evaluation (rejected on its own reward:risk merit, unrelated to Safe Mode) — proves the override only affects Safe Mode, nothing else |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
+## Verification commands run (after Phase 10)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **373 passed, 10 skipped** (up from 357+10 at the end of Phase 9; +16 new passing tests) |
+| `cd backend && python3 -m pytest app/tests/test_alerts.py -q` | 15/15 passed (isolated) |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 11 migrations in order, exit 0 |
+| same, upgrading from prior head (`2f065e542a7c`) only | applies only `131cd2bbc4f4_alert_rules_and_events`, exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 15 routes generated (new `/alerts`) |
+| Live dev-server: `POST /alerts/rules` with `ticker_symbol=AXNT` (not in tracked universe) | correctly refused with `400` — a genuine correctness gap found via live testing (a rule on an untracked ticker would silently never fire, since the scheduler only visits the Asset Universe Manager's active universe) and fixed with server-side validation, not left as a UX footgun |
+| Live dev-server + Playwright: `/alerts` with a real fired `AlertEvent` inserted directly (scheduler firing itself is blocked by the same mock-provider-cannot-fabricate-real-ticker-data limitation documented since Phase 5/9) | renders the fired-alert message and timestamp correctly; clicking "Dismiss" acknowledges it and removes the action button, event shown at reduced opacity — screenshots `alerts_with_event.png`/`alerts_after_dismiss.png` |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
+## Verification commands run (after Phase 9)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **357 passed, 10 skipped** (up from 349+10 at the end of Phase 8) |
+| `cd backend && python3 -m pytest app/tests/test_stock_indicators.py -q` | 8/8 passed (isolated) |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 14 routes generated |
+| Live dev-server + Playwright: `/stock/AXNT` — 1D→1W timeframe switch, Bollinger Bands toggle, scroll to RSI/MACD sub-panes | all render correctly with real computed values; trade-plan price lines (TP3/TP2/TP1/Entry/Stop) match the analysis panel above |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **349 passed, 10 skipped** (up from 347+10 at the end of Phase 7) |
+| `cd backend && python3 -m pytest app/tests/test_champion_challenger.py app/tests/test_walkforward.py -q` | 9/9 passed (isolated) |
+| Live dev-server check: `GET /models` (fresh DB), `POST /models/train-challenger` (fresh DB) | `[]`; correct honest `409 "Only 0 graded predictions... requires >= 40"` — never fabricated |
+| `python3 -c "import app.main"` | clean, no import errors |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | no matches — no OTC-enablement regression |
+
+## Verification commands run (after Phase 7)
+
+| Command | Result |
+|---|---|
+| `cd backend && python3 -m pytest app/tests -q` | **347 passed, 10 skipped** (up from 338+10 at the end of Phase 6; +9 new passing tests) |
+| `cd backend && python3 -m pytest app/tests/test_prediction_log.py app/tests/test_prediction_scheduler.py app/tests/test_outcome_evaluator.py -q` | 16/16 passed (isolated) |
+| Full-suite run surfaced a test-isolation flake in the new scheduler test (exact-count assertion collided with another file's uncommitted test-only asset on the shared in-memory test DB) | fixed by scoping assertions to the 20 seed symbols specifically (same discipline as `test_multi_asset_scanner.py`); re-ran full suite clean afterward |
+| `SQLITE_PATH=sqlite:////tmp/... alembic upgrade head` (fresh DB) | applies all 10 migrations in order, exit 0 |
+| same, upgrading from prior head (`6f1d3edac330`) only | applies only the new migration, exit 0 |
+| `alembic downgrade -1` from the new head | clean downgrade, exit 0 |
+| `alembic revision --autogenerate` after upgrading to the new head | generates an **empty** migration — model/migration confirmed in sync; throwaway file deleted |
+| `cd frontend && npx tsc --noEmit && npm run lint && npm run build` | all clean, 14 routes generated |
+| Live dev-server check: `GET /predictions/calibration` (fresh DB), `POST /predictions/log/{symbol}` | correct honest empty shape; logged row carries `engine_mode: "HEURISTIC"`, `model_version: null`, `risk_policy_version: "risk-policy-v1"` |
+| Live dev-server + Playwright: `/performance` empty state | renders correctly, no crash, no fabricated numbers |
+| `git diff` scanned for secret-shaped strings | none found |
+| `git diff \| grep -iE "otc_module_enabled\|enable.*otc"` | only the new worker's own comment explaining it is *not* OTC-gated — no regression |
+
+## Remaining tasks (full 13-phase scope, not started unless marked)
+
+- [x] Phase 1 — real data integrity (1.1, 1.2, 1.3 scoped as above)
+- [x] Phase 2 — Alembic-in-deploy + production config guards (2.1, 2.2)
+- [x] Phase 3 — security hardening (3.1 auth rate limiting, 3.2 monitoring split, 3.3 prompt-injection defenses)
+- [x] Phase 4 — unified risk/signal policy engine (RiskPolicy, Safe Mode, POSSIBLE_ENTRY now gated by the same evaluate_risk() the scanner uses)
+- [x] Phase 5 — frontend reliability (Watchlist/Portfolio error handling, shared `ErrorState` on 6 routes, a real backend 404-vs-503 bug found+fixed, mobile responsiveness verified via Playwright — no changes needed; component/page-level frontend tests explicitly deferred to Phase 12, no testing-library infra exists yet)
+- [x] Phase 6 — Paper Trading system (PaperTradingAccount/PaperPosition, execution gated by the same evaluate_risk() the scanner/Signal Engine use, cash-only realistic bid/ask fill pricing, /paper-trading UI, full lifecycle verified live; automatic stop/target-triggered closing explicitly deferred to Phase 7's outcome-evaluation job)
+- [x] Phase 7 — prediction ledger + performance proof (existing Prediction/Outcome/evaluator scaffolding audited and found disconnected from the mainstream universe — fixed with a new non-OTC-gated prediction_scheduler worker; added engine_mode/model_version/risk_policy_version provenance and a real Brier score broken down by engine_mode; new /performance frontend page)
+- [x] Phase 8 — ML dataset + training + Champion/Challenger promotion gate (dataset/training/walk-forward/registry all pre-existing and verified; added the missing heuristic + logistic-regression/momentum/buy-and-hold baseline comparison and hard-enforced the "never promote unless it beats them" gate in promote_model() itself)
+- [x] Phase 9 — chart timeframes + technical indicators (backend /candles already supported all 9 timeframes; added GET /indicators, a new lightweight-charts-based TradingChart with timeframe selector + toggleable SMA/EMA/Bollinger/VWAP overlays + always-on RSI/MACD sub-panes + AI trade-plan price lines, replacing the old hand-rolled SVG PriceChart)
+- [x] Phase 10 — user alerts (genuinely new: `AlertRule`/`AlertEvent` models, condition types price/ai_score/manipulation_risk/signal_status, 1-hour cooldown against re-firing a persistently-true condition, evaluation piggybacked onto the existing `prediction_scheduler.py` cadence rather than a new worker, server-side rejection of rules on tickers outside the tracked Asset Universe — a real gap found via live testing — new `/alerts` CRUD + events API and frontend page with honest "in-app only, hourly cadence, never claims a delivery that didn't happen" copy)
+- [x] Phase 11 — Admin/Operator UI (audited first and found most of the surface already existed and was already operator-gated — provider health, schema readiness, full platform health report, model registry, asset universe CRUD; consolidated all of it into one `/admin` frontend page, client-side gated on role with server-side enforcement doing the real work. The one genuinely new backend capability: a DB-backed runtime Safe Mode override, since the env-only kill switch previously needed a redeploy to flip. `evaluate_risk()` gained an optional `db` param plus a `safe_mode` precomputed-flag escape hatch for the scanner's ThreadPoolExecutor path, where the same Session must never be touched from multiple worker threads)
+- [x] Phase 12 — frontend/E2E testing expansion (audited first: 2 pure-logic Vitest tests already existed but were never run in CI, and no component-rendering or E2E infra existed at all — genuinely new work, not just wiring. Set up Vitest + React Testing Library + jsdom per Next.js 16's own official guide (read from `node_modules/next/dist/docs` per AGENTS.md), with a `vitest.setup.ts` for RTL's automatic DOM cleanup between tests — its absence caused a real cross-test leakage bug in my first draft of the Sidebar test, caught immediately by a false-positive result. Added component tests for `ErrorState`, the Phase-11 Admin nav operator-gating, the `/admin` page's operator gate, and the `/alerts` page's create/validate/dismiss flow; added API contract tests for `lib/api.ts` against a mocked `fetch`, catching a stale-Response-object bug in the tests themselves along the way. Wired `npm test` into the CI workflow (previously absent — the two pre-existing tests were never actually run automatically). Formalized two of the many ad-hoc Playwright scratchpad scripts used throughout this whole project into permanent `e2e/` specs (alerts CRUD/tracked-universe validation; the Admin Safe Mode toggle genuinely blocking then un-blocking a live paper trade) — not wired into CI, since that honestly needs the backend + a seeded DB running as CI services too, a separate infra decision out of this phase's scope)
+- [x] Phase 13 — commercial beta readiness (audited first: genuinely no plan/tier/entitlement/subscription/billing concept existed anywhere. Added `User.plan` (free | pro), server-enforced usage quotas on watchlist items and alert rules counted from real owned rows, and a `BillingProvider` abstraction whose only shipped implementation — `NullBillingProvider` — never collects or simulates a payment, only honestly reports itself unconfigured. No self-serve checkout exists during this beta; an operator grants/changes a user's plan directly and auditably via the new Admin "Users & plans" section — the same no-fake-payments discipline as every other unconfigured-capability pattern already in this codebase (mock vs. real market data, template vs. real chat backend). New `/billing` page shows real usage vs. limits with honest not-configured messaging; a Beta badge now sits next to the wordmark everywhere it appears, since this remains paper-trading-only. Found and fixed two real test-isolation bugs along the way — a stale local dev DB missing the new column, and a second instance of the "first real user becomes operator" bootstrap collision, this time from direct-DB user creation rather than `/auth/register`)
+
+## Known blockers
+
+- **No live market-data API keys in this environment** → Phase 1.2's live AAPL/NVDA/SPY/GLD verification cannot be executed here. Code + mocked-transport tests will be completed regardless; live verification stays explicitly reported as blocked until credentials are supplied.
+- **No Anthropic API key in this environment** → the LLM chat backend cannot be live-verified either (template backend, the default, needs no key and is verifiable).
+
+## Exact next action
+
+**All 13 numbered phases are now complete and verified** — see each
+phase's checklist entry above and its own "Verification commands run"
+table. What remains is exactly one thing:
+
+Prepare and deliver the **27-item FINAL COMPLETION REPORT in Hebrew**,
+per the standing instruction governing this whole engagement:
+1. Before writing it, do one last full-repository sanity pass: re-run the
+   complete backend suite (`cd backend && python3 -m pytest app/tests -q`)
+   and the complete frontend suite (`cd frontend && npx tsc --noEmit &&
+   npm run lint && npm test && npm run build`) one final time, back to
+   back, with nothing else touching the working tree in between — a
+   report claiming full verification must be backed by a verification run
+   that just happened, not one inferred from separate phase-by-phase runs
+   that could have drifted from each other.
+2. Confirm `git status` is clean (everything committed and pushed) and
+   `git log` shows all 13 phase commits present on
+   `claude/otc-ai-trading-platform-7i3zon`.
+3. Re-confirm the standing non-negotiables one more time before writing
+   the report: OTC is still not enabled in the primary application; no
+   crypto/options/forex/real-broker execution exists anywhere; Paper
+   Trading is still the only execution mode; no fabricated data, prices,
+   fills, or model performance exists anywhere; the ML model is still
+   inactive (HEURISTIC-only) unless a genuinely promoted challenger beat
+   the gate — it has not, per Phase 8/Phase 11's model registry being
+   empty in this environment.
+4. The report should honestly state the known, standing environment
+   blockers (documented under "Known blockers" above): no live market-
+   data API keys and no Anthropic API key are present in this sandbox, so
+   Phase 1.2's live-provider verification and the LLM chat backend's live
+   verification were never possible here — reported as blocked, not
+   faked, consistently across every phase that touched them.
+5. Do not silently skip any of the 27 items — if one genuinely doesn't
+   apply or was already covered by an earlier phase's work, say so
+   explicitly rather than omitting it.

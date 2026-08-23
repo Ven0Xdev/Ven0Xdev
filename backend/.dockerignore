@@ -1,0 +1,24 @@
+# Never bake real secrets into an image layer — .env holds live
+# TWELVE_DATA_API_KEY/ALPHA_VANTAGE_API_KEY/SECRET_KEY. docker-compose's
+# env_file: already injects these as real runtime environment variables;
+# the image itself must never contain the file.
+.env
+.env.*
+!.env.example
+
+# Local dev/test artifacts — never needed at runtime, and copying them was
+# the direct cause of a containerd layer-extraction failure (.pytest_cache
+# entries with timestamps the overlay snapshotter couldn't handle).
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+test_ven0x.db
+catboost_info/
+
+# VCS/editor
+.git/
+.gitignore

@@ -1,0 +1,600 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Nexora Design System
+   A single semantic token layer — every color, radius, shadow, spacing and
+   motion value used anywhere in the app is named here once. Components
+   reference tokens (var(--text-primary)), never raw hex — that's what keeps
+   light/dark parity guaranteed instead of hand-maintained per component.
+   ========================================================================== */
+
+:root {
+  /* --- Surfaces --- */
+  --page-plane: #f6f7f8;        /* app canvas — a whisper of cool gray, not flat white */
+  --surface-1: #ffffff;          /* cards sit one step brighter than the canvas */
+  --surface-2: #f0f1f3;          /* recessed surfaces: table headers, input fills, code */
+  --surface-raised: #ffffff;     /* popovers/menus — same as card, elevated by shadow */
+
+  /* --- Text --- */
+  --text-primary: #0b0d10;
+  --text-secondary: #545c66;
+  --text-muted: #8a919b;
+  --text-on-accent: #ffffff;
+
+  /* --- Structure --- */
+  --border: rgba(11, 13, 16, 0.09);
+  --border-strong: rgba(11, 13, 16, 0.16);
+  --gridline: #e7e9ec;
+  --baseline: #c7ccd2;
+
+  /* --- Brand (sampled from the Nexora mark) --- */
+  --accent: #0bb981;
+  --accent-hover: #0aa574;
+  --accent-active: #099267;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-contrast: #ffffff;
+
+  /* --- Status (financial semantics: green=good, red=bad, amber=caution) --- */
+  --status-good: #0bb981;
+  --status-good-soft: color-mix(in srgb, var(--status-good) 12%, transparent);
+  --status-warning: #d97706;
+  --status-warning-soft: color-mix(in srgb, var(--status-warning) 12%, transparent);
+  --status-serious: #ea580c;
+  --status-serious-soft: color-mix(in srgb, var(--status-serious) 12%, transparent);
+  --status-critical: #dc2626;
+  --status-critical-soft: color-mix(in srgb, var(--status-critical) 12%, transparent);
+
+  /* --- Categorical series (charts / multi-state badges — distinct hues) --- */
+  --series-blue: #2563eb;
+  --series-aqua: #0d9488;
+  --series-yellow: #d97706;
+  --series-green: #0bb981;
+  --series-violet: #7c3aed;
+  --series-red: #dc2626;
+  --series-magenta: #db2777;
+  --series-orange: #ea580c;
+
+  /* --- Sequential scale (score/heat ramps — low to high, on-brand) --- */
+  --seq-100: #e3f9ef;
+  --seq-250: #a7ecd2;
+  --seq-400: #4fd1a5;
+  --seq-450: #0bb981;
+  --seq-550: #0a8f65;
+  --seq-650: #0a6b4d;
+
+  /* --- Elevation --- */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 32, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 32, 0.06), 0 1px 2px rgba(16, 24, 32, 0.04);
+  --shadow-md: 0 8px 24px rgba(16, 24, 32, 0.08), 0 2px 6px rgba(16, 24, 32, 0.04);
+  --shadow-lg: 0 16px 48px rgba(16, 24, 32, 0.12), 0 4px 12px rgba(16, 24, 32, 0.06);
+  --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+
+  /* --- Radius --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* --- Motion --- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --duration-slow: 380ms;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page-plane: #0a0a0b;
+    --surface-1: #141516;
+    --surface-2: #1c1d1f;
+    --surface-raised: #18191b;
+
+    --text-primary: #f4f5f6;
+    --text-secondary: #a7adb5;
+    --text-muted: #6e747c;
+
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --gridline: #232427;
+    --baseline: #35373b;
+
+    --accent-hover: #14c98d;
+    --accent-active: #1fd699;
+
+    --status-warning: #f59e0b;
+    --status-critical: #f87171;
+    --status-serious: #fb923c;
+
+    --series-blue: #60a5fa;
+    --series-aqua: #2dd4bf;
+    --series-yellow: #f59e0b;
+    --series-violet: #a78bfa;
+    --series-red: #f87171;
+    --series-magenta: #f472b6;
+    --series-orange: #fb923c;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Manual override via the theme toggle — takes precedence over OS preference. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page-plane: #0a0a0b;
+  --surface-1: #141516;
+  --surface-2: #1c1d1f;
+  --surface-raised: #18191b;
+
+  --text-primary: #f4f5f6;
+  --text-secondary: #a7adb5;
+  --text-muted: #6e747c;
+
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --gridline: #232427;
+  --baseline: #35373b;
+
+  --accent-hover: #14c98d;
+  --accent-active: #1fd699;
+
+  --status-warning: #f59e0b;
+  --status-critical: #f87171;
+  --status-serious: #fb923c;
+
+  --series-blue: #60a5fa;
+  --series-aqua: #2dd4bf;
+  --series-yellow: #f59e0b;
+  --series-violet: #a78bfa;
+  --series-red: #f87171;
+  --series-magenta: #f472b6;
+  --series-orange: #fb923c;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page-plane: #f6f7f8;
+  --surface-1: #ffffff;
+  --surface-2: #f0f1f3;
+  --surface-raised: #ffffff;
+
+  --text-primary: #0b0d10;
+  --text-secondary: #545c66;
+  --text-muted: #8a919b;
+
+  --border: rgba(11, 13, 16, 0.09);
+  --border-strong: rgba(11, 13, 16, 0.16);
+  --gridline: #e7e9ec;
+  --baseline: #c7ccd2;
+
+  --accent-hover: #0aa574;
+  --accent-active: #099267;
+
+  --status-warning: #d97706;
+  --status-critical: #dc2626;
+  --status-serious: #ea580c;
+
+  --series-blue: #2563eb;
+  --series-aqua: #0d9488;
+  --series-yellow: #d97706;
+  --series-violet: #7c3aed;
+  --series-red: #dc2626;
+  --series-magenta: #db2777;
+  --series-orange: #ea580c;
+
+  --shadow-xs: 0 1px 2px rgba(16, 24, 32, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 32, 0.06), 0 1px 2px rgba(16, 24, 32, 0.04);
+  --shadow-md: 0 8px 24px rgba(16, 24, 32, 0.08), 0 2px 6px rgba(16, 24, 32, 0.04);
+  --shadow-lg: 0 16px 48px rgba(16, 24, 32, 0.12), 0 4px 12px rgba(16, 24, 32, 0.06);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Themed properties transition smoothly when the toggle flips data-theme —
+   gated to after first paint (see ThemeToggle) so there's never a flash. */
+html.theme-ready body,
+html.theme-ready * {
+  transition: background-color var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+/* Refined scrollbar — thin, themed, unobtrusive */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--baseline) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--baseline);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--page-plane);
+  background-clip: padding-box;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Primitives
+   ========================================================================== */
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.card-interactive {
+  cursor: pointer;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus ring — one consistent treatment everywhere, always visible for
+   keyboard users, never shown for mouse interaction. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 550;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 0.625rem 1.125rem;
+  min-height: 40px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-active);
+}
+
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--gridline);
+  border-color: var(--border-strong);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--status-critical);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--status-critical-soft);
+}
+
+.btn-sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8125rem;
+  min-height: 32px;
+}
+
+/* --- Inputs --- */
+.input {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  min-height: 40px;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+.input::placeholder {
+  color: var(--text-muted);
+}
+.input:hover {
+  border-color: var(--border-strong);
+}
+.input:focus {
+  outline: none;
+  background: var(--surface-1);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+/* --- Skeleton loading --- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text-primary) 6%, transparent), transparent);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* --- Entrance animation --- */
+.animate-in {
+  animation: fade-in-up var(--duration-slow) var(--ease-out) both;
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in-stagger > * {
+  animation: fade-in-up var(--duration-slow) var(--ease-out) both;
+}
+.animate-in-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.animate-in-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.animate-in-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.animate-in-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.animate-in-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.animate-in-stagger > *:nth-child(6) { animation-delay: 200ms; }
+.animate-in-stagger > *:nth-child(n+7) { animation-delay: 240ms; }
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   Motion pass additions — ticker tape, signal reveals, agent sequence,
+   gauges, ambient background. All keyed to the existing --duration and
+   --ease tokens above; all covered by the blanket prefers-reduced-motion
+   override at the bottom of this file.
+   ========================================================================== */
+
+.ticker-tape-track {
+  animation: ticker-scroll 42s linear infinite;
+}
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.signal-reveal {
+  animation: signal-reveal-in var(--duration-slow) var(--ease-out) both;
+}
+@keyframes signal-reveal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Agent deliberation sequence: a stage card "activating" (processing) before
+   its real result is revealed. */
+@keyframes agent-pulse {
+  0%, 100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.agent-activating {
+  animation: agent-pulse 1.1s var(--ease-in-out) infinite;
+}
+.agent-stage-in {
+  animation: fade-in-up var(--duration-slow) var(--ease-out) both;
+}
+.agent-evidence-in {
+  animation: fade-in-up var(--duration-base) var(--ease-out) both;
+}
+
+/* Hover lift + soft glow for interactive cards (extends .card-interactive). */
+.card-glow:hover {
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-strong), 0 0 32px -12px var(--accent-soft);
+}
+
+/* Ambient background — fixed, decorative, never intercepts input. */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ambient-bg span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.08; /* light-mode default, matching :root's light-first cascade above */
+  animation: ambient-drift 46s ease-in-out infinite;
+}
+@media (prefers-color-scheme: dark) {
+  .ambient-bg span {
+    opacity: 0.12;
+  }
+}
+:root[data-theme="dark"] .ambient-bg span {
+  opacity: 0.12;
+}
+:root[data-theme="light"] .ambient-bg span {
+  opacity: 0.08;
+}
+@keyframes ambient-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(4%, 6%) scale(1.08);
+  }
+  66% {
+    transform: translate(-3%, -4%) scale(0.96);
+  }
+}
+
+/* Skeleton -> real content handoff: a quick crossfade instead of an
+   instant swap, on anything opting in with this class. */
+.content-reveal {
+  animation: fade-in-up var(--duration-base) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* The blanket rule above freezes the marquee's translateX loop at frame
+     0 — fine for the animation, but it would also leave overflow:hidden
+     trapping everything past the first screenful. Swap to a manually
+     scrollable static row instead, and drop the duplicated aria-hidden
+     pass out of the layout so it isn't silently taking up scroll space. */
+  .ticker-tape {
+    overflow-x: auto;
+  }
+  .ticker-tape-track {
+    width: max-content;
+    animation: none !important;
+  }
+  .ticker-tape-track > [aria-hidden="true"] {
+    display: none;
+  }
+
+  /* A static, non-drifting decorative layer reads as calmer than one
+     frozen mid-transform. */
+  .ambient-bg span {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  /* Native View Transitions (theme toggle crossfade, ThemeToggle.tsx) live
+     outside the regular DOM/animation tree the *,*::before,*::after rule
+     above reaches, so they need their own opt-out — same pattern Next's
+     own view-transitions guide recommends. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+  }
+}

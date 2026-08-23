@@ -1,0 +1,33 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.8
+pydantic-settings>=2.4
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+alembic>=1.13
+redis>=5.0
+pandas>=2.2
+# Ceiling below 2.5: that release's bundled __init__.pyi uses unconditional
+# PEP 695 `type` statements mypy can't parse under python_version=3.11 (see
+# backend/pyproject.toml) — a real numpy-stub/mypy-target incompatibility,
+# not a version this project is otherwise trying to avoid. Revisit once
+# mypy or numpy's stubs resolve it.
+numpy>=1.26,<2.5
+scipy>=1.13
+scikit-learn>=1.5
+lightgbm>=4.5
+xgboost>=2.1
+catboost>=1.2
+shap>=0.46
+anthropic>=0.34
+httpx>=0.27
+websockets>=12
+python-multipart>=0.0.9
+tenacity>=8.5
+pyjwt>=2.8
+email-validator>=2.0
+bcrypt>=4.1
+pytest>=8.3
+pytest-asyncio>=0.24
+pytest-cov>=5.0
+pytest-timeout>=2.3

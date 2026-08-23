@@ -1,0 +1,8 @@
+*.db
+__pycache__/
+*.pyc
+.venv/
+model_artifacts/
+.pytest_cache/
+.coverage
+catboost_info/

@@ -2,3 +2,21 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+
+# Backend
+backend/.venv/
+backend/*.db
+backend/model_artifacts/
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/*.log
+
+# Env
+.env
+.env.local

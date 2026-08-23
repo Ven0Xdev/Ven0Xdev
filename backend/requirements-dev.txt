@@ -1,0 +1,6 @@
+# Lint/type-check tooling only — never installed into the production
+# Docker image (Dockerfile installs requirements.txt alone). CI's
+# backend-tests job installs this on top of requirements.txt.
+-r requirements.txt
+ruff>=0.16,<0.17
+mypy>=2.3,<3.0
