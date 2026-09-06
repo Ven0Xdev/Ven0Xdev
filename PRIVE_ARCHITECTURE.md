@@ -86,15 +86,21 @@ missing or circular dependency fails the build rather than passing review.
 | `Prive.Save` | `Scripts/Save` | **No** | `SaveNode` document tree, dependency-free JSON serializer, `SaveGame`, `ISaveable`, versioning, migration chain, storage contracts |
 | `Prive.Travel` | `Scripts/Travel` | **No** | Routes, travel modes, quotes, pricing model, booking, arrival effects |
 | `Prive.Player` | `Scripts/Player` | **No** | `PlayerProfile` — the aggregate root binding wallet, status and location |
+| `Prive.Vehicles` | `Scripts/Vehicles` | **No** | Definitions, instances, condition, prestige, valuation, garage, ownership, and the net-worth and observed-wealth integrations |
+| `Prive.Dealership` | `Scripts/Dealership` | **No** | Dealership identity, tiers, inventory generation, buy/sell pricing, restocking |
 | `Prive.Unity.Runtime` | `Scripts/Unity` | Yes | Bootstrap, composition root, `ScriptableObject` catalogs, JSON serializer, file storage, clock driver |
 | `Prive.Tests.EditMode` | `Tests/EditMode` | Yes¹ | NUnit tests for all pure logic |
 
 ¹ The test assembly references `UnityEngine.TestRunner`; the tests themselves
 touch no engine API, which is why the same files run under `Tools/verify.sh`.
 
-**Reserved, not yet created** (folders exist, assemblies added when Phase 2+ starts):
-`Prive.Vehicles`, `Prive.NPC`, `Prive.Business`, `Prive.Property`,
-`Prive.Investments`, `Prive.Phone`, `Prive.AI`.
+**Reserved, not yet created** (folders exist, assemblies added when their phase starts):
+`Prive.NPC`, `Prive.Business`, `Prive.Property`, `Prive.Investments`,
+`Prive.Phone`, `Prive.AI`.
+
+`Prive.Vehicles` depends on Core, Save, Economy, Social and World — deliberately **not** on
+`Prive.Player`. It needs a wallet, a clock and an id factory, all of which are supplied by
+the composition root; nothing about a car requires knowing who the player is.
 
 ---
 
@@ -299,12 +305,16 @@ These interfaces exist now so later phases are additive, not surgical:
 
 | Interface | Added by | Consumed by |
 |---|---|---|
-| `IAssetValueProvider` | Vehicles, Properties, Businesses, Investments | `NetWorthService` |
+| `IAssetValueProvider` | **Vehicles (live)**, Properties, Businesses, Investments | `NetWorthService` |
 | `ILiabilityProvider` | Loans, mortgages, credit | `NetWorthService` |
-| `IObservedWealthSignal` | Vehicles, Outfits, Property, Fame | `ObservedWealthCalculator` |
+| `IObservedWealthSignal` | **Fame, active vehicle (live)**, Outfits, Property | `ObservedWealthCalculator` |
 | `IClockTickable` | every recurring system | `GameClock` |
 | `ISaveable` | every persistent system | `SaveManager` |
 | `ITravelPricingModel` | Travel tuning / difficulty | `TravelService` |
+| `IVehicleValuationModel` | Valuation tuning, auctions, insurance | `VehicleModule`, dealerships |
+| `IGarageCapacityProvider` | Properties (Phase 4) | `VehicleOwnershipService` |
+| `IDealershipInventoryGenerator` | Game Director, auctions, consignment | `DealershipService` |
+| `VisibleLoadoutChangedEvent` | Any visible asset system | `SocialPresenceService` |
 | `IWorldLocationCatalog` | World content packs | Travel, Streaming, Player |
 | *(Game Director — Phase 6, not yet written)* | Rule-based director; LLM director later | World events |
 
@@ -359,7 +369,7 @@ references**, which also proves the assembly graph in section 2 is acyclic and c
 the same guarantee Unity's asmdefs give, without opening the Editor. It then type-checks
 the engine-facing assembly against minimal Unity stubs and runs the full core test suite.
 
-Current state: **7 pure assemblies, 154 tests, green.**
+Current state: **9 pure assemblies, 247 tests, green.**
 
 This is the fast loop, not the authority — it proves nothing about serialization, prefabs,
 scene wiring or runtime MonoBehaviour behaviour. The Unity Editor's Test Runner remains the

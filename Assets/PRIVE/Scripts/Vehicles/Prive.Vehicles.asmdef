@@ -1,16 +1,12 @@
 {
-    "name": "Prive.Unity.Runtime",
-    "rootNamespace": "Prive.Unity",
+    "name": "Prive.Vehicles",
+    "rootNamespace": "Prive.Vehicles",
     "references": [
         "Prive.Core",
-        "Prive.Economy",
-        "Prive.World",
-        "Prive.Social",
         "Prive.Save",
-        "Prive.Player",
-        "Prive.Travel",
-        "Prive.Vehicles",
-        "Prive.Dealership"
+        "Prive.Economy",
+        "Prive.Social",
+        "Prive.World"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -20,5 +16,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": false
+    "noEngineReferences": true
 }

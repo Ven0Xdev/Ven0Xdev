@@ -264,6 +264,98 @@ namespace Prive.Tests
     }
 
     [TestFixture]
+    public class SocialPresenceServiceTests
+    {
+        private EventBus _bus;
+        private GameClock _clock;
+        private SocialStatus _status;
+        private ObservedWealthCalculator _observedWealth;
+        private SocialPresenceService _presence;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _bus = new EventBus();
+            _clock = new GameClock(_bus);
+            _status = new SocialStatus(_bus);
+            _observedWealth = new ObservedWealthCalculator(_bus);
+            _presence = new SocialPresenceService(
+                _status, _observedWealth, DefaultWorldContent.Build(), _clock, _bus);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _presence.Dispose();
+        }
+
+        [Test]
+        public void EvaluatePublishesPresenceAndRemembersTheLocation()
+        {
+            int evaluations = 0;
+            _bus.Subscribe<PlayerPresenceEvaluatedEvent>(e => evaluations++);
+
+            _presence.Evaluate(WorldLocations.VermillionBayDistricts.Marina);
+
+            Assert.AreEqual(1, evaluations);
+            Assert.AreEqual(WorldLocations.VermillionBayDistricts.Marina, _presence.CurrentLocation);
+        }
+
+        [Test]
+        public void AVisibleLoadoutChangeReEvaluatesPresence()
+        {
+            // The seam a content module uses to say "the player is driving something else now"
+            // without knowing this service exists.
+            _presence.Evaluate(WorldLocations.VermillionBayDistricts.Downtown);
+
+            int evaluations = 0;
+            _bus.Subscribe<PlayerPresenceEvaluatedEvent>(e => evaluations++);
+
+            _bus.Publish(new VisibleLoadoutChangedEvent(WealthSignalKind.Vehicle));
+
+            Assert.AreEqual(1, evaluations);
+        }
+
+        [Test]
+        public void ALoadoutChangeBeforeThePlayerIsPlacedIsIgnored()
+        {
+            int evaluations = 0;
+            _bus.Subscribe<PlayerPresenceEvaluatedEvent>(e => evaluations++);
+
+            _bus.Publish(new VisibleLoadoutChangedEvent(WealthSignalKind.Vehicle));
+
+            Assert.AreEqual(0, evaluations, "There is no location to evaluate against yet.");
+        }
+
+        [Test]
+        public void RefreshPicksUpANewlyRegisteredSignal()
+        {
+            _presence.Evaluate(WorldLocations.VermillionBayDistricts.Downtown);
+            Money before = _presence.CurrentObservedWealth;
+
+            _observedWealth.RegisterSignal(new StubWealthSignal(
+                WealthSignalKind.Vehicle, Money.FromDollars(900000L), 1.5, 1.0));
+            _presence.Refresh();
+
+            Assert.IsTrue(_presence.CurrentObservedWealth > before,
+                "A newly visible asset must change how the player reads.");
+        }
+
+        [Test]
+        public void DisposingStopsRespondingToLoadoutChanges()
+        {
+            _presence.Evaluate(WorldLocations.VermillionBayDistricts.Downtown);
+            _presence.Dispose();
+
+            int evaluations = 0;
+            _bus.Subscribe<PlayerPresenceEvaluatedEvent>(e => evaluations++);
+            _bus.Publish(new VisibleLoadoutChangedEvent(WealthSignalKind.Vehicle));
+
+            Assert.AreEqual(0, evaluations);
+        }
+    }
+
+    [TestFixture]
     public class PresenceScoreTests
     {
         [Test]

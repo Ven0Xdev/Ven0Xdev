@@ -30,8 +30,9 @@ LAYER 3  ── player-facing simulation ─────────────
    Phone ⬜ ──────────────► everything (read-mostly UI shell)
 
 LAYER 4  ── content systems (each plugs into Layer 2/3 registries) ────────────
-   Vehicles ⬜        Properties ⬜       Businesses ⬜
-   Investments ⬜     Dealerships ⬜      Wardrobe ⬜
+   Vehicles ✅ ───────────► Economy, Social, World, Save, Core
+   Dealerships ✅ ────────► Vehicles, Economy, World, Save, Core
+   Properties ⬜      Businesses ⬜      Investments ⬜      Wardrobe ⬜
         └── all implement IAssetValueProvider + IObservedWealthSignal + ISaveable
 
 LAYER 5  ── world reactivity ──────────────────────────────────────────────────
@@ -204,33 +205,76 @@ not destroyed.
 
 ---
 
-## 8. Vehicles ⬜ (Phase 2)
+## 8. Vehicles ✅ (Phase 2)
 
 ```
-VehicleModelData   fictional brand, class, base price, prestige, rarity, stats
-VehicleInstance    RuntimeId, model, mileage, condition, damage, fuel, plate,
-                   mods, insurance, purchase price/date
-VehicleValuation   base × condition × mileage × rarity × market × mods
-VehicleCatalog     IAssetValueProvider + IObservedWealthSignal
-Garage             capacity per property, storage location
+VehicleDefinitionId / VehicleId   separate types: model vs. this specific car
+VehicleDefinition   brand, model, category, rarity, base price, prestige,
+                    expected lifetime km, annual value rate, garage slots
+VehicleInstance     id, definition, purchase price/date, odometer, condition,
+                    storage state, plate, customisation, insurance  (mutable, saved)
+VehicleCondition    0–1 continuous, with a grade band for UI
+VehiclePrestige     how impressive and how recognisable a specific car is
+VehicleCatalog      IVehicleCatalog — definition lookup
+VehicleRepository   the owned set; unique ids, capacity, tolerant restore
+VehicleOwnershipService   buy / sell / set active, all through PlayerEconomy
+IVehicleValuationModel    base × wear(condition, mileage, age) × market
+VehicleAssetProvider      IAssetValueProvider  → NetWorthService
+ActiveVehicleWealthSignal IObservedWealthSignal → ObservedWealthCalculator
+IGarageCapacityProvider   flat allowance now, properties supply it in Phase 4
+VehicleModule       installs the whole domain; owns the "vehicles" save node
 ```
 
-Classes: Economy, Sports, Luxury, Supercar, Hypercar, LuxurySUV, Limousine,
-Classic, RareCollector. Later: Aircraft, Boat.
-**Fictional brands only** (e.g. *Veloce*, *Aurelian*, *Kestrel Motors*, *Marrow*).
+**Categories:** Economy, Sports, Luxury, LuxurySuv, Supercar, Hypercar, Limousine, Classic,
+RareCollector. Aircraft and boats become new categories when Phase 7 needs them.
+
+**Valuation.** `base × condition × mileage × age × market`, with rarity governing how much of
+the *loss* actually bites rather than adding a premium. A brand-new car is worth exactly its
+list price whatever its rarity; five years later the exotic has kept far more. Framed as a
+premium instead, buying any rare car at list price minted money — a bug this phase found and
+fixed.
+
+**Net worth.** Every owned vehicle counts, garaged or not, through the existing
+`IAssetValueProvider`. `NetWorthService` was not modified.
+
+**Observed wealth.** Only the **active** vehicle contributes. A garage full of supercars
+raises net worth and nothing else; drive one out and it becomes the loudest thing about the
+player. Implied wealth is a multiple of market value, and confidence scales with how
+recognisable and how well-kept the car is.
+
+**Fictional brands only:** Corvane, Marrow, Kestrel, Aurelian, Sable, Halcyon, Veloce,
+Tessaro, Nyx. Fourteen models from a $4,200 hatchback — affordable on the $5,000 starting
+balance — to a $2.4M hypercar.
 
 ---
 
-## 9. Dealership ⬜ (Phase 2) — the first real money loop
+## 9. Dealership ✅ (Phase 2) — the first real money loop
 
 ```
-Buy inventory → appraise → price → market NPC customers → negotiate → sell
+DealershipTier      Budget · Standard · Luxury · Exotic · Collector
+DealershipDefinition  id, name, WorldLocationId, tier, handled categories,
+                      markup, buy-back rate, stock capacity, restock interval
+DealershipStockItem   a real VehicleInstance plus its asking price
+DealershipInventory   one forecourt, with its last restock day
+IDealershipInventoryGenerator  seeded, deterministic stock generation
+DealershipService     browse / buy / sell / restock; owns the "dealerships" save node
 ```
 
-`DealershipBusiness` implements `IBusiness`. Sourcing feeds rare-vehicle
-opportunities from the Game Director. Player can own multiple lots (Phase 4).
+**Location-agnostic by construction.** A dealership knows the `WorldLocationId` it stands at
+and nothing else about the world. Opening Dubai means adding definitions, not editing code —
+there is no Vermillion Bay logic anywhere in `Prive.Dealership`.
 
----
+**The loop.** Stock varies in condition and mileage, so two examples of the same model are
+genuinely different purchases. Tiers pay differently for what they do not understand: a
+budget lot discounts an out-of-category supercar by a further 28%, while the exotic dealer
+pays 85% of market. Buying where a car is misunderstood and selling where it is wanted is the
+Phase 2 skill, and it is data, not code.
+
+**Money never moves here.** Every transaction is delegated to `VehicleOwnershipService`,
+which is the only thing allowed to charge or pay the player.
+
+**Not yet:** negotiation (the `VehicleTransaction` request object is the seam), player-owned
+dealerships, customer NPCs, dealer reputation and upgrades.
 
 ## 10. Investments ⬜ (Phase 4)
 
@@ -358,4 +402,9 @@ occlusion, pooling and async loading. Nothing may assume a district is loaded.
 | Observed wealth blending | ✅ |
 | Travel pricing & booking | ✅ |
 | Save round-trip & migration chain | ✅ |
-| Vehicle pricing, market sim, business revenue | ⬜ with their phases |
+| Vehicle valuation, depreciation, appreciation | ✅ |
+| Vehicle purchase, sale, invalid transactions | ✅ |
+| Net worth and observed wealth integration | ✅ |
+| Vehicle and dealership save/load | ✅ |
+| Dealership pricing, stock, restock, arbitrage | ✅ |
+| Market sim, business revenue, property income | ⬜ with their phases |

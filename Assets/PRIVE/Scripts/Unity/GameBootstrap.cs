@@ -5,7 +5,9 @@ using Prive.Player;
 using Prive.Save;
 using Prive.Social;
 using Prive.Travel;
+using Prive.Vehicles;
 using Prive.World;
+using Prive.Dealership;
 
 namespace Prive.Unity
 {
@@ -39,6 +41,10 @@ namespace Prive.Unity
         private PlayerTravelState _travelState;
         private SocialPresenceService _presence;
 
+        private VehicleModule _vehicles;
+        private DealershipService _dealerships;
+        private System.IDisposable _locationSubscription;
+        private System.IDisposable _dealershipRestock;
         private float _autosaveTimer;
         private bool _installed;
 
@@ -105,6 +111,13 @@ namespace Prive.Unity
             _registry.Register<IWorldLocationCatalog>(world);
             _registry.Register(_player);
             _registry.Register(economy);
+
+            // Registered in its own right, not just reachable through PlayerEconomy: a content
+            // module registering an asset provider should not have to depend on Prive.Player
+            // or Prive.Economy's aggregate just to find the calculator.
+            _registry.Register(economy.NetWorth);
+            _registry.Register(_player.IdFactory);
+
             _registry.Register(status);
             _registry.Register(observedWealth);
             _registry.Register(_presence);
@@ -116,10 +129,86 @@ namespace Prive.Unity
             GameContext.Install(_registry);
             _installed = true;
 
+            InstallContentModules(economy, observedWealth);
+
             LoadOrStartNewGame();
+            FinaliseSessionStart(economy);
+        }
+
+        /// <summary>
+        /// Wires the content modules that plug into the Phase 1 registries.
+        /// </summary>
+        /// <remarks>
+        /// Runs before the save is loaded so every module has registered its
+        /// <see cref="ISaveable"/> and can be restored in the same pass.
+        /// </remarks>
+        private void InstallContentModules(PlayerEconomy economy, ObservedWealthCalculator observedWealth)
+        {
+            // Each module registers its own asset provider, wealth signal and save node.
+            // None of the Phase 1 services were edited to accommodate them.
+            _vehicles = new VehicleModule(
+                DefaultVehicleCatalog.Build(), economy, _clock, _bus, _player.IdFactory,
+                new FlatGarageCapacity());
+
+            _vehicles.Install(economy.NetWorth, observedWealth, _saves);
+
+            _dealerships = new DealershipService(
+                _vehicles.Ownership, _vehicles.Catalog, _vehicles.Valuation,
+                new DealershipInventoryGenerator(_vehicles.Catalog, _vehicles.Valuation, _player.IdFactory),
+                _clock, _bus);
+
+            var lots = DefaultDealerships.Build();
+            for (int i = 0; i < lots.Count; i++) _dealerships.Register(lots[i]);
+
+            _saves.Register(_dealerships);
+
+            _registry.Register(_vehicles);
+            _registry.Register(_vehicles.Ownership);
+            _registry.Register(_vehicles.Repository);
+            _registry.Register<IVehicleCatalog>(_vehicles.Catalog);
+            _registry.Register(_dealerships);
+
+            // Forecourts turn over on the day tick, so stock is never stale when the player
+            // comes back after a few in-game days.
+            _dealershipRestock = _bus.Subscribe<DayTickEvent>(OnDayTick);
+
+            // Phase 4 onwards: properties, businesses and investments install here too.
+        }
+
+        private void OnDayTick(DayTickEvent message)
+        {
+            _dealerships.RestockDue();
+        }
+
+        /// <summary>
+        /// Brings derived state into line once every system has been restored, then announces
+        /// the session.
+        /// </summary>
+        /// <remarks>
+        /// This exists because restore order would otherwise decide the answer. Systems are
+        /// restored in registration order, and <see cref="PlayerEconomy.Restore"/> recalculates
+        /// net worth as it finishes — but a vehicle or property module restored after it would
+        /// leave that figure stale, with nothing to recompute it. Recalculating once here, after
+        /// the whole load, makes the result independent of registration order.
+        /// </remarks>
+        private void FinaliseSessionStart(PlayerEconomy economy)
+        {
+            // Fills any forecourt that a save did not already populate.
+            _dealerships.StockAll();
+
+            economy.NetWorth.Recalculate();
 
             _bus.Publish(new PlayerProfileReadyEvent(_player));
+
+            _locationSubscription = _bus.Subscribe<PlayerLocationChangedEvent>(OnPlayerLocationChanged);
             _presence.Evaluate(_player.CurrentLocation);
+        }
+
+        private void OnPlayerLocationChanged(PlayerLocationChangedEvent message)
+        {
+            // Perception is context-dependent: the same car reads differently at the marina
+            // than in the industrial port, so arriving anywhere re-evaluates presence.
+            _presence.Evaluate(message.Current);
         }
 
         private SaveManager BuildSaveManager()
@@ -241,6 +330,10 @@ namespace Prive.Unity
         {
             if (!_installed) return;
 
+            if (_dealershipRestock != null) _dealershipRestock.Dispose();
+            if (_vehicles != null) _vehicles.Dispose();
+            if (_locationSubscription != null) _locationSubscription.Dispose();
+            if (_presence != null) _presence.Dispose();
             if (_travelState != null) _travelState.Dispose();
             if (_bus != null) _bus.Clear();
 

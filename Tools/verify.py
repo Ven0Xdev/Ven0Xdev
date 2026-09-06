@@ -156,14 +156,15 @@ def compile_assembly(compiler, name, info, assemblies, extra_sources=None, extra
 
     refs = []
     for ref in info["references"]:
-        if ref in assemblies and assemblies[ref]["no_engine"]:
+        if ref in assemblies and assemblies[ref]["no_engine"] and assemblies[ref]["sources"]:
             refs.append("-r:" + os.path.join(BUILD, ref + ".dll"))
     for ref in extra_refs or []:
         refs.append("-r:" + ref)
 
     sources = list(info["sources"]) + list(extra_sources or [])
     if not sources:
-        return True, "no sources"
+        # No DLL is produced, so callers must not pass this on as a reference.
+        return True, None
 
     command = [compiler, "-langversion:latest", "-nologo", "-target:library",
                "-out:" + output] + refs + sources
@@ -225,6 +226,9 @@ def main():
 
         ok, detail = compile_assembly(compiler, name, info, assemblies)
         if ok:
+            if detail is None:
+                print(f"  {DIM}empty  {name:<28} (declared, no sources yet){RESET}")
+                continue
             pure.append(name)
             print(f"  {GREEN}ok{RESET}     {name:<28} {DIM}{detail}{RESET}")
         else:
@@ -239,6 +243,9 @@ def main():
             extra_sources=[os.path.join(VERIFY_SRC, "UnityStubs.cs")])
 
         if ok:
+            if detail is None:
+                print(f"  {DIM}empty  {name:<28} (declared, no sources yet){RESET}")
+                continue
             print(f"  {GREEN}ok*{RESET}    {name:<28} {DIM}{detail}, against Unity stubs{RESET}")
         else:
             failures += 1

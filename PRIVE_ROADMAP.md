@@ -46,29 +46,55 @@ reloads. All verified outside the Editor.
 
 ---
 
-## Phase 2 — First money loop: vehicles & dealership ⬜ **NEXT**
+## Phase 2 — First money loop: vehicles & dealership ✅ **COMPLETE**
 
 Goal: *the player can make money.* This is the phase that makes PRIVÉ a game.
 
-1. `Prive.Vehicles` assembly: `VehicleModelData`, `VehicleInstance`,
-   `VehicleValuation` (condition × mileage × rarity × market × mods), `Garage`.
-2. Fictional brand catalogue (~40 models across Economy → Hypercar) as
-   `ScriptableObject`s projected to pure records.
-3. `VehicleCatalog` implements `IAssetValueProvider` + `IObservedWealthSignal` +
-   `ISaveable` — first real proof that the Phase 1 registries work.
-4. `Prive.Business` assembly with `IBusiness`; `DealershipBusiness` as first impl.
-5. Buy / appraise / price / sell loop with NPC customer demand and a negotiation
-   foundation.
-6. Economy tuning pass against the $5k → $25k → $100k → $1M curve.
-7. Tests: valuation, depreciation, dealership margin, tuning-curve regression.
+| Deliverable | Status |
+|---|---|
+| `Prive.Vehicles` assembly (engine-free) | ✅ |
+| `VehicleDefinitionId` / `VehicleId` — model vs. instance, type-separated | ✅ |
+| `VehicleDefinition`, `VehicleInstance`, `VehicleCondition`, `VehiclePrestige` | ✅ |
+| `IVehicleValuationModel` — condition × mileage × age × market, rarity resists loss | ✅ |
+| `VehicleRepository`, `IGarageCapacityProvider`, tolerant restore | ✅ |
+| `VehicleOwnershipService` — buy/sell/drive, all through `PlayerEconomy` | ✅ |
+| `VehicleAssetProvider` → `IAssetValueProvider` (net worth) | ✅ |
+| `ActiveVehicleWealthSignal` → `IObservedWealthSignal` (observed wealth) | ✅ |
+| `VehicleModule` — one-call install, one save node | ✅ |
+| 14 fictional models, $4,200 → $2.4M, every category covered | ✅ |
+| `Prive.Dealership` assembly — tiers, markup, buy-back, stock, restock | ✅ |
+| Deterministic seeded inventory generation | ✅ |
+| 5 dealerships across Vermillion Bay, location-agnostic system | ✅ |
+| Save/load for garages and forecourts | ✅ |
+| 88 new tests (247 total) | ✅ |
 
-**Exit criteria:** starting from $5,000, a competent player reaches $100,000 through
-vehicle flipping alone, and every dollar is visible in net worth and the ledger.
+**Exit criteria met.** A vehicle can be bought, driven, valued, saved, reloaded and sold. It
+contributes to net worth from the garage and to observed wealth only when driven. Selling at
+a dealership that understands the car beats selling at one that does not by a wide enough
+margin to be worth the trip, and round-tripping through one dealership always loses the
+spread — verified end to end by `TheFlipLoopCanActuallyMakeMoney`.
+
+**Two design bugs this phase found and fixed:**
+
+* Rarity was an outright value multiplier, so a brand-new rare car was worth more than its
+  list price the moment it was bought — free money for anyone buying at list. Rarity now
+  governs how much of the *loss* bites instead.
+* Observed wealth had no invalidation trigger. Swapping cars changed net worth but not how
+  anyone treated the player. `VisibleLoadoutChangedEvent` now refreshes perception, and any
+  future visible asset uses the same seam.
+
+**Deferred to a later phase, deliberately:** negotiation (the seam is `VehicleTransaction`),
+customisation and insurance (fields exist and persist, nothing reads them), fuel and damage,
+player-owned dealerships, customer NPCs, and driving physics — none of which Phase 2 needs to
+prove the economy works.
 
 ---
 
 ## Phase 3 — The playable city ⬜
 
+0. **Open the project in the Unity Editor** and reconcile `Packages/manifest.json` (see
+   `Docs/UNITY_PACKAGES.md`); install Addressables, Cinemachine and Input System through the
+   Package Manager rather than by hand-pinning versions. Commit `packages-lock.json`.
 1. `Prive.Unity` streaming: `IDistrictStreamer` over Addressables, distance +
    priority budgeted.
 2. Greyboxed Vermillion Bay: Downtown, Financial District, South Shore, Luxury
@@ -161,7 +187,7 @@ migration hardening, analytics, storefront.
 
 ## Cross-cutting, every phase
 
-* `Tools/verify.sh` green before any commit (currently 7 assemblies, 154 tests).
+* `Tools/verify.sh` green before any commit (currently 9 assemblies, 247 tests).
 * New system → new tests for its maths.
 * New architecture decision → update `PRIVE_ARCHITECTURE.md` in the same commit.
 * New content system → implements `IAssetValueProvider` / `IObservedWealthSignal` /

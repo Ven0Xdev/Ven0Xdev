@@ -49,6 +49,24 @@ namespace Prive.Social
     }
 
     /// <summary>
+    /// Published by any system whose contribution to the player's <em>visible</em> loadout has
+    /// changed — a different car being driven, an outfit swapped, a watch put on.
+    /// </summary>
+    /// <remarks>
+    /// This is the seam that lets content systems invalidate perception without knowing that
+    /// <see cref="SocialPresenceService"/> exists. Without it, every new visible-wealth source
+    /// would have to be wired into the presence service by hand, and forgetting one would
+    /// silently leave the world reacting to a car the player is no longer driving.
+    /// </remarks>
+    public readonly struct VisibleLoadoutChangedEvent
+    {
+        /// <summary>What changed, for logging and debugging. Not used for logic.</summary>
+        public readonly WealthSignalKind Kind;
+
+        public VisibleLoadoutChangedEvent(WealthSignalKind kind) { Kind = kind; }
+    }
+
+    /// <summary>
     /// Published when the player becomes visible somewhere, carrying the presence score NPCs
     /// react to.
     /// </summary>

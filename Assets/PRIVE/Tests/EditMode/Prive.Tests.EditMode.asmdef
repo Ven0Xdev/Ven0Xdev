@@ -10,7 +10,9 @@
         "Prive.Social",
         "Prive.Save",
         "Prive.Player",
-        "Prive.Travel"
+        "Prive.Travel",
+        "Prive.Vehicles",
+        "Prive.Dealership"
     ],
     "includePlatforms": [
         "Editor"
