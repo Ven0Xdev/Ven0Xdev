@@ -1,0 +1,14 @@
+{
+    "name": "Prive.World",
+    "rootNamespace": "Prive.World",
+    "references": ["Prive.Core"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

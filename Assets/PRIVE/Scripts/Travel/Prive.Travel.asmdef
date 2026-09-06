@@ -1,0 +1,21 @@
+{
+    "name": "Prive.Travel",
+    "rootNamespace": "Prive.Travel",
+    "references": [
+        "Prive.Core",
+        "Prive.Economy",
+        "Prive.World",
+        "Prive.Social",
+        "Prive.Player",
+        "Prive.Save"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

@@ -1,0 +1,17 @@
+{
+    "name": "Prive.Economy",
+    "rootNamespace": "Prive.Economy",
+    "references": [
+        "Prive.Core",
+        "Prive.Save"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

@@ -1,0 +1,14 @@
+{
+    "name": "Prive.Player",
+    "rootNamespace": "Prive.Player",
+    "references": ["Prive.Core", "Prive.Economy", "Prive.Social", "Prive.World", "Prive.Save"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

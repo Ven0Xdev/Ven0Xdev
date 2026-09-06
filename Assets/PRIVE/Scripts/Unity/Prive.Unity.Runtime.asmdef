@@ -1,0 +1,22 @@
+{
+    "name": "Prive.Unity.Runtime",
+    "rootNamespace": "Prive.Unity",
+    "references": [
+        "Prive.Core",
+        "Prive.Economy",
+        "Prive.World",
+        "Prive.Social",
+        "Prive.Save",
+        "Prive.Player",
+        "Prive.Travel"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

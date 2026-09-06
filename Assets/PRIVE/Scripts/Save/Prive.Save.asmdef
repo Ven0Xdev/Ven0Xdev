@@ -1,0 +1,14 @@
+{
+    "name": "Prive.Save",
+    "rootNamespace": "Prive.Save",
+    "references": ["Prive.Core"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
