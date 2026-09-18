@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   PLANORA — Design tokens
+   שפה עיצובית: אדריכלית, שקטה, מדויקת. ללא ניאון, ללא גרדיאנטים זולים.
+   ========================================================================== */
+
+@theme {
+  /* --- Typography ------------------------------------------------------- */
+  --font-sans: var(--font-heebo), "Heebo", "Segoe UI", system-ui, sans-serif;
+  --font-numeric: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter), ui-monospace, "SFMono-Regular", monospace;
+
+  /* --- Neutral scale (warm architectural gray) -------------------------- */
+  --color-canvas: #f6f7f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafbfc;
+  --color-surface-sunken: #f1f3f5;
+
+  --color-line: #e6e8ec;
+  --color-line-strong: #d3d7de;
+
+  --color-ink: #14171c;
+  --color-ink-soft: #3d444e;
+  --color-ink-muted: #6b727e;
+  --color-ink-subtle: #929aa6;
+  --color-ink-inverse: #ffffff;
+
+  /* --- Brand: deep architectural blue ----------------------------------- */
+  --color-brand-50: #eef3fa;
+  --color-brand-100: #d8e4f4;
+  --color-brand-200: #b2c8e6;
+  --color-brand-300: #85a6d3;
+  --color-brand-400: #5480b8;
+  --color-brand-500: #2f5d99;
+  --color-brand-600: #1f4479;
+  --color-brand-700: #1a3763;
+  --color-brand-800: #152c4f;
+  --color-brand-900: #10203a;
+
+  /* --- Status: restrained, never neon ----------------------------------- */
+  --color-success-50: #edf6f1;
+  --color-success-100: #d7ebe0;
+  --color-success-400: #4a9370;
+  --color-success-600: #2f7553;
+  --color-success-700: #245c42;
+
+  --color-warning-50: #fdf4e7;
+  --color-warning-100: #f9e6c8;
+  --color-warning-400: #c9922f;
+  --color-warning-600: #a3711a;
+  --color-warning-700: #7f5813;
+
+  --color-danger-50: #fbeeed;
+  --color-danger-100: #f5dad8;
+  --color-danger-400: #bd4c45;
+  --color-danger-600: #9c332c;
+  --color-danger-700: #7c2822;
+
+  --color-consultant-50: #f2eff8;
+  --color-consultant-100: #e2dcf0;
+  --color-consultant-400: #7c65b0;
+  --color-consultant-600: #614b92;
+  --color-consultant-700: #4c3a74;
+
+  /* --- Drawing / compare semantics -------------------------------------- */
+  --color-plan-line: #2c3542;
+  --color-plan-fill: #eef0f3;
+  --color-plan-hatch: #c9cfd8;
+  --color-change-added: #2f7553;
+  --color-change-removed: #9c332c;
+  --color-change-moved: #a3711a;
+  --color-change-unknown: #614b92;
+
+  /* --- Radii ------------------------------------------------------------ */
+  --radius-control: 8px;
+  --radius-card: 14px;
+  --radius-panel: 16px;
+  --radius-pill: 999px;
+
+  /* --- Shadows: minimal, never dramatic --------------------------------- */
+  --shadow-subtle: 0 1px 2px rgba(20, 23, 28, 0.05);
+  --shadow-card: 0 1px 3px rgba(20, 23, 28, 0.06), 0 1px 2px rgba(20, 23, 28, 0.04);
+  --shadow-overlay: 0 12px 40px -12px rgba(20, 23, 28, 0.22), 0 4px 12px rgba(20, 23, 28, 0.08);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "kern";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* מספרים, קודים, מחירים וגרסאות — Inter */
+  .font-numeric,
+  [data-numeric] {
+    font-family: var(--font-numeric);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.011em;
+    font-weight: 600;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+
+  /* פסי גלילה עדינים */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-strong);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* גריד עדין ברקע — תחושת נייר שרטוט */
+  .bg-blueprint {
+    background-image:
+      linear-gradient(to left, rgba(31, 68, 121, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(31, 68, 121, 0.045) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.55),
+      transparent
+    );
+    animation: planora-shimmer 1.6s infinite;
+  }
+
+  @keyframes planora-shimmer {
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  .animate-in-up {
+    animation: planora-in-up 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes planora-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

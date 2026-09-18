@@ -1,0 +1,1077 @@
+// PLANORA — Prisma schema
+// Internal code, identifiers and enums are English by design.
+// All user-facing labels are translated to Hebrew in src/lib/i18n.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  ORGANIZATION_ADMIN
+  PROJECT_MANAGER
+  TENANT_CHANGE_MANAGER
+  TENANT_CHANGE_COORDINATOR
+  ARCHITECT
+  DESIGNER
+  BIM_MANAGER
+  HVAC_CONSULTANT
+  PLUMBING_CONSULTANT
+  ELECTRICAL_CONSULTANT
+  STRUCTURAL_CONSULTANT
+  PRICING_MANAGER
+  TENANT
+  FINANCE
+}
+
+enum OrganizationType {
+  DEVELOPER
+  CONTRACTOR
+  TENANT_CHANGE_SERVICE
+  ARCHITECTURE_FIRM
+  CONSULTANT_FIRM
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  TENANT_CHANGES
+  EXECUTION
+  COMPLETED
+  ARCHIVED
+}
+
+enum ApartmentStatus {
+  STANDARD
+  CHANGES_IN_PROGRESS
+  AWAITING_REVIEW
+  NEEDS_CORRECTION
+  AWAITING_CONSULTANT
+  AWAITING_PRICING
+  AWAITING_TENANT_APPROVAL
+  AWAITING_PAYMENT
+  PAID
+  APPROVED_FOR_EXECUTION
+}
+
+enum PlanKind {
+  STANDARD
+  MODIFIED
+}
+
+enum PlanVersionStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  NEEDS_CORRECTION
+  APPROVED
+  SUPERSEDED
+}
+
+enum FileKind {
+  PDF
+  DWG
+  DXF
+  RVT
+  IFC
+  IMAGE
+  OTHER
+}
+
+enum ChangeType {
+  ADDED
+  REMOVED
+  MOVED
+  MODIFIED
+  UNKNOWN
+}
+
+enum ChangeCategoryKey {
+  ELECTRICAL
+  LIGHTING
+  WALL
+  DOOR
+  WINDOW
+  PLUMBING
+  HVAC
+  KITCHEN
+  SANITARY
+  COMMUNICATION
+  OTHER
+}
+
+enum ChangeItemStatus {
+  DETECTED
+  CONFIRMED
+  DISMISSED
+  REJECTED
+  AWAITING_CONSULTANT
+  CONSULTANT_APPROVED
+  CONSULTANT_CONDITIONAL
+  CONSULTANT_REJECTED
+  PRICED
+}
+
+enum ChangeSetStatus {
+  DRAFT
+  IN_REVIEW
+  REVIEWED
+  PRICED
+  CLOSED
+}
+
+enum ReviewStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  RETURNED_FOR_CORRECTION
+}
+
+enum ConsultantKind {
+  PLUMBING
+  HVAC
+  ELECTRICAL
+  STRUCTURAL
+  ARCHITECT
+  OTHER
+}
+
+enum ConsultantRequestStatus {
+  PENDING
+  ANSWERED
+  CANCELLED
+}
+
+enum ConsultantDecision {
+  APPROVED
+  APPROVED_WITH_CONDITIONS
+  REJECTED
+  MORE_INFO_REQUIRED
+}
+
+enum ApprovalKind {
+  MANAGER_REVIEW
+  CONSULTANT
+  PRICING
+  TENANT
+  PAYMENT
+  EXECUTION_RELEASE
+}
+
+enum ApprovalStatus {
+  PENDING
+  GRANTED
+  DECLINED
+}
+
+enum ProfessionalDecisionKind {
+  CHANGE_CONFIRMED
+  CHANGE_REJECTED
+  CHANGE_DISMISSED
+  CLASSIFICATION_CORRECTED
+  SENT_TO_CONSULTANT
+  CONSULTANT_DECISION
+  PLAN_RETURNED_FOR_CORRECTION
+  PLAN_APPROVED
+  PRICING_APPROVED
+  RELEASED_FOR_EXECUTION
+}
+
+enum AssignmentKind {
+  PLAN_REVIEW
+  CORRECTION
+  CONSULTANT_REVIEW
+  PRICING
+  TENANT_FOLLOW_UP
+}
+
+enum AssignmentStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum PricingLineSource {
+  AUTOMATIC
+  MANUAL
+  EDITED
+}
+
+enum PricingSheetStatus {
+  DRAFT
+  SENT_TO_TENANT
+  APPROVED_BY_TENANT
+  PAID
+  CANCELLED
+}
+
+enum VatBehavior {
+  ADD_VAT
+  INCLUDED
+  EXEMPT
+}
+
+enum RuleEffect {
+  REQUIRE_CONSULTANT
+  REQUIRE_MANAGER_REVIEW
+  BLOCK_AUTOMATIC_WORKFLOW
+  FLAG_FOR_ATTENTION
+}
+
+enum RuleSeverity {
+  INFO
+  WARNING
+  BLOCKING
+}
+
+enum NotificationKind {
+  PLAN_UPLOADED
+  REVIEW_REQUIRED
+  CONSULTANT_ANSWERED
+  CONSULTANT_REQUESTED
+  CORRECTION_REQUIRED
+  READY_FOR_PRICING
+  PRICING_UPDATED
+  TENANT_APPROVED
+  PAYMENT_RECEIVED
+  RELEASED_FOR_EXECUTION
+  ASSIGNMENT
+}
+
+enum ActivityKind {
+  PROJECT_CREATED
+  APARTMENT_CREATED
+  PLAN_UPLOADED
+  VERSION_CREATED
+  ANALYSIS_COMPLETED
+  CHANGE_DETECTED
+  CHANGE_CONFIRMED
+  CHANGE_CORRECTED
+  CHANGE_DISMISSED
+  CHANGE_REJECTED
+  CONSULTANT_REQUESTED
+  CONSULTANT_ANSWERED
+  REVIEW_COMPLETED
+  CORRECTION_REQUESTED
+  PRICING_UPDATED
+  PRICING_SENT
+  TENANT_APPROVED
+  PAYMENT_RECEIVED
+  EXECUTION_RELEASED
+  RULE_TRIGGERED
+  NOTE_ADDED
+}
+
+// ---------------------------------------------------------------------------
+// Identity (Auth.js compatible)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?
+  title         String?
+  isSuperAdmin  Boolean   @default(false)
+  lastSeenAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  memberships  OrganizationMember[]
+
+  managedProjects        Project[]              @relation("ProjectTenantChangeManager")
+  managedApartments      Apartment[]            @relation("ApartmentManager")
+  coordinatedApartments  Apartment[]            @relation("ApartmentCoordinator")
+  planVersions           PlanVersion[]          @relation("PlanVersionAuthor")
+  uploadedFiles          UploadedFile[]
+  reviews                Review[]               @relation("ReviewReviewer")
+  reviewComments         ReviewComment[]
+  consultantRequestsSent ConsultantRequest[]    @relation("ConsultantRequestSender")
+  consultantRequestsGot  ConsultantRequest[]    @relation("ConsultantRequestAssignee")
+  consultantResponses    ConsultantResponse[]
+  professionalDecisions  ProfessionalDecision[]
+  assignments            ProfessionalAssignment[] @relation("AssignmentAssignee")
+  createdAssignments     ProfessionalAssignment[] @relation("AssignmentCreator")
+  approvals              Approval[]
+  activities             ActivityLog[]
+  notifications          Notification[]
+  corrections            AITrainingCorrection[]
+  pricingSheets          PricingSheet[]         @relation("PricingSheetOwner")
+  changeItemDecisions    ChangeItem[]           @relation("ChangeItemDecidedBy")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Organizations & membership
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String           @id @default(cuid())
+  name      String
+  legalName String?
+  type      OrganizationType
+  taxId     String?
+  city      String?
+  address   String?
+  phone     String?
+  logoUrl   String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  members       OrganizationMember[]
+  projects      Project[]
+  priceBooks    PriceBook[]
+  activities    ActivityLog[]
+  notifications Notification[]
+  rules         Rule[]
+  files         UploadedFile[]
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           UserRole
+  jobTitle       String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Projects structure
+// ---------------------------------------------------------------------------
+
+model Project {
+  id                    String        @id @default(cuid())
+  organizationId        String
+  name                  String
+  code                  String?
+  developerName         String?
+  contractorName        String?
+  address               String?
+  city                  String?
+  status                ProjectStatus @default(PLANNING)
+  description           String?
+  tenantChangeManagerId String?
+  changeDeadline        DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tenantChangeManager User?        @relation("ProjectTenantChangeManager", fields: [tenantChangeManagerId], references: [id])
+
+  buildings      Building[]
+  apartmentTypes ApartmentType[]
+  apartments     Apartment[]
+  priceBooks     PriceBook[]
+  projectRules   ProjectRule[]
+  categories     ChangeCategory[]
+  activities     ActivityLog[]
+  files          UploadedFile[]
+  assignments    ProfessionalAssignment[]
+
+  @@index([organizationId])
+}
+
+model Building {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  code      String?
+  floors    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  floorRecords Floor[]
+  apartments   Apartment[]
+
+  @@unique([projectId, name])
+}
+
+model Floor {
+  id         String   @id @default(cuid())
+  buildingId String
+  number     Int
+  label      String?
+  createdAt  DateTime @default(now())
+
+  building   Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  apartments Apartment[]
+
+  @@unique([buildingId, number])
+}
+
+model ApartmentType {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  rooms     Float
+  areaSqm   Float?
+  balconies Float?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apartments Apartment[]
+  plans      Plan[]
+
+  @@unique([projectId, name])
+}
+
+model Apartment {
+  id              String          @id @default(cuid())
+  projectId       String
+  buildingId      String
+  floorId         String
+  apartmentTypeId String?
+  number          String
+  buyerName       String?
+  buyerContact    String?
+  status          ApartmentStatus @default(STANDARD)
+  dueDate         DateTime?
+  assignedManagerId     String?
+  assignedCoordinatorId String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  project             Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  building            Building       @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floor               Floor          @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  apartmentType       ApartmentType? @relation(fields: [apartmentTypeId], references: [id])
+  assignedManager     User?          @relation("ApartmentManager", fields: [assignedManagerId], references: [id])
+  assignedCoordinator User?          @relation("ApartmentCoordinator", fields: [assignedCoordinatorId], references: [id])
+
+  plans         Plan[]
+  changeSets    ChangeSet[]
+  reviews       Review[]
+  pricingSheets PricingSheet[]
+  approvals     Approval[]
+  activities    ActivityLog[]
+  assignments   ProfessionalAssignment[]
+  consultantRequests ConsultantRequest[]
+  files         UploadedFile[]
+  notifications Notification[]
+
+  @@unique([projectId, buildingId, number])
+  @@index([projectId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Plans & versions
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id              String   @id @default(cuid())
+  apartmentId     String?
+  apartmentTypeId String?
+  kind            PlanKind
+  title           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  apartment     Apartment?     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  apartmentType ApartmentType? @relation(fields: [apartmentTypeId], references: [id])
+
+  versions PlanVersion[]
+
+  @@index([apartmentId, kind])
+}
+
+model PlanVersion {
+  id          String            @id @default(cuid())
+  planId      String
+  versionNo   Int
+  title       String
+  status      PlanVersionStatus @default(DRAFT)
+  notes       String?
+  authorId    String?
+  isCurrent   Boolean           @default(false)
+  approvedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  /// Snapshot of the drawing element graph produced by the DrawingProcessor.
+  elements    Json?
+
+  plan   Plan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  author User? @relation("PlanVersionAuthor", fields: [authorId], references: [id])
+
+  drawingFiles     DrawingFile[]
+  baseChangeSets   ChangeSet[]   @relation("ChangeSetBaseVersion")
+  targetChangeSets ChangeSet[]   @relation("ChangeSetTargetVersion")
+  analyses         AIAnalysis[]
+  reviews          Review[]
+  consultantRequests ConsultantRequest[]
+  professionalDecisions ProfessionalDecision[]
+
+  @@unique([planId, versionNo])
+}
+
+model DrawingFile {
+  id            String   @id @default(cuid())
+  planVersionId String
+  fileId        String?
+  kind          FileKind
+  originalName  String
+  sizeBytes     Int?
+  /// Metadata extracted by the DrawingProcessor (layers, units, sheet names...).
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  planVersion PlanVersion   @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  file        UploadedFile? @relation(fields: [fileId], references: [id])
+
+  @@index([planVersionId])
+}
+
+model UploadedFile {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String?
+  apartmentId    String?
+  uploadedById   String?
+  storageKey     String
+  originalName   String
+  mimeType       String?
+  sizeBytes      Int?
+  kind           FileKind @default(OTHER)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apartment    Apartment?   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  uploadedBy   User?        @relation(fields: [uploadedById], references: [id])
+
+  drawingFiles DrawingFile[]
+
+  @@index([organizationId])
+}
+
+// ---------------------------------------------------------------------------
+// Change detection
+// ---------------------------------------------------------------------------
+
+model ChangeCategory {
+  id          String            @id @default(cuid())
+  projectId   String?
+  key         ChangeCategoryKey
+  label       String
+  colorToken  String?
+  sortOrder   Int               @default(0)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  changeItems ChangeItem[]
+
+  @@unique([projectId, key])
+}
+
+model ChangeSet {
+  id              String          @id @default(cuid())
+  apartmentId     String
+  baseVersionId   String
+  targetVersionId String
+  status          ChangeSetStatus @default(DRAFT)
+  summary         String?
+  detectedCount   Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  apartment     Apartment   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  baseVersion   PlanVersion @relation("ChangeSetBaseVersion", fields: [baseVersionId], references: [id], onDelete: Cascade)
+  targetVersion PlanVersion @relation("ChangeSetTargetVersion", fields: [targetVersionId], references: [id], onDelete: Cascade)
+
+  items         ChangeItem[]
+  analyses      AIAnalysis[]
+  reviews       Review[]
+  pricingSheets PricingSheet[]
+
+  @@index([apartmentId])
+}
+
+model ChangeItem {
+  id            String            @id @default(cuid())
+  changeSetId   String
+  categoryId    String?
+  code          String
+  type          ChangeType
+  categoryKey   ChangeCategoryKey
+  status        ChangeItemStatus  @default(DETECTED)
+  elementType   String
+  elementId     String?
+  roomLabel     String?
+  description   String
+  quantity      Float             @default(1)
+  unit          String            @default("UNIT")
+  /// Detection confidence, 0..1. Never an engineering approval.
+  confidence    Float             @default(0)
+  requiresConsultant Boolean      @default(false)
+  consultantKind     ConsultantKind?
+  blockedFromAutomation Boolean   @default(false)
+  /// Geometry of the element before / after, used to focus the viewer.
+  geometryBefore Json?
+  geometryAfter  Json?
+  decidedById   String?
+  decidedAt     DateTime?
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  changeSet ChangeSet       @relation(fields: [changeSetId], references: [id], onDelete: Cascade)
+  category  ChangeCategory? @relation(fields: [categoryId], references: [id])
+  decidedBy User?           @relation("ChangeItemDecidedBy", fields: [decidedById], references: [id])
+
+  consultantRequests    ConsultantRequest[]
+  pricingLines          PricingLine[]
+  corrections           AITrainingCorrection[]
+  professionalDecisions ProfessionalDecision[]
+  reviewComments        ReviewComment[]
+  ruleHits              ChangeItemRuleHit[]
+
+  @@unique([changeSetId, code])
+  @@index([changeSetId, status])
+}
+
+model AIAnalysis {
+  id            String   @id @default(cuid())
+  planVersionId String?
+  changeSetId   String?
+  engine        String
+  engineVersion String
+  durationMs    Int?
+  itemCount     Int      @default(0)
+  averageConfidence Float @default(0)
+  /// Raw analysis payload for audit and future re-training.
+  payload       Json?
+  createdAt     DateTime @default(now())
+
+  planVersion PlanVersion? @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  changeSet   ChangeSet?   @relation(fields: [changeSetId], references: [id], onDelete: Cascade)
+}
+
+model AITrainingCorrection {
+  id                 String            @id @default(cuid())
+  changeItemId       String
+  projectId          String?
+  correctedById      String
+  predictedType      ChangeType
+  predictedCategory  ChangeCategoryKey
+  correctedType      ChangeType
+  correctedCategory  ChangeCategoryKey
+  originalConfidence Float
+  context            Json?
+  notes              String?
+  createdAt          DateTime          @default(now())
+
+  changeItem  ChangeItem @relation(fields: [changeItemId], references: [id], onDelete: Cascade)
+  correctedBy User       @relation(fields: [correctedById], references: [id])
+
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Review & professional workflow
+// ---------------------------------------------------------------------------
+
+model Review {
+  id            String       @id @default(cuid())
+  apartmentId   String
+  changeSetId   String?
+  planVersionId String?
+  reviewerId    String?
+  status        ReviewStatus @default(OPEN)
+  summary       String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  apartment   Apartment    @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  changeSet   ChangeSet?   @relation(fields: [changeSetId], references: [id], onDelete: Cascade)
+  planVersion PlanVersion? @relation(fields: [planVersionId], references: [id])
+  reviewer    User?        @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+
+  comments ReviewComment[]
+
+  @@index([apartmentId, status])
+}
+
+model ReviewComment {
+  id           String   @id @default(cuid())
+  reviewId     String
+  changeItemId String?
+  authorId     String
+  body         String
+  isCorrectionRequest Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  review     Review      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  changeItem ChangeItem? @relation(fields: [changeItemId], references: [id], onDelete: Cascade)
+  author     User        @relation(fields: [authorId], references: [id])
+
+  @@index([reviewId])
+}
+
+model ConsultantRequest {
+  id            String                  @id @default(cuid())
+  apartmentId   String
+  changeItemId  String?
+  planVersionId String?
+  code          String
+  kind          ConsultantKind
+  status        ConsultantRequestStatus @default(PENDING)
+  requestedById String
+  assigneeId    String?
+  question      String
+  dueDate       DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  apartment   Apartment    @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  changeItem  ChangeItem?  @relation(fields: [changeItemId], references: [id], onDelete: Cascade)
+  planVersion PlanVersion? @relation(fields: [planVersionId], references: [id])
+  requestedBy User         @relation("ConsultantRequestSender", fields: [requestedById], references: [id])
+  assignee    User?        @relation("ConsultantRequestAssignee", fields: [assigneeId], references: [id])
+
+  responses ConsultantResponse[]
+
+  @@unique([apartmentId, code])
+  @@index([status])
+}
+
+model ConsultantResponse {
+  id          String             @id @default(cuid())
+  requestId   String
+  responderId String
+  decision    ConsultantDecision
+  conditions  String?
+  notes       String?
+  createdAt   DateTime           @default(now())
+
+  request   ConsultantRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  responder User              @relation(fields: [responderId], references: [id])
+
+  @@index([requestId])
+}
+
+model ProfessionalDecision {
+  id            String                   @id @default(cuid())
+  apartmentId   String?
+  changeItemId  String?
+  planVersionId String?
+  userId        String
+  role          UserRole
+  kind          ProfessionalDecisionKind
+  decision      String
+  notes         String?
+  createdAt     DateTime                 @default(now())
+
+  changeItem  ChangeItem?  @relation(fields: [changeItemId], references: [id], onDelete: Cascade)
+  planVersion PlanVersion? @relation(fields: [planVersionId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+
+  @@index([apartmentId])
+  @@index([changeItemId])
+}
+
+model ProfessionalAssignment {
+  id          String           @id @default(cuid())
+  projectId   String
+  apartmentId String?
+  assigneeId  String
+  createdById String?
+  kind        AssignmentKind
+  status      AssignmentStatus @default(OPEN)
+  title       String
+  description String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apartment Apartment? @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  assignee  User       @relation("AssignmentAssignee", fields: [assigneeId], references: [id])
+  createdBy User?      @relation("AssignmentCreator", fields: [createdById], references: [id])
+
+  @@index([assigneeId, status])
+}
+
+model Approval {
+  id          String         @id @default(cuid())
+  apartmentId String
+  kind        ApprovalKind
+  status      ApprovalStatus @default(PENDING)
+  grantedById String?
+  grantedAt   DateTime?
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  grantedBy User?     @relation(fields: [grantedById], references: [id])
+
+  @@index([apartmentId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// Rules engine
+// ---------------------------------------------------------------------------
+
+model Rule {
+  id             String       @id @default(cuid())
+  organizationId String?
+  key            String
+  name           String
+  description    String?
+  /// Deterministic condition, see src/lib/rules/types.ts
+  condition      Json
+  effect         RuleEffect
+  consultantKind ConsultantKind?
+  severity       RuleSeverity @default(WARNING)
+  isSystem       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectRules ProjectRule[]
+  hits         ChangeItemRuleHit[]
+
+  @@unique([organizationId, key])
+}
+
+model ProjectRule {
+  id        String   @id @default(cuid())
+  projectId String
+  ruleId    String?
+  key       String
+  name      String
+  description String?
+  condition Json
+  effect    RuleEffect
+  consultantKind ConsultantKind?
+  severity  RuleSeverity @default(WARNING)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rule    Rule?   @relation(fields: [ruleId], references: [id])
+  hits    ChangeItemRuleHit[]
+
+  @@unique([projectId, key])
+}
+
+model ChangeItemRuleHit {
+  id            String       @id @default(cuid())
+  changeItemId  String
+  ruleId        String?
+  projectRuleId String?
+  ruleKey       String
+  message       String
+  severity      RuleSeverity
+  createdAt     DateTime     @default(now())
+
+  changeItem  ChangeItem   @relation(fields: [changeItemId], references: [id], onDelete: Cascade)
+  rule        Rule?        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  projectRule ProjectRule? @relation(fields: [projectRuleId], references: [id], onDelete: Cascade)
+
+  @@unique([changeItemId, ruleKey])
+}
+
+// ---------------------------------------------------------------------------
+// Pricing
+// ---------------------------------------------------------------------------
+
+model PriceBook {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String?
+  name           String
+  currency       String   @default("ILS")
+  vatRate        Float    @default(18)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  items         PriceBookItem[]
+  pricingSheets PricingSheet[]
+
+  @@index([organizationId])
+}
+
+model PriceBookItem {
+  id          String            @id @default(cuid())
+  priceBookId String
+  code        String
+  name        String
+  categoryKey ChangeCategoryKey
+  changeType  ChangeType?
+  unit        String            @default("UNIT")
+  unitPrice   Float
+  vatBehavior VatBehavior       @default(ADD_VAT)
+  isActive    Boolean           @default(true)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  priceBook    PriceBook     @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  pricingLines PricingLine[]
+
+  @@unique([priceBookId, code])
+}
+
+model PricingSheet {
+  id          String             @id @default(cuid())
+  apartmentId String
+  changeSetId String?
+  priceBookId String?
+  ownerId     String?
+  status      PricingSheetStatus @default(DRAFT)
+  discount    Float              @default(0)
+  vatRate     Float              @default(18)
+  notes       String?
+  sentAt      DateTime?
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  apartment Apartment  @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  changeSet ChangeSet? @relation(fields: [changeSetId], references: [id], onDelete: Cascade)
+  priceBook PriceBook? @relation(fields: [priceBookId], references: [id])
+  owner     User?      @relation("PricingSheetOwner", fields: [ownerId], references: [id])
+
+  lines PricingLine[]
+
+  @@index([apartmentId])
+}
+
+model PricingLine {
+  id              String            @id @default(cuid())
+  pricingSheetId  String
+  changeItemId    String?
+  priceBookItemId String?
+  description     String
+  quantity        Float
+  unit            String            @default("UNIT")
+  unitPrice       Float
+  source          PricingLineSource @default(AUTOMATIC)
+  changeReason    String?
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  pricingSheet  PricingSheet   @relation(fields: [pricingSheetId], references: [id], onDelete: Cascade)
+  changeItem    ChangeItem?    @relation(fields: [changeItemId], references: [id])
+  priceBookItem PriceBookItem? @relation(fields: [priceBookItemId], references: [id])
+
+  @@index([pricingSheetId])
+}
+
+// ---------------------------------------------------------------------------
+// Activity & notifications
+// ---------------------------------------------------------------------------
+
+model ActivityLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  projectId      String?
+  apartmentId    String?
+  userId         String?
+  kind           ActivityKind
+  message        String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apartment    Apartment?   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([apartmentId, createdAt])
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  apartmentId    String?
+  kind           NotificationKind
+  title          String
+  body           String?
+  href           String?
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apartment    Apartment?   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
