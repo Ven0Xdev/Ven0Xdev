@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# קבצי הנחיות שנוצרים אוטומטית על ידי Next.js בכל הרצה
+AGENTS.md
+CLAUDE.md
+
 # vercel
 .vercel
 
