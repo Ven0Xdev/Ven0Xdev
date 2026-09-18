@@ -81,6 +81,7 @@ export function Sidebar({
                   href={item.href}
                   onClick={onNavigate}
                   aria-current={isActive ? "page" : undefined}
+                  aria-label={count > 0 ? `${item.label}, ${count}` : undefined}
                   className={cn(
                     "group flex items-center gap-2.5 rounded-control px-3 py-2 text-[13px] font-medium transition-colors",
                     isActive
@@ -98,6 +99,7 @@ export function Sidebar({
                   <span className="flex-1 truncate">{item.label}</span>
                   {count > 0 ? (
                     <span
+                      aria-hidden
                       className={cn(
                         "font-numeric rounded-pill px-1.5 py-0.5 text-[11px] leading-4 font-semibold",
                         isActive ? "bg-brand-100 text-brand-700" : "bg-surface-sunken text-ink-muted",

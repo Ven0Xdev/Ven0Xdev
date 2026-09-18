@@ -81,10 +81,17 @@ export function ApartmentWorkspace({
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList className="overflow-x-auto">
           {tabs.map((tab) => (
-            <TabsTrigger key={tab.key} value={tab.key}>
+            <TabsTrigger
+              key={tab.key}
+              value={tab.key}
+              aria-label={tab.badge && tab.badge > 0 ? `${tab.label}, ${tab.badge}` : undefined}
+            >
               {tab.label}
               {tab.badge && tab.badge > 0 ? (
-                <span className="font-numeric ms-1.5 rounded-pill bg-surface-sunken px-1.5 py-0.5 text-[11px] leading-4 text-ink-muted">
+                <span
+                  aria-hidden
+                  className="font-numeric ms-1.5 rounded-pill bg-surface-sunken px-1.5 py-0.5 text-[11px] leading-4 text-ink-muted"
+                >
                   {tab.badge}
                 </span>
               ) : null}

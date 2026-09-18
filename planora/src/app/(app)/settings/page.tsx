@@ -265,24 +265,24 @@ export default async function SettingsPage() {
           />
           <IntegrationCard
             name="Google Drive"
-            description="סנכרון קבצי תוכניות מתיקיית הפרויקט. יתווסף בהמשך."
+            description="סנכרון קבצי תוכניות מתיקיית הפרויקט."
             connected={false}
             connectedLabel="מחובר"
-            pendingLabel="יתווסף בהמשך"
+            pendingLabel="לא מחובר"
           />
           <IntegrationCard
             name="Autodesk Platform Services"
-            description="קריאת קבצי DWG ו-Revit והפקת מודל אלמנטים. יתווסף בהמשך."
+            description="קריאת קבצי DWG ו-Revit והפקת מודל אלמנטים מהקובץ."
             connected={false}
             connectedLabel="מחובר"
-            pendingLabel="יתווסף בהמשך"
+            pendingLabel="לא מחובר"
           />
           <IntegrationCard
             name="אחסון קבצים מרוחק"
-            description="שמירת תוכניות באחסון ייעודי עם קישורים חתומים. יתווסף בהמשך."
+            description="שמירת תוכניות באחסון ייעודי עם קישורי גישה חתומים."
             connected={false}
             connectedLabel="מחובר"
-            pendingLabel="יתווסף בהמשך"
+            pendingLabel="לא מחובר"
           />
         </div>
       ),
