@@ -317,18 +317,39 @@ Supplier ─┬─ Catalog ─── CatalogProduct ─┬─ ProductVariant ─
 הדייר לעולם אינו רואה רמת ודאות בזיהוי, כללי מערכת, קודי יועץ פנימיים, פרטי
 ביקורת או שם Enum. סטטוס מוצג כמשפט: "ממתין ליועץ", לא `AWAITING_CONSULTANT`.
 
-## 3D architecture
+## 3D architecture — מנוע להחלפה
 
-התצוגה התלת-ממדית **נגזרת מאותו `DrawingDocument`** שמשמש את ההשוואה
-הדו-ממדית — אין קובץ מודל נפרד, ולכן התוכנית והתלת-ממד אינם יכולים לצאת
-מסנכרון.
+התצוגה שרצה היום היא **אב-טיפוס**, לא היעד. היעד הוא הדמיה אדריכלית
+פוטוריאליסטית ברמת luxury real-estate. לכן מנוע התלת-ממד הוא **מודול נפרד
+מאחורי ממשק אחד** — `ApartmentVisualizationProvider` — והמסכים אינם יודעים אם
+הדירה מרונדרת בדפדפן או בשרת רינדור מרוחק.
+
+```
+מסך → useApartmentVisualization → ApartmentVisualizationProvider
+                                      ├── PrototypeVisualizationProvider    (Three.js, פעיל)
+                                      └── UnrealPixelStreamingProvider      (Unreal, עתידי — שלד בלבד)
+```
+
+המסך מתפצל בנקודה אחת בלבד: `presentation.kind` — `LOCAL_SCENE` מול
+`REMOTE_STREAM`. החלפת המנוע נעשית במשתנה סביבה אחד:
+
+```bash
+NEXT_PUBLIC_VISUALIZATION_PROVIDER=prototype-three   # ברירת מחדל
+```
+
+פירוט מלא, כולל מה צריך להיבנות בצד שרת ה-Unreal: [`docs/VISUALIZATION.md`](docs/VISUALIZATION.md).
+
+### המימוש הנוכחי
+
+התצוגה **נגזרת מאותו `DrawingDocument`** שמשמש את ההשוואה הדו-ממדית — אין קובץ
+מודל נפרד, ולכן התוכנית והתלת-ממד אינם יכולים לצאת מסנכרון.
 
 ```
 DrawingDocument → buildSceneModel() → SceneModel → <ApartmentScene/>
 ```
 
 - קירות נחתכים בגובה 1.35 מ' ("בית בובות"), כדי שכל הדירה והריצוף ייקראו מלמעלה
-- `MaterialSlot` מגדיר אילו משטחים ניתנים להחלפה; **חומר חייב להיות מקושר
+- `MaterialSurface` מגדיר אילו משטחים ניתנים להחלפה; **חומר חייב להיות מקושר
   לווריאנט של מוצר אמיתי** כדי להיכנס לסצנה
 - בחירת ריצוף או חזית מטבח משנה מיד את הסצנה
 - בוקר / צהריים / שקיעה / לילה משנים תאורה, שמיים ותאורה פנימית

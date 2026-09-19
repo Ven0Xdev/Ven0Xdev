@@ -28,6 +28,7 @@ export default async function TenantViewPage() {
       </header>
 
       <ApartmentView
+        apartmentId={access.id}
         mode="3D"
         standardDocument={(standardVersion?.elements as unknown as DrawingDocument | null) ?? null}
         currentDocument={data.document}

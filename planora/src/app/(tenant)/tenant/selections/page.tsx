@@ -23,6 +23,7 @@ export default async function TenantApartmentPage() {
       </header>
 
       <Configurator
+        apartmentId={access.id}
         products={data.products}
         categories={data.categories}
         pricing={data.pricing}

@@ -6,7 +6,7 @@ import { Apartment3DViewer } from "@/components/three/apartment-3d-viewer";
 import { PlanViewer } from "@/components/drawing/plan-viewer";
 import { EmptyState } from "@/components/ui/misc";
 import type { DrawingDocument } from "@/lib/drawing/types";
-import type { ProductMaterial } from "@/lib/three/materials";
+import type { MaterialAssignment } from "@/lib/visualization/types";
 import { cn } from "@/lib/utils";
 
 type Version = "ORIGINAL" | "MINE";
@@ -17,14 +17,16 @@ type Version = "ORIGINAL" | "MINE";
  * כדי שהדייר יבין בדיוק מה השתנה.
  */
 export function ApartmentView({
+  apartmentId,
   standardDocument,
   currentDocument,
   materials,
   mode,
 }: {
+  apartmentId: string;
   standardDocument: DrawingDocument | null;
   currentDocument: DrawingDocument | null;
-  materials: ProductMaterial[];
+  materials: MaterialAssignment[];
   mode: "3D" | "2D";
 }) {
   const [version, setVersion] = useState<Version>("MINE");
@@ -73,6 +75,7 @@ export function ApartmentView({
 
       {mode === "3D" ? (
         <Apartment3DViewer
+          apartmentId={apartmentId}
           document={document}
           materials={activeMaterials}
           className="h-[min(64vh,600px)]"

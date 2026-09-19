@@ -8,9 +8,8 @@ import {
 } from "@/lib/catalog/availability";
 import { computeConfigurationPricing } from "@/lib/pricing/configuration";
 import { recommendForSelections } from "@/lib/recommendations/engine";
-import { MATERIAL_CATEGORY_TO_SLOT } from "@/lib/three/materials";
-import type { ProductMaterial } from "@/lib/three/materials";
-import type { MaterialSlot } from "@/lib/three/scene-model";
+import { toMaterialAssignment } from "@/lib/visualization/materials";
+import type { MaterialAssignment } from "@/lib/visualization/types";
 import type { DrawingDocument } from "@/lib/drawing/types";
 
 export interface TenantVariant {
@@ -188,7 +187,7 @@ export async function getTenantConfigurator(apartmentId: string) {
   });
 
   // --- חומרים לתצוגה התלת-ממדית ---
-  const materials: ProductMaterial[] = [];
+  const materials: MaterialAssignment[] = [];
   for (const selection of configuration?.selections ?? []) {
     const productMaterials = await prisma.materialDefinition.findMany({
       where: {
@@ -200,15 +199,11 @@ export async function getTenantConfigurator(apartmentId: string) {
     });
 
     for (const material of productMaterials) {
-      const slot = MATERIAL_CATEGORY_TO_SLOT[material.category] as MaterialSlot | undefined;
-      if (!slot) continue;
-      materials.push({
-        slot,
-        color: material.color,
-        roughness: material.roughness,
-        metalness: material.metalness,
-        sourceLabel: `${selection.product.name}${selection.variant ? ` · ${selection.variant.name}` : ""}`,
-      });
+      const assignment = toMaterialAssignment(
+        material,
+        `${selection.product.name}${selection.variant ? ` · ${selection.variant.name}` : ""}`,
+      );
+      if (assignment) materials.push(assignment);
     }
   }
 

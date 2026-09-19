@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/misc";
 import { formatCurrency } from "@/lib/i18n/format";
 import { TENANT_CATEGORY_LABELS } from "@/lib/i18n/he";
 import type { DrawingDocument } from "@/lib/drawing/types";
-import type { ProductMaterial } from "@/lib/three/materials";
+import type { MaterialAssignment } from "@/lib/visualization/types";
 import type { ConfigurationPricing } from "@/lib/pricing/configuration";
 import type { Recommendation } from "@/lib/recommendations/engine";
 import { selectProduct } from "@/server/actions/selections";
@@ -25,6 +25,7 @@ import { ExceptionRequestDialog } from "./request-dialogs";
 type ViewMode = "2D" | "3D";
 
 export function Configurator({
+  apartmentId,
   products,
   categories,
   pricing,
@@ -34,11 +35,12 @@ export function Configurator({
   isLocked,
   isSubmitted,
 }: {
+  apartmentId: string;
   products: TenantProduct[];
   categories: SupplierCategory[];
   pricing: ConfigurationPricing;
   recommendations: Recommendation[];
-  materials: ProductMaterial[];
+  materials: MaterialAssignment[];
   document: DrawingDocument | null;
   isLocked: boolean;
   isSubmitted: boolean;
@@ -104,6 +106,7 @@ export function Configurator({
 
             {viewMode === "3D" ? (
               <Apartment3DViewer
+                apartmentId={apartmentId}
                 document={document}
                 materials={materials}
                 selectedCategory={activeCategory}

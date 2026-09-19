@@ -63,21 +63,6 @@ export function resolveMaterials(
   return resolved;
 }
 
-/**
- * מיפוי קטגוריית חומר במסד הנתונים למשבצת בסצנה.
- *
- * קבועות סניטריות (FIXTURE) אינן ממופות בכוונה: ברז בגוון שחור אינו הופך את
- * האסלה והאמבטיה לשחורות. מוצגים רק חומרים שהתצוגה יודעת לייצג נאמנה.
- */
-export const MATERIAL_CATEGORY_TO_SLOT: Record<string, MaterialSlot> = {
-  FLOOR: "interiorFloor",
-  WALL: "wall",
-  COUNTERTOP: "countertop",
-  CABINET_FRONT: "kitchenFront",
-  DOOR: "doorLeaf",
-  OUTDOOR: "outdoorFloor",
-};
-
 // ---------------------------------------------------------------------------
 // תאורת סצנה לפי שעה ביום
 // ---------------------------------------------------------------------------

@@ -33,6 +33,7 @@ export default async function TenantPlansPage() {
       </header>
 
       <ApartmentView
+        apartmentId={access.id}
         mode="2D"
         standardDocument={(standard?.elements as unknown as DrawingDocument | null) ?? null}
         currentDocument={(current?.elements as unknown as DrawingDocument | null) ?? null}
