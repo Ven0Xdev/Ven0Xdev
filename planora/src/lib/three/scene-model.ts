@@ -11,7 +11,15 @@ import type { DrawingDocument, DrawingElement } from "@/lib/drawing/types";
 
 /** גובה חלל פנימי סטנדרטי במטרים */
 export const CEILING_HEIGHT_M = 2.7;
-const WALL_HEIGHT_M = 2.7;
+
+/**
+ * גובה הקירות בתצוגה.
+ *
+ * הקירות נחתכים בגובה נמוך מהגובה האמיתי — זו מוסכמה מקובלת בתצוגת דירה
+ * ("בית בובות"), שמאפשרת לראות את כל הדירה מלמעלה ואת הריצוף והמטבח בבירור.
+ * הגובה האמיתי נשאר ב-CEILING_HEIGHT_M לשימוש עתידי במצב סיור.
+ */
+const WALL_HEIGHT_M = 1.35;
 const RAILING_HEIGHT_M = 1.05;
 const CM_TO_M = 0.01;
 
@@ -115,8 +123,8 @@ export function buildSceneModel(document: DrawingDocument): SceneModel {
 
         boxes.push(
           boxFromElement(element, "FLOOR", {
-            height: 0.04,
-            baseY: -0.04,
+            height: 0.09,
+            baseY: -0.09,
             materialSlot: isOutdoor ? "outdoorFloor" : "interiorFloor",
             selectable: true,
             category: isOutdoor ? "OUTDOOR" : "FLOORING",
@@ -161,12 +169,11 @@ export function buildSceneModel(document: DrawingDocument): SceneModel {
         );
         break;
 
-      // פתח בקיר: משקוף עליון בלבד, כך שנוצר מעבר פתוח
+      // דלת: סף נמוך בלבד, כך שנוצר מעבר פתוח וברור
       case "DOOR":
         boxes.push(
           boxFromElement(element, "DOOR", {
-            height: WALL_HEIGHT_M - 2.1,
-            baseY: 2.1,
+            height: 0.07,
             materialSlot: "doorLeaf",
             selectable: true,
             category: "DOORS",
@@ -177,11 +184,10 @@ export function buildSceneModel(document: DrawingDocument): SceneModel {
       case "WINDOW":
       case "SLIDING_DOOR": {
         const isSliding = element.type === "SLIDING_DOOR";
-        const sillHeight = isSliding ? 0 : 0.95;
-        const openingHeight = isSliding ? 2.2 : 1.35;
+        const sillHeight = isSliding ? 0.04 : 0.55;
 
-        // אדן ומשקוף — הזכוכית עצמה מצוירת כמשטח שקוף
-        if (sillHeight > 0) {
+        // אדן מתחת לחלון
+        if (sillHeight > 0.05) {
           boxes.push(
             boxFromElement(element, "WALL", {
               height: sillHeight,
@@ -189,18 +195,13 @@ export function buildSceneModel(document: DrawingDocument): SceneModel {
             }),
           );
         }
+
+        // הזכוכית — עד גובה החיתוך של התצוגה
         boxes.push(
           boxFromElement(element, "WINDOW", {
-            height: openingHeight,
+            height: Math.max(0.2, WALL_HEIGHT_M - sillHeight),
             baseY: sillHeight,
             materialSlot: "windowFrame",
-          }),
-        );
-        boxes.push(
-          boxFromElement(element, "WALL", {
-            height: Math.max(0, WALL_HEIGHT_M - sillHeight - openingHeight),
-            baseY: sillHeight + openingHeight,
-            materialSlot: "wall",
           }),
         );
         break;

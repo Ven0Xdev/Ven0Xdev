@@ -19,10 +19,11 @@ export interface MaterialAppearance {
 
 /** מראה ברירת המחדל — מפרט הסטנדרט של הפרויקט */
 export const DEFAULT_MATERIALS: Record<MaterialSlot, MaterialAppearance> = {
-  interiorFloor: { color: "#d9d2c7", roughness: 0.75, metalness: 0 },
-  outdoorFloor: { color: "#b8ada0", roughness: 0.9, metalness: 0 },
-  wall: { color: "#f2f1ee", roughness: 0.95, metalness: 0 },
-  partition: { color: "#eceae6", roughness: 0.95, metalness: 0 },
+  interiorFloor: { color: "#cfc6b7", roughness: 0.62, metalness: 0.02 },
+  outdoorFloor: { color: "#a89c8c", roughness: 0.92, metalness: 0 },
+  // הקירות בהירים במכוון, כדי שהריצוף והמטבח יהיו הצבע הדומיננטי בסצנה
+  wall: { color: "#fbfaf8", roughness: 0.96, metalness: 0 },
+  partition: { color: "#f4f2ee", roughness: 0.96, metalness: 0 },
   railing: { color: "#9aa3ad", roughness: 0.4, metalness: 0.6 },
   kitchenFront: { color: "#e8e6e1", roughness: 0.55, metalness: 0.05 },
   countertop: { color: "#3f4750", roughness: 0.35, metalness: 0.1 },
@@ -62,14 +63,18 @@ export function resolveMaterials(
   return resolved;
 }
 
-/** מיפוי קטגוריית חומר במסד הנתונים למשבצת בסצנה */
+/**
+ * מיפוי קטגוריית חומר במסד הנתונים למשבצת בסצנה.
+ *
+ * קבועות סניטריות (FIXTURE) אינן ממופות בכוונה: ברז בגוון שחור אינו הופך את
+ * האסלה והאמבטיה לשחורות. מוצגים רק חומרים שהתצוגה יודעת לייצג נאמנה.
+ */
 export const MATERIAL_CATEGORY_TO_SLOT: Record<string, MaterialSlot> = {
   FLOOR: "interiorFloor",
   WALL: "wall",
   COUNTERTOP: "countertop",
   CABINET_FRONT: "kitchenFront",
   DOOR: "doorLeaf",
-  FIXTURE: "sanitary",
   OUTDOOR: "outdoorFloor",
 };
 

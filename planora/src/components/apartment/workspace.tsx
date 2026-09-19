@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Eye } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApartmentStatusBadge } from "@/components/domain/status-badges";
@@ -19,9 +19,11 @@ export interface WorkspaceTab {
 export function ApartmentWorkspace({
   header,
   tabs,
+  tenantName,
 }: {
   header: ApartmentHeaderInfo;
   tabs: WorkspaceTab[];
+  tenantName?: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,6 +65,18 @@ export function ApartmentWorkspace({
               {header.apartmentTypeName ? ` · ${header.apartmentTypeName}` : ""}
               {header.buyerName ? ` · ${header.buyerName}` : ""}
             </p>
+          </div>
+
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            {tenantName ? (
+              <Link
+                href={`/projects/${header.projectId}/apartments/${header.id}/tenant-preview`}
+                className="inline-flex items-center gap-1.5 rounded-control border border-line-strong bg-surface px-3 py-1.5 text-[12px] font-medium text-ink-soft shadow-subtle transition-colors hover:bg-surface-muted"
+              >
+                <Eye className="size-3.5" aria-hidden />
+                תצוגת דייר
+              </Link>
+            ) : null}
           </div>
 
           <dl className="flex flex-wrap gap-x-7 gap-y-2">

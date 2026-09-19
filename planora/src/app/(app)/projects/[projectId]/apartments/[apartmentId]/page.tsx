@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { ApartmentWorkspace, type WorkspaceTab } from "@/components/apartment/workspace";
 import { ApprovalsPanel } from "@/components/apartment/approvals-panel";
+import { SelectionsPanel } from "@/components/apartment/selections-panel";
 import { ChangesPanel } from "@/components/apartment/changes-panel";
 import { ConsultantsPanel } from "@/components/apartment/consultants-panel";
 import { HistoryPanel } from "@/components/apartment/history-panel";
@@ -12,7 +13,7 @@ import { PricingPanel } from "@/components/apartment/pricing-panel";
 import { ReviewPanel } from "@/components/apartment/review-panel";
 import type { ChangeItemView, ConsultantOption, WorkspacePermissions } from "@/components/apartment/types";
 import { Skeleton } from "@/components/ui/misc";
-import { can, isConsultantRole } from "@/lib/auth/permissions";
+import { can, canDecideSelections, isConsultantRole } from "@/lib/auth/permissions";
 import { requireApartmentAccess } from "@/lib/auth/session";
 import type { DrawingDocument } from "@/lib/drawing/types";
 import { APARTMENT_TABS, USER_ROLE_LABELS } from "@/lib/i18n/he";
@@ -154,6 +155,19 @@ export default async function ApartmentPage({
   ).length;
 
   const activeSheet = apartment.pricingSheets[0] ?? null;
+  const configuration = apartment.configurations[0] ?? null;
+  const pendingSelections = (configuration?.selections ?? []).filter((selection) =>
+    ["REQUESTED", "UNDER_REVIEW"].includes(selection.status),
+  ).length;
+  const openTenantRequests =
+    apartment.changeRequests.filter((request) =>
+      ["SUBMITTED", "UNDER_REVIEW", "REQUIRES_CONSULTANT"].includes(request.status),
+    ).length +
+    apartment.exceptionRequests.filter((request) =>
+      ["SUBMITTED", "UNDER_REVIEW", "SENT_TO_SUPPLIER", "MORE_INFO_REQUIRED"].includes(
+        request.status,
+      ),
+    ).length;
 
   const tabs: WorkspaceTab[] = [
     {
@@ -264,6 +278,54 @@ export default async function ApartmentPage({
       ),
     },
     {
+      key: "selections",
+      label: "בחירות דייר",
+      badge: pendingSelections + openTenantRequests,
+      content: (
+        <SelectionsPanel
+          apartmentId={apartment.id}
+          canDecide={canDecideSelections(role)}
+          canHandleRequests={can(role, "request:handle")}
+          configurationStatus={configuration?.status ?? null}
+          configurationLabel={configuration?.label ?? null}
+          selections={(configuration?.selections ?? []).map((selection) => ({
+            id: selection.id,
+            productName: selection.product.name,
+            supplierName: selection.product.supplier.name,
+            variantName: selection.variant?.name ?? null,
+            category: selection.category,
+            price: selection.price,
+            quantity: selection.quantity,
+            status: selection.status,
+            requiresApproval: selection.requiresApproval,
+            requiresConsultant: selection.requiresConsultant,
+            isMajorChange: selection.isMajorChange,
+            selectedAt: selection.selectedAt,
+          }))}
+          changeRequests={apartment.changeRequests.map((request) => ({
+            id: request.id,
+            code: request.code,
+            title: request.title,
+            description: request.description,
+            category: request.category,
+            status: request.status,
+            createdAt: request.createdAt,
+            estimatedPrice: request.estimatedPrice,
+          }))}
+          exceptionRequests={apartment.exceptionRequests.map((request) => ({
+            id: request.id,
+            code: request.code,
+            title: request.title,
+            description: request.description,
+            category: request.category,
+            status: request.status,
+            createdAt: request.createdAt,
+            referenceUrl: request.referenceUrl,
+          }))}
+        />
+      ),
+    },
+    {
       key: "consultants",
       label: APARTMENT_TABS.consultants,
       content: (
@@ -361,6 +423,7 @@ export default async function ApartmentPage({
             : "—",
         }}
         tabs={tabs}
+        tenantName={apartment.tenantUser?.name ?? null}
       />
     </Suspense>
   );

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, FileText } from "lucide-react";
 
-import { ApartmentTable } from "@/components/domain/apartment-table";
+import { ProjectApartmentsTable } from "@/components/domain/project-apartments-table";
+import { ProjectCatalogPanel } from "@/components/domain/project-catalog-panel";
 import { SeverityBadge } from "@/components/domain/status-badges";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,9 @@ import { Avatar, EmptyState, PageHeader } from "@/components/ui/misc";
 import { TBody, TD, TH, THead, TR, Table, TableWrapper } from "@/components/ui/table";
 import { UrlTabs, type UrlTab } from "@/components/ui/url-tabs";
 import { requireProjectAccess } from "@/lib/auth/session";
+import { can } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db";
+import { computeTotals } from "@/lib/pricing/engine";
 import { formatCurrency, formatDate, formatDateTime, UNIT_LABELS } from "@/lib/i18n/format";
 import {
   ACTIVITY_KIND_LABELS,
@@ -42,7 +45,7 @@ export default async function ProjectPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  await requireProjectAccess(projectId);
+  const { role, organizationId } = await requireProjectAccess(projectId);
 
   const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
@@ -73,7 +76,14 @@ export default async function ProjectPage({
         floor: true,
         apartmentType: true,
         assignedManager: { select: { name: true } },
+        tenantUser: { select: { id: true, name: true } },
         changeSets: { select: { detectedCount: true }, orderBy: { createdAt: "desc" }, take: 1 },
+        consultantRequests: { where: { status: "PENDING" }, select: { id: true } },
+        pricingSheets: {
+          select: { discount: true, vatRate: true, lines: { select: { quantity: true, unitPrice: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: [{ building: { name: "asc" } }, { number: "asc" }],
     }),
@@ -94,22 +104,64 @@ export default async function ProjectPage({
     }),
   ]);
 
-  const rows = apartments.map((apartment) => ({
-    id: apartment.id,
-    number: apartment.number,
-    buildingName: apartment.building.name,
-    floorNumber: apartment.floor.number,
-    typeName: apartment.apartmentType?.name ?? null,
-    buyerName: apartment.buyerName,
-    status: apartment.status,
-    dueDate: apartment.dueDate,
-    projectId: apartment.projectId,
-    projectName: project.name,
-    changeCount: apartment.changeSets[0]?.detectedCount,
-    managerName: apartment.assignedManager?.name ?? null,
-  }));
+  const apartmentRows = apartments.map((apartment) => {
+    const sheet = apartment.pricingSheets[0];
+    return {
+      id: apartment.id,
+      number: apartment.number,
+      floorNumber: apartment.floor.number,
+      buildingName: apartment.building.name,
+      tenantName: apartment.tenantUser?.name ?? apartment.buyerName,
+      hasTenantAccount: Boolean(apartment.tenantUserId),
+      status: apartment.status,
+      paymentStatus: apartment.paymentStatus,
+      changeCount: apartment.changeSets[0]?.detectedCount ?? 0,
+      openConsultantRequests: apartment.consultantRequests.length,
+      pricingTotal: sheet
+        ? computeTotals(sheet.lines, { discount: sheet.discount, vatRate: sheet.vatRate }).total
+        : null,
+      managerName: apartment.assignedManager?.name ?? null,
+      projectId: apartment.projectId,
+    };
+  });
 
   const priceBook = project.priceBooks[0] ?? null;
+
+  const organizationSuppliers = await prisma.supplier.findMany({
+    where: { organizationId },
+    include: {
+      products: { where: { active: true }, orderBy: { name: "asc" } },
+      projectSuppliers: { where: { projectId } },
+    },
+    orderBy: [{ category: "asc" }, { name: "asc" }],
+  });
+
+  const availabilityByProduct = new Map(
+    (
+      await prisma.projectProductAvailability.findMany({ where: { projectId } })
+    ).map((entry) => [entry.productId, entry]),
+  );
+
+  const catalogSuppliers = organizationSuppliers.map((supplier) => ({
+    id: supplier.id,
+    name: supplier.name,
+    category: supplier.category,
+    connected: supplier.projectSuppliers.some((entry) => entry.active),
+    products: supplier.products.map((product) => {
+      const availability = availabilityByProduct.get(product.id);
+      return {
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        category: product.category,
+        available: availability?.available ?? false,
+        includedInStandard: availability?.includedInStandard ?? false,
+        upgradePrice: availability?.upgradePrice ?? 0,
+        requiresApproval: availability?.requiresApproval ?? false,
+        requiresConsultant: availability?.requiresConsultant ?? false,
+      };
+    }),
+  }));
 
   const tabs: UrlTab[] = [
     {
@@ -228,8 +280,8 @@ export default async function ProjectPage({
     {
       key: "apartments",
       label: PROJECT_TABS.apartments,
-      badge: rows.length,
-      content: <ApartmentTable rows={rows} />,
+      badge: apartmentRows.length,
+      content: <ProjectApartmentsTable rows={apartmentRows} />,
     },
     {
       key: "team",
@@ -293,6 +345,18 @@ export default async function ProjectPage({
             ))}
           </div>
         ),
+    },
+    {
+      key: "catalog",
+      label: "ספקים וקטלוגים",
+      badge: catalogSuppliers.filter((supplier) => supplier.connected).length,
+      content: (
+        <ProjectCatalogPanel
+          projectId={projectId}
+          suppliers={catalogSuppliers}
+          canManage={can(role, "availability:manage")}
+        />
+      ),
     },
     {
       key: "priceBook",

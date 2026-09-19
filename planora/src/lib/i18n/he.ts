@@ -406,6 +406,7 @@ export const NAV_LABELS = {
   reviews: "בדיקות תוכניות",
   consultants: "אישורי יועצים",
   pricing: "תמחור",
+  suppliers: "ספקים",
   documents: "מסמכים",
   reports: "דוחות",
   learningCenter: "מרכז למידה",
@@ -583,6 +584,7 @@ export const TENANT_NAV_LABELS = {
   changes: "השינויים שלי",
   selections: "בחירות ושדרוגים",
   pricing: "תמחור",
+  suppliers: "ספקים",
   documents: "מסמכים",
   notifications: "התראות",
 } as const;

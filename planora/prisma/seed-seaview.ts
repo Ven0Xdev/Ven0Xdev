@@ -509,10 +509,16 @@ async function seedNoamState(projectId: string, apartments: { id: string; number
 
   // שלוש בחירות מוצר של הדייר
   const tenant = await prisma.user.findFirst({ where: { email: "noam@oviax.demo" } });
+  // בחירות שמשנות בפועל את מראה הדירה בתלת-ממד: מטבח, ריצוף וברז
+  const demoSkus = ["NV-URBAN", "CS-CONCRETE-120", "AQ-TAP-BLACK"];
   const upgrades = await prisma.projectProductAvailability.findMany({
-    where: { projectId, includedInStandard: false, available: true },
+    where: {
+      projectId,
+      includedInStandard: false,
+      available: true,
+      product: { sku: { in: demoSkus } },
+    },
     include: { product: { include: { variants: { orderBy: { sortOrder: "asc" } } } } },
-    take: 3,
   });
 
   if (tenant && upgrades.length > 0) {
@@ -526,8 +532,18 @@ async function seedNoamState(projectId: string, apartments: { id: string; number
       },
     });
 
+    // גוון כהה לכל בחירה, כדי שההבדל בתלת-ממד יהיה ברור
+    const preferredVariant: Record<string, string> = {
+      "NV-URBAN": "גרפיט",
+      "CS-CONCRETE-120": "בטון כהה",
+      "AQ-TAP-BLACK": "שחור מט",
+    };
+
     for (const entry of upgrades) {
-      const variant = entry.product.variants[0];
+      const variant =
+        entry.product.variants.find(
+          (candidate) => candidate.name === preferredVariant[entry.product.sku],
+        ) ?? entry.product.variants[0];
       await prisma.apartmentSelection.create({
         data: {
           apartmentId: apartment.id,

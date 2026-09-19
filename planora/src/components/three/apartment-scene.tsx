@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html, OrbitControls, SoftShadows } from "@react-three/drei";
+import { Html, OrbitControls } from "@react-three/drei";
 import type * as THREE from "three";
 
 import type { MaterialAppearance, SceneLighting } from "@/lib/three/materials";
@@ -142,14 +142,14 @@ export function ApartmentScene({
 
   return (
     <Canvas
-      shadows
+      // צללים רכים דרך המנוע עצמו. אין להשתמש כאן ב-SoftShadows של drei —
+      // הוא מחליף את שכבת הצללים ואינו תואם לגרסת three הנוכחית.
+      shadows="soft"
       dpr={[1, 1.75]}
       camera={{ position: [model.center[0] + span * 0.7, span * 0.72, model.center[1] + span * 0.8], fov: 42 }}
       gl={{ antialias: true }}
       style={{ background: lighting.background }}
     >
-      <SoftShadows size={28} samples={10} focus={0.9} />
-
       <hemisphereLight
         args={[lighting.skyColor, lighting.groundColor, lighting.ambientIntensity]}
       />
@@ -172,6 +172,16 @@ export function ApartmentScene({
         decay={2}
         color="#ffe9c9"
       />
+
+      {/* משטח בסיס — מעגן את הדירה ומקבל את הצללים */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[model.center[0], -0.12, model.center[1]]}
+        receiveShadow
+      >
+        <planeGeometry args={[model.size[0] * 3, model.size[1] * 3]} />
+        <meshStandardMaterial color={lighting.groundColor} roughness={1} />
+      </mesh>
 
       <group>
         {model.boxes.map((box, index) => (

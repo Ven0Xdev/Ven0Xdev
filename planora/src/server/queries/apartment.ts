@@ -68,6 +68,19 @@ export async function getApartmentWorkspace(apartmentId: string) {
         orderBy: { createdAt: "desc" },
         take: 60,
       },
+      tenantUser: { select: { id: true, name: true, email: true } },
+      configurations: {
+        orderBy: { versionNo: "desc" },
+        take: 1,
+        include: {
+          selections: {
+            include: { product: { include: { supplier: true } }, variant: true },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      },
+      changeRequests: { orderBy: { createdAt: "desc" } },
+      exceptionRequests: { orderBy: { createdAt: "desc" } },
     },
   });
 
