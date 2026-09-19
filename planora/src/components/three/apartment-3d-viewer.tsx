@@ -88,6 +88,7 @@ export function Apartment3DViewer({
   environment,
   onSelectCategory,
   selectedCategory,
+  availableCategories = [],
   className,
 }: {
   apartmentId: string;
@@ -96,6 +97,8 @@ export function Apartment3DViewer({
   environment?: ExteriorEnvironment | null;
   onSelectCategory?: (category: string, label: string) => void;
   selectedCategory?: string | null;
+  /** הקטגוריות שיש להן מוצרים זמינים לדירה הזו */
+  availableCategories?: string[];
   className?: string;
 }) {
   const {
@@ -156,6 +159,7 @@ export function Apartment3DViewer({
           tourRoomIds={state.tourPath}
           selectedCategory={selectedCategory ?? null}
           onSelect={onSelectCategory}
+          availableCategories={availableCategories}
           showRoomLabels={showLabels && !isTouring}
         />
       ) : presentation?.kind === "REMOTE_STREAM" ? (

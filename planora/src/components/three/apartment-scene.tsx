@@ -21,6 +21,7 @@ import type {
   TimeOfDay,
 } from "@/lib/visualization/types";
 import { Exterior } from "./exterior";
+import { Hotspots } from "./hotspots";
 import { PostEffects } from "./post-effects";
 
 export type { CameraMode };
@@ -39,6 +40,8 @@ interface SceneProps {
   tourRoomIds: string[];
   selectedCategory: string | null;
   onSelect?: (category: string, label: string) => void;
+  /** הקטגוריות שיש להן מוצרים זמינים לדירה. ריק — אין נקודות בחירה. */
+  availableCategories: string[];
   showRoomLabels: boolean;
 }
 
@@ -459,6 +462,7 @@ export function ApartmentScene({
   tourRoomIds,
   selectedCategory,
   onSelect,
+  availableCategories,
   showRoomLabels,
 }: SceneProps) {
   const span = Math.max(model.size[0], model.size[1], 6);
@@ -594,6 +598,16 @@ export function ApartmentScene({
           />
         ))}
       </group>
+
+      {/* נקודות הבחירה מוצגות רק בתצוגה הכללית — בסיור הן היו חוסמות את המבט */}
+      {onSelect && cameraMode === "ORBIT" && availableCategories.length > 0 ? (
+        <Hotspots
+          model={model}
+          availableCategories={availableCategories}
+          selectedCategory={selectedCategory}
+          onSelect={onSelect}
+        />
+      ) : null}
 
       {showRoomLabels && cameraMode === "ORBIT" ? <RoomLabels rooms={model.rooms} /> : null}
 

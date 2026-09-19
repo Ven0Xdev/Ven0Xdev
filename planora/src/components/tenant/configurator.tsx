@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Box, Lightbulb, Map, PlusCircle } from "lucide-react";
 
@@ -53,6 +53,14 @@ export function Configurator({
   const [viewMode, setViewMode] = useState<ViewMode>(document ? "3D" : "2D");
   const [isPending, startTransition] = useTransition();
   const [isExceptionOpen, setIsExceptionOpen] = useState(false);
+  const [priceFeedback, setPriceFeedback] = useState<{ delta: number; at: number } | null>(null);
+
+  // המשוב נעלם מעצמו: הוא הודעה על שינוי, לא חלק מהמחיר הקבוע
+  useEffect(() => {
+    if (!priceFeedback) return;
+    const timer = setTimeout(() => setPriceFeedback(null), 4200);
+    return () => clearTimeout(timer);
+  }, [priceFeedback]);
 
   const visibleProducts = useMemo(
     () => products.filter((product) => product.category === activeCategory),
@@ -66,8 +74,17 @@ export function Configurator({
     }
     startTransition(async () => {
       const result = await selectProduct({ productId, variantId: variantId ?? null });
-      if (result.ok) toast.success(result.message);
-      else toast.error(result.message);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+
+      // משוב מחיר מיידי ליד התצוגה — הדייר רואה מה הבחירה עשתה למחיר
+      if (typeof result.delta === "number" && result.delta !== 0) {
+        setPriceFeedback({ delta: result.delta, at: Date.now() });
+      }
     });
   }
 
@@ -78,7 +95,7 @@ export function Configurator({
       <div className="min-w-0">
         {/* תצוגת הדירה */}
         {document ? (
-          <section className="mb-6">
+          <section className="relative mb-6">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-[15px] font-semibold text-ink">הדירה שלי</h2>
               <div className="inline-flex rounded-control border border-line-strong bg-surface p-0.5 shadow-subtle">
@@ -106,6 +123,18 @@ export function Configurator({
               </div>
             </div>
 
+            {priceFeedback ? (
+              <div
+                role="status"
+                className="pointer-events-none absolute end-4 top-16 z-10 rounded-control border border-line bg-surface/95 px-3 py-1.5 text-[13px] font-semibold shadow-card backdrop-blur-sm"
+              >
+                <span className={priceFeedback.delta > 0 ? "text-ink" : "text-success-700"}>
+                  {priceFeedback.delta > 0 ? "+" : "−"}
+                  {formatCurrency(Math.abs(priceFeedback.delta))}
+                </span>
+              </div>
+            ) : null}
+
             {viewMode === "3D" ? (
               <Apartment3DViewer
                 apartmentId={apartmentId}
@@ -113,6 +142,7 @@ export function Configurator({
                 environment={environment}
                 materials={materials}
                 selectedCategory={activeCategory}
+                availableCategories={categories}
                 onSelectCategory={(category) => {
                   if (categories.includes(category as SupplierCategory)) {
                     setActiveCategory(category as SupplierCategory);

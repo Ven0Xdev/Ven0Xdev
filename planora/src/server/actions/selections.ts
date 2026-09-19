@@ -60,11 +60,26 @@ const selectSchema = z.object({
  * הבחירה נבדקת מול שער הזמינות בצד השרת. מוצר שאינו מאושר לפרויקט או
  * שאינו מתאים לטיפוס הדירה נדחה — גם אם נשלח ישירות ל-API.
  */
+/**
+ * תוצאת בחירה עם משוב מחיר.
+ *
+ * הדייר צריך לראות מיד מה הבחירה הזו עשתה למחיר — לא אחרי שיגלול לסיכום.
+ * המחירים כאן הם מחירי הבחירות של הדייר בלבד; אין בהם מידע מסחרי פנימי.
+ */
+export interface SelectionResult extends ActionResult {
+  /** מחיר הבחירה החדשה */
+  price?: number;
+  /** ההפרש מול מה שהיה קודם באותה קטגוריה */
+  delta?: number;
+  /** סך כל השדרוגים אחרי השינוי */
+  upgradesTotal?: number;
+}
+
 export async function selectProduct(input: {
   productId: string;
   variantId?: string | null;
   quantity?: number;
-}): Promise<ActionResult> {
+}): Promise<SelectionResult> {
   const parsed = selectSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: "הבחירה אינה תקינה." };
 
@@ -112,6 +127,16 @@ export async function selectProduct(input: {
 
   const configuration = await ensureDraftConfiguration(apartment.id, user.id);
 
+  // מה היה באותה קטגוריה לפני השינוי — ממנו נגזר ההפרש שמוצג לדייר
+  const previous = await prisma.apartmentSelection.findFirst({
+    where: {
+      configurationId: configuration.id,
+      category: availability.product.category,
+      status: "DRAFT",
+    },
+    select: { price: true },
+  });
+
   // בחירה אחת בלבד לכל קטגוריה — בחירה חדשה מחליפה את הקודמת
   await prisma.apartmentSelection.deleteMany({
     where: {
@@ -156,8 +181,20 @@ export async function selectProduct(input: {
     },
   });
 
+  const upgradesTotal = await prisma.apartmentSelection.aggregate({
+    where: { configurationId: configuration.id, status: "DRAFT" },
+    _sum: { price: true },
+  });
+
   revalidatePath(TENANT_PATH, "layout");
-  return { ok: true, message: "הבחירה נשמרה." };
+
+  return {
+    ok: true,
+    message: "הבחירה נשמרה.",
+    price,
+    delta: price - (previous?.price ?? 0),
+    upgradesTotal: upgradesTotal._sum.price ?? 0,
+  };
 }
 
 export async function removeSelection(selectionId: string): Promise<ActionResult> {
