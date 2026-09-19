@@ -7,6 +7,10 @@
 
 import { PrismaClient } from "@prisma/client";
 import type { MaterialCategory, SupplierCategory } from "@prisma/client";
+import {
+  FAMILY_DEFAULTS,
+  inferMaterialFamily,
+} from "../src/lib/visualization/material-library";
 
 const prisma = new PrismaClient();
 
@@ -377,12 +381,20 @@ async function main() {
             where: { variantId: variant.id },
           });
 
+          // משפחת החומר נגזרת משם המוצר והווריאנט — היא קובעת את המרקם
+          // שהתצוגה מייצרת (סיב עץ, עורקי שיש, מרקם בטון).
+          const family = inferMaterialFamily(
+            `${productSpec.name} ${variantSpec.name}`,
+            variantSpec.materialCategory === "FIXTURE" ? "METAL" : "PAINT",
+          );
+
           const materialData = {
             name: `${productSpec.name} · ${variantSpec.name}`,
             category: variantSpec.materialCategory,
+            family,
             color: variantSpec.color,
-            roughness: variantSpec.materialCategory === "FIXTURE" ? 0.25 : 0.7,
-            metalness: variantSpec.materialCategory === "FIXTURE" ? 0.35 : 0,
+            roughness: FAMILY_DEFAULTS[family].roughness,
+            metalness: FAMILY_DEFAULTS[family].metalness,
             productId: product.id,
             variantId: variant.id,
           };
@@ -560,10 +572,19 @@ async function seedTenant(
     update: { role: "TENANT" },
   });
 
-  await prisma.apartment.update({
-    where: { id: apartment.id },
-    data: { tenantUserId: tenant.id },
+  // הדייר מקושר לדירה 42 רק אם אינו מקושר כבר לדירה אחרת. הרצה חוזרת של
+  // הסקריפט הזה אחרי seed-seaview אינה אמורה לנתק אותו מהדירה שלו.
+  const existingApartment = await prisma.apartment.findFirst({
+    where: { tenantUserId: tenant.id },
+    select: { id: true },
   });
+
+  if (!existingApartment || existingApartment.id === apartment.id) {
+    await prisma.apartment.update({
+      where: { id: apartment.id },
+      data: { tenantUserId: tenant.id },
+    });
+  }
 
   // מפרט הסטנדרט של הדירה
   const standard: [string, string | null, SupplierCategory][] = [

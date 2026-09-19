@@ -1181,6 +1181,20 @@ enum ExceptionRequestStatus {
   REJECTED
 }
 
+/// משפחת חומר לצורכי רינדור. אינה מחליפה את המפרט הטכני.
+enum MaterialFamily {
+  WOOD
+  MARBLE
+  STONE
+  CONCRETE
+  GLASS
+  METAL
+  FABRIC
+  PAINT
+  CERAMIC
+  OUTDOOR
+}
+
 enum MaterialCategory {
   FLOOR
   WALL
@@ -1280,6 +1294,8 @@ model CatalogProduct {
   imageUrl    String?
   /// נכס תלת-ממד עתידי. ב-V2 התצוגה נגזרת מהתוכנית ומהחומרים.
   modelUrl    String?
+  /// ערכת חומרים מוכנה לתצוגה, כאשר למוצר יש מראה מוגדר מראש
+  materialPresetId String?
   active      Boolean          @default(true)
   metadata    Json?
   createdAt   DateTime         @default(now())
@@ -1313,6 +1329,12 @@ model ProductVariant {
   sku        String?
   priceDelta Float    @default(0)
   imageUrl   String?
+  /// נכס תלת-ממד של הווריאנט הספציפי
+  modelUrl   String?
+  /// טקסטורה מהספק. נטענת רק כאשר מנוע התצוגה תומך בטקסטורות.
+  textureUrl String?
+  /// הגדרות חומר נוספות מהספק (גוון, ברק, כיוון סיב)
+  materialConfig Json?
   metadata   Json?
   active     Boolean  @default(true)
   sortOrder  Int      @default(0)
@@ -1574,6 +1596,8 @@ model MaterialDefinition {
   /// צבע בסיס בפורמט hex — משמש כאשר אין טקסטורה
   color       String           @default("#cccccc")
   textureUrl  String?
+  /// משפחת החומר — קובעת את אופן הרינדור (עץ, שיש, בטון, מתכת...)
+  family      MaterialFamily   @default(PAINT)
   roughness   Float            @default(0.7)
   metalness   Float            @default(0)
   /// כל חומר חייב להיות מקושר למוצר אמיתי או לווריאנט אמיתי

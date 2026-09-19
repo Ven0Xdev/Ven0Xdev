@@ -6,8 +6,11 @@
  * מבוסס Unreal Engine — בלי לגעת בפורטל הדיירים או בממשק המקצועי.
  */
 
-import type { SupplierCategory, ViewType } from "@prisma/client";
+import type { MaterialFamily, SupplierCategory, ViewType } from "@prisma/client";
 import type { ApartmentGeometry } from "@/lib/geometry/types";
+import type { MaterialSurface, PbrMaterial, ProceduralTexture } from "./material-library";
+
+export type { MaterialSurface };
 
 // ---------------------------------------------------------------------------
 // זהות המנוע ויכולותיו
@@ -82,6 +85,10 @@ export interface MaterialAssignment {
   color: string;
   roughness: number;
   metalness: number;
+  /** משפחת החומר — קובעת את המרקם שהרנדרר מייצר */
+  family?: MaterialFamily;
+  /** דגם מרקם מפורש, כאשר הספק הגדיר אותו */
+  texture?: ProceduralTexture | null;
   /** כתובת טקסטורה, כאשר המנוע תומך בכך */
   textureUrl?: string | null;
   /** שם המוצר שממנו נגזר החומר — להצגה בממשק */
@@ -89,22 +96,6 @@ export interface MaterialAssignment {
   productId?: string | null;
   variantId?: string | null;
 }
-
-/**
- * המשטחים שהתצורה יכולה להחליף.
- * מכוון במפורש לחלקים שניתן לייצג נאמנה — לא לכל אובייקט בסצנה.
- */
-export type MaterialSurface =
-  | "interiorFloor"
-  | "outdoorFloor"
-  | "wall"
-  | "partition"
-  | "railing"
-  | "kitchenFront"
-  | "countertop"
-  | "doorLeaf"
-  | "windowFrame"
-  | "sanitary";
 
 export interface LoadConfigurationInput {
   configurationId?: string | null;
@@ -179,12 +170,10 @@ export type VisualizationPresentation =
       streamId?: string;
     };
 
-export interface ResolvedMaterial {
-  color: string;
-  roughness: number;
-  metalness: number;
-  opacity?: number;
+/** חומר מוכן לרינדור — מפרט הסטנדרט או בחירת הדייר, אחרי מיזוג */
+export interface ResolvedMaterial extends PbrMaterial {
   textureUrl?: string | null;
+  /** שם המוצר שממנו נגזר החומר. ריק = מפרט הסטנדרט. */
   sourceLabel?: string;
 }
 
@@ -195,8 +184,19 @@ export interface SceneLightingDescriptor {
   sunIntensity: number;
   sunColor: string;
   sunPosition: [number, number, number];
+  /** תאורה פנימית מלאכותית — נדלקת לקראת הערב */
   interiorIntensity: number;
   background: string;
+  /** חשיפת המצלמה. שקיעה ולילה דורשים חשיפה ארוכה יותר. */
+  exposure: number;
+  /** עוצמת מפת הסביבה, שקובעת את ההשתקפויות */
+  envIntensity: number;
+  /** צבע ערפילי האופק */
+  horizonColor: string;
+  /** אורות עיר ברקע — נדלקים בלילה */
+  cityLights: number;
+  /** תאורת מרפסת */
+  balconyIntensity: number;
 }
 
 export interface VisualizationState {

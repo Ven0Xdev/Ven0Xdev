@@ -74,18 +74,27 @@
 - [ ] Geometry Overrides לדירות חריגות (פנטהאוז / גן / דופלקס)
 - [ ] `validateGeometry()` hooks — דלתות חסרות, חפיפת קירות, חדר לא סגור
 
-### Phase 2 — חומרים ותאורה
+### Phase 2 — חומרים ותאורה ✅
 
-- [ ] Material Library לפי קטגוריות: WOOD, MARBLE, STONE, CONCRETE, GLASS,
+- [x] Material Library לפי קטגוריות: WOOD, MARBLE, STONE, CONCRETE, GLASS,
       METAL, FABRIC, PAINT, CERAMIC, OUTDOOR
-- [ ] PBR: baseColor, normalMap, roughnessMap, metalnessMap, aoMap
-- [ ] טקסטורות פרוצדורליות היכן שאין קובץ ספק — עדיף על צבע שטוח
-- [ ] HDRI / Environment lighting
-- [ ] גופי תאורה: recessed, LED strips, area lights
-- [ ] Contact shadows + צללים רכים
-- [ ] לילה אמיתי: פנים נדלק, מרפסת נדלקת, חוץ מחשיך, אורות עיר
-- [ ] `model3dUrl` / `textureUrl` / `materialConfig` ב-schema
-- [ ] Material Presets: Light / Warm / Dark — **רק ממוצרים שקיימים בקטלוג**
+- [x] PBR: baseColor + normalMap + roughnessMap (נגזרות ממפת גובה)
+- [x] טקסטורות פרוצדורליות — סיב עץ, עורקי שיש, מרקם בטון, פוגות, טרצו,
+      אריגה, שריטות מתכת. אין קובצי תמונה, אין הורדה מהרשת.
+- [x] Environment lighting מחושב (Lightformer) — השתקפויות בלי HDRI חיצוני
+- [x] Tone mapping קולנועי + חשיפה משתנה לפי שעה
+- [x] Contact shadows + צללים רכים
+- [x] Post-processing: SSAO (N8AO), Bloom עדין, Vignette
+- [x] לילה אמיתי: פנים נדלק, מרפסת נדלקת, חוץ מחשיך, אורות עיר
+- [x] `materialPresetId` / `modelUrl` / `textureUrl` / `materialConfig` ב-schema
+- [x] `MaterialFamily` ב-`MaterialDefinition`
+- [x] Material Presets: Light / Warm / Dark — **רק מק"טים שקיימים בקטלוג**
+- [ ] טקסטורת ספק אמיתית (`textureUrl`) גוברת על המרקם המחושב — טרם מחובר
+
+**מלכודות שנפתרו בדרך** (שתיהן גרמו לדירה להיראות שחורה):
+1. הגוון הוחל פעמיים — גם בטקסטורה וגם בצבע החומר.
+2. הטקסטורה נכתבה בערכים לינאריים אך תויגה כ-sRGB.
+מיפוי גוונים כפול (רנדרר + composer) גרם לאותו נזק.
 
 ### Phase 3 — מצלמה וניווט
 

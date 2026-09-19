@@ -9,8 +9,9 @@
  * `UnrealPixelStreamingProvider` בעתיד, בלי שינוי בקוד המסך.
  */
 
-import { SCENE_LIGHTING, resolveMaterials, type ProductMaterial } from "@/lib/three/materials";
 import { buildSceneModel, type SceneModel } from "@/lib/three/scene-model";
+import { SCENE_LIGHTING } from "../lighting";
+import { resolveSurfaces } from "../resolve";
 import { QUALITY_SETTINGS, resolveQuality, type ResolvedQuality } from "../quality";
 import type { ApartmentGeometry } from "@/lib/geometry/types";
 import type { ApartmentVisualizationProvider } from "../provider";
@@ -261,16 +262,6 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
   }
 
   private resolveSurfaces(): Record<MaterialSurface, ResolvedMaterial> {
-    // `textureUrl` נשמר במצב אך אינו נטען כאן: לאב-טיפוס אין צנרת טקסטורות,
-    // וטעינת תמונה כחומר הייתה נותנת מראה פחות נאמן מגוון אחיד.
-    const productMaterials: ProductMaterial[] = [...this.assignments.values()].map((material) => ({
-      slot: material.surface,
-      color: material.color,
-      roughness: material.roughness,
-      metalness: material.metalness,
-      sourceLabel: material.sourceLabel,
-    }));
-
-    return resolveMaterials(productMaterials);
+    return resolveSurfaces([...this.assignments.values()]);
   }
 }

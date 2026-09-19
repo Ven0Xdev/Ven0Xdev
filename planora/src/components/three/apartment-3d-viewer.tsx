@@ -9,6 +9,7 @@ import type { DrawingDocument } from "@/lib/drawing/types";
 import { SCENE_TIME_LABELS } from "@/lib/i18n/he";
 import type { SceneModel } from "@/lib/three/scene-model";
 import { useApartmentVisualization } from "@/lib/visualization/use-visualization";
+import { QUALITY_SETTINGS } from "@/lib/visualization/quality";
 import type { MaterialAssignment, TimeOfDay } from "@/lib/visualization/types";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,7 @@ export function Apartment3DViewer({
           model={presentation.scene as SceneModel}
           materials={presentation.materials}
           lighting={presentation.lighting}
+          quality={QUALITY_SETTINGS[state.effectiveQuality]}
           cameraMode={state.cameraMode}
           selectedCategory={selectedCategory ?? null}
           onSelect={onSelectCategory}

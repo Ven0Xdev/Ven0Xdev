@@ -283,6 +283,13 @@ async function seedTenants(
       update: { role: "TENANT" },
     });
 
+    // דייר ההדגמה שייך לדירה אחת. ניתוק קישורים קודמים מונע מצב שבו הוא
+    // מקושר לשתי דירות ופורטל הדייר מציג את הדירה הלא נכונה.
+    await prisma.apartment.updateMany({
+      where: { tenantUserId: user.id, id: { not: apartment.id } },
+      data: { tenantUserId: null },
+    });
+
     await prisma.apartment.update({
       where: { id: apartment.id },
       data: { tenantUserId: user.id, buyerName: spec.name },

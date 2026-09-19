@@ -121,7 +121,7 @@ describe("מנוע התצוגה בדפדפן", () => {
 
     expect(state.presentation?.kind).toBe("LOCAL_SCENE");
     if (state.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
-    expect(state.presentation.materials.interiorFloor.color).toBe("#3a3a3a");
+    expect(state.presentation.materials.interiorFloor.baseColor).toBe("#3a3a3a");
     expect(state.presentation.materials.interiorFloor.sourceLabel).toBe("בטון כהה · אפור");
   });
 
@@ -129,7 +129,7 @@ describe("מנוע התצוגה בדפדפן", () => {
     const provider = await loadedViewer();
     const before = provider.getState();
     if (before.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
-    const wallBefore = before.presentation.materials.wall.color;
+    const wallBefore = before.presentation.materials.wall.baseColor;
 
     const after = await provider.applyMaterial({
       surface: "interiorFloor",
@@ -137,21 +137,21 @@ describe("מנוע התצוגה בדפדפן", () => {
     });
     if (after.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
 
-    expect(after.presentation.materials.interiorFloor.color).toBe("#3a3a3a");
-    expect(after.presentation.materials.wall.color).toBe(wallBefore);
+    expect(after.presentation.materials.interiorFloor.baseColor).toBe("#3a3a3a");
+    expect(after.presentation.materials.wall.baseColor).toBe(wallBefore);
   });
 
   it("ביטול חומר מחזיר את מפרט הסטנדרט", async () => {
     const provider = await loadedViewer();
     const standard = provider.getState();
     if (standard.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
-    const standardFloor = standard.presentation.materials.interiorFloor.color;
+    const standardFloor = standard.presentation.materials.interiorFloor.baseColor;
 
     await provider.applyMaterial({ surface: "interiorFloor", material: { ...DARK_FLOOR } });
     const reset = await provider.applyMaterial({ surface: "interiorFloor", material: null });
     if (reset.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
 
-    expect(reset.presentation.materials.interiorFloor.color).toBe(standardFloor);
+    expect(reset.presentation.materials.interiorFloor.baseColor).toBe(standardFloor);
   });
 
   it("וריאנט של מוצר יכול לגעת בכמה משטחים יחד", async () => {
@@ -178,8 +178,8 @@ describe("מנוע התצוגה בדפדפן", () => {
     });
     if (state.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
 
-    expect(state.presentation.materials.kitchenFront.color).toBe("#2f3438");
-    expect(state.presentation.materials.countertop.color).toBe("#101418");
+    expect(state.presentation.materials.kitchenFront.baseColor).toBe("#2f3438");
+    expect(state.presentation.materials.countertop.baseColor).toBe("#101418");
   });
 
   it("שעה ביום משנה את התאורה", async () => {
@@ -306,7 +306,7 @@ describe("רמת איכות", () => {
     const provider = await loadedViewer();
     const standard = provider.getState();
     if (standard.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
-    const standardFloor = standard.presentation.materials.interiorFloor.color;
+    const standardFloor = standard.presentation.materials.interiorFloor.baseColor;
 
     await provider.loadConfiguration({ materials: [DARK_FLOOR] });
     await provider.setTimeOfDay("NIGHT");
@@ -315,7 +315,7 @@ describe("רמת איכות", () => {
     const reset = await provider.resetScene();
     if (reset.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
 
-    expect(reset.presentation.materials.interiorFloor.color).toBe(standardFloor);
+    expect(reset.presentation.materials.interiorFloor.baseColor).toBe(standardFloor);
     expect(reset.timeOfDay).toBe("MIDDAY");
     expect(reset.cameraMode).toBe("ORBIT");
     // הדירה עצמה נשארת טעונה — איפוס אינו טעינה מחדש
