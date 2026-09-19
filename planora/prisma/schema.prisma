@@ -312,6 +312,11 @@ model User {
   corrections            AITrainingCorrection[]
   pricingSheets          PricingSheet[]         @relation("PricingSheetOwner")
   changeItemDecisions    ChangeItem[]           @relation("ChangeItemDecidedBy")
+  tenantApartments       Apartment[]            @relation("ApartmentTenant")
+  selections             ApartmentSelection[]   @relation("SelectionSelectedBy")
+  changeRequests         ChangeRequest[]        @relation("ChangeRequestTenant")
+  exceptionRequests      ExceptionRequest[]     @relation("ExceptionRequestTenant")
+  configurations         ApartmentConfiguration[] @relation("ConfigurationCreatedBy")
 }
 
 model Account {
@@ -377,6 +382,7 @@ model Organization {
   notifications Notification[]
   rules         Rule[]
   files         UploadedFile[]
+  suppliers     Supplier[]
 }
 
 model OrganizationMember {
@@ -428,6 +434,11 @@ model Project {
   activities     ActivityLog[]
   files          UploadedFile[]
   assignments    ProfessionalAssignment[]
+
+  projectSuppliers    ProjectSupplier[]
+  productAvailability ProjectProductAvailability[]
+  upgradePackages     UpgradePackage[]
+  commercialTerms     ProjectCommercialTerms?
 
   @@index([organizationId])
 }
@@ -492,6 +503,8 @@ model Apartment {
   dueDate         DateTime?
   assignedManagerId     String?
   assignedCoordinatorId String?
+  /// משתמש הדייר שמשויך לדירה. רק הוא רשאי לראות אותה בפורטל הדיירים.
+  tenantUserId          String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -501,6 +514,7 @@ model Apartment {
   apartmentType       ApartmentType? @relation(fields: [apartmentTypeId], references: [id])
   assignedManager     User?          @relation("ApartmentManager", fields: [assignedManagerId], references: [id])
   assignedCoordinator User?          @relation("ApartmentCoordinator", fields: [assignedCoordinatorId], references: [id])
+  tenantUser          User?          @relation("ApartmentTenant", fields: [tenantUserId], references: [id])
 
   plans         Plan[]
   changeSets    ChangeSet[]
@@ -512,6 +526,13 @@ model Apartment {
   consultantRequests ConsultantRequest[]
   files         UploadedFile[]
   notifications Notification[]
+
+  configurations   ApartmentConfiguration[]
+  selections       ApartmentSelection[]
+  standardPackages ApartmentStandardPackage[]
+  changeRequests   ChangeRequest[]
+  exceptionRequests ExceptionRequest[]
+  viewProfile      ApartmentViewProfile?
 
   @@unique([projectId, buildingId, number])
   @@index([projectId, status])
@@ -669,6 +690,11 @@ model ChangeItem {
   requiresConsultant Boolean      @default(false)
   consultantKind     ConsultantKind?
   blockedFromAutomation Boolean   @default(false)
+  /// שינוי משמעותי לפי כללי הפרויקט — משפיע על המודל המסחרי
+  isMajorChange      Boolean          @default(false)
+  majorChangeReason  String?
+  majorChangeValue   Float?
+  commissionEligible Boolean          @default(false)
   /// Geometry of the element before / after, used to focus the viewer.
   geometryBefore Json?
   geometryAfter  Json?
@@ -1074,4 +1100,529 @@ model Notification {
   apartment    Apartment?   @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt])
+}
+
+// ===========================================================================
+// V2 — ספקים, קטלוגים ותצורת דירה
+//
+// עיקרון: Planora אינה מערכת עיצוב חופשית אלא מערכת תצורה מבוקרת.
+// מוצר מוצג לדייר רק אם הוא משויך במפורש לפרויקט דרך ProjectProductAvailability.
+// ===========================================================================
+
+enum SupplierCategory {
+  KITCHEN
+  FLOORING
+  SANITARY
+  DOORS
+  LIGHTING
+  HVAC
+  WINDOWS
+  OUTDOOR
+  FURNITURE
+  APPLIANCES
+  OTHER
+}
+
+enum SelectionStatus {
+  DRAFT
+  REQUESTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PRICED
+  PAID
+}
+
+enum ConfigurationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  SUPERSEDED
+}
+
+enum ChangeRequestStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  REQUIRES_CONSULTANT
+  PRICED
+  APPROVED
+  REJECTED
+}
+
+enum ExceptionRequestStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SENT_TO_SUPPLIER
+  MORE_INFO_REQUIRED
+  APPROVED
+  REJECTED
+}
+
+enum MaterialCategory {
+  FLOOR
+  WALL
+  COUNTERTOP
+  CABINET_FRONT
+  DOOR
+  FIXTURE
+  OUTDOOR
+  OTHER
+}
+
+enum ViewType {
+  SEA
+  CITY
+  PARK
+  STREET
+  MOUNTAIN
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// ספקים
+// ---------------------------------------------------------------------------
+
+model Supplier {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  category       SupplierCategory
+  logoUrl        String?
+  description    String?
+  website        String?
+  contactName    String?
+  contactPhone   String?
+  contactEmail   String?
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  catalogs         Catalog[]
+  products         CatalogProduct[]
+  projectSuppliers ProjectSupplier[]
+  exceptionRequests ExceptionRequest[]
+
+  @@unique([organizationId, name])
+  @@index([category])
+}
+
+model ProjectSupplier {
+  id                  String   @id @default(cuid())
+  projectId           String
+  supplierId          String
+  active              Boolean  @default(true)
+  notes               String?
+  /// ספק ברירת המחדל של הקטגוריה בפרויקט זה
+  defaultForCategory  Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, supplierId])
+}
+
+// ---------------------------------------------------------------------------
+// קטלוגים ומוצרים
+// ---------------------------------------------------------------------------
+
+model Catalog {
+  id          String   @id @default(cuid())
+  supplierId  String
+  name        String
+  year        Int?
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplier Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  products CatalogProduct[]
+
+  @@unique([supplierId, name])
+}
+
+model CatalogProduct {
+  id          String           @id @default(cuid())
+  supplierId  String
+  catalogId   String?
+  name        String
+  description String?
+  category    SupplierCategory
+  sku         String
+  basePrice   Float            @default(0)
+  imageUrl    String?
+  /// נכס תלת-ממד עתידי. ב-V2 התצוגה נגזרת מהתוכנית ומהחומרים.
+  modelUrl    String?
+  active      Boolean          @default(true)
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  catalog  Catalog? @relation(fields: [catalogId], references: [id], onDelete: SetNull)
+
+  variants     ProductVariant[]
+  options      ProductOption[]
+  images       ProductImage[]
+  files        ProductFile[]
+  availability ProjectProductAvailability[]
+  selections   ApartmentSelection[]
+  standardIn   ApartmentStandardPackage[]
+  packageItems UpgradePackageItem[]
+  materials    MaterialDefinition[]
+  recommendedBy ProductRecommendation[] @relation("RecommendationSource")
+  recommends    ProductRecommendation[] @relation("RecommendationTarget")
+
+  @@unique([supplierId, sku])
+  @@index([category, active])
+}
+
+model ProductVariant {
+  id         String   @id @default(cuid())
+  productId  String
+  name       String
+  /// סוג הווריאנט: צבע, גימור, מידה, ידית, סוג שיש וכדומה
+  optionType String   @default("OTHER")
+  sku        String?
+  priceDelta Float    @default(0)
+  imageUrl   String?
+  metadata   Json?
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product    CatalogProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materials  MaterialDefinition[]
+  selections ApartmentSelection[]
+  standardIn ApartmentStandardPackage[]
+
+  @@index([productId, optionType])
+}
+
+model ProductOption {
+  id         String   @id @default(cuid())
+  productId  String
+  name       String
+  optionType String
+  required   Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  product CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, optionType])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  alt       String?
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductFile {
+  id        String   @id @default(cuid())
+  productId String
+  /// datasheet / installation / warranty
+  kind      String
+  name      String
+  url       String
+  createdAt DateTime @default(now())
+
+  product CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// זמינות מוצרים בפרויקט — שער הבקרה של המערכת
+// ---------------------------------------------------------------------------
+
+model ProjectProductAvailability {
+  id                  String   @id @default(cuid())
+  projectId           String
+  productId           String
+  available           Boolean  @default(true)
+  includedInStandard  Boolean  @default(false)
+  upgradePrice        Float    @default(0)
+  requiresApproval    Boolean  @default(false)
+  requiresConsultant  Boolean  @default(false)
+  /// טיפוס דירה מינימלי שבו המוצר מותר (לפי מספר חדרים)
+  minimumRooms        Float?
+  maximumQuantity     Int?
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, productId])
+  @@index([projectId, available])
+}
+
+// ---------------------------------------------------------------------------
+// חבילות
+// ---------------------------------------------------------------------------
+
+model ApartmentStandardPackage {
+  id          String   @id @default(cuid())
+  apartmentId String
+  productId   String
+  variantId   String?
+  category    SupplierCategory
+  quantity    Float    @default(1)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  apartment Apartment       @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  product   CatalogProduct  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@unique([apartmentId, category, productId])
+}
+
+model UpgradePackage {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  /// מחיר החבילה. כאשר null — הסכום מחושב מסכום הפריטים.
+  price       Float?
+  imageUrl    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items   UpgradePackageItem[]
+
+  @@unique([projectId, name])
+}
+
+model UpgradePackageItem {
+  id        String  @id @default(cuid())
+  packageId String
+  productId String
+  variantId String?
+  quantity  Float   @default(1)
+
+  upgradePackage UpgradePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  product        CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, productId])
+}
+
+// ---------------------------------------------------------------------------
+// תצורת הדירה — גרסאות ובחירות
+// ---------------------------------------------------------------------------
+
+model ApartmentConfiguration {
+  id          String              @id @default(cuid())
+  apartmentId String
+  versionNo   Int
+  label       String
+  status      ConfigurationStatus @default(DRAFT)
+  createdById String?
+  notes       String?
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  /// נעילה חלקית לאחר שליחה לבדיקה
+  lockedAt    DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("ConfigurationCreatedBy", fields: [createdById], references: [id])
+
+  selections ApartmentSelection[]
+
+  @@unique([apartmentId, versionNo])
+  @@index([apartmentId, status])
+}
+
+model ApartmentSelection {
+  id              String           @id @default(cuid())
+  apartmentId     String
+  configurationId String
+  productId       String
+  variantId       String?
+  category        SupplierCategory
+  quantity        Float            @default(1)
+  /// מחיר השדרוג שנשמר ברגע הבחירה — מחיר היסטורי, אינו משתנה למפרע
+  price           Float            @default(0)
+  status          SelectionStatus  @default(DRAFT)
+  requiresApproval Boolean         @default(false)
+  requiresConsultant Boolean       @default(false)
+  isMajorChange   Boolean          @default(false)
+  selectedById    String?
+  selectedAt      DateTime         @default(now())
+  decidedById     String?
+  decidedAt       DateTime?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  apartment     Apartment              @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  configuration ApartmentConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  product       CatalogProduct         @relation(fields: [productId], references: [id])
+  variant       ProductVariant?        @relation(fields: [variantId], references: [id])
+  selectedBy    User?                  @relation("SelectionSelectedBy", fields: [selectedById], references: [id])
+
+  @@unique([configurationId, category, productId])
+  @@index([apartmentId, status])
+}
+
+// ---------------------------------------------------------------------------
+// בקשות דייר
+// ---------------------------------------------------------------------------
+
+model ChangeRequest {
+  id          String              @id @default(cuid())
+  apartmentId String
+  tenantId    String?
+  code        String
+  category    ChangeCategoryKey
+  title       String
+  description String
+  status      ChangeRequestStatus @default(DRAFT)
+  /// הגורם שאליו נותב הכלל האוטומטי
+  routedToRole UserRole?
+  consultantKind ConsultantKind?
+  estimatedPrice Float?
+  attachments Json?
+  submittedAt DateTime?
+  decidedAt   DateTime?
+  decisionNotes String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  tenant    User?     @relation("ChangeRequestTenant", fields: [tenantId], references: [id])
+
+  @@unique([apartmentId, code])
+  @@index([status])
+}
+
+model ExceptionRequest {
+  id          String                 @id @default(cuid())
+  apartmentId String
+  tenantId    String?
+  code        String
+  category    SupplierCategory
+  title       String
+  description String
+  referenceUrl String?
+  supplierId  String?
+  status      ExceptionRequestStatus @default(SUBMITTED)
+  decisionNotes String?
+  decidedAt   DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  tenant    User?     @relation("ExceptionRequestTenant", fields: [tenantId], references: [id])
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@unique([apartmentId, code])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// חומרים לתצוגה תלת-ממדית
+// ---------------------------------------------------------------------------
+
+model MaterialDefinition {
+  id          String           @id @default(cuid())
+  name        String
+  category    MaterialCategory
+  /// צבע בסיס בפורמט hex — משמש כאשר אין טקסטורה
+  color       String           @default("#cccccc")
+  textureUrl  String?
+  roughness   Float            @default(0.7)
+  metalness   Float            @default(0)
+  /// כל חומר חייב להיות מקושר למוצר אמיתי או לווריאנט אמיתי
+  productId   String?
+  variantId   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  product CatalogProduct? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+}
+
+// ---------------------------------------------------------------------------
+// המלצות — מנוע מבוסס כללים בלבד
+// ---------------------------------------------------------------------------
+
+model ProductRecommendation {
+  id              String   @id @default(cuid())
+  sourceProductId String
+  targetProductId String
+  reason          String
+  sortOrder       Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  sourceProduct CatalogProduct @relation("RecommendationSource", fields: [sourceProductId], references: [id], onDelete: Cascade)
+  targetProduct CatalogProduct @relation("RecommendationTarget", fields: [targetProductId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceProductId, targetProductId])
+}
+
+// ---------------------------------------------------------------------------
+// מודל מסחרי פנימי — לעולם אינו מוצג לדייר
+// ---------------------------------------------------------------------------
+
+model ProjectCommercialTerms {
+  id                           String   @id @default(cuid())
+  projectId                    String   @unique
+  setupFee                     Float    @default(0)
+  perApartmentFee              Float    @default(0)
+  majorChangesCommissionPercent Float   @default(0)
+  /// סכום שמעליו שינוי נחשב משמעותי
+  majorChangeThreshold         Float    @default(0)
+  currency                     String   @default("ILS")
+  notes                        String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// פרופיל נוף — תשתית בלבד, ללא מימוש ויזואלי ב-V2
+// ---------------------------------------------------------------------------
+
+model ApartmentViewProfile {
+  id               String    @id @default(cuid())
+  apartmentId      String    @unique
+  latitude         Float?
+  longitude        Float?
+  floorHeightM     Float?
+  /// אזימוט במעלות: 0 = צפון
+  orientation      Float?
+  viewType         ViewType  @default(OTHER)
+  balconyDirection Float?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
 }

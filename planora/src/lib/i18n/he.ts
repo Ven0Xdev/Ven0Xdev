@@ -5,6 +5,13 @@
 
 import type {
   ActivityKind,
+  ChangeRequestStatus,
+  ConfigurationStatus,
+  ExceptionRequestStatus,
+  MaterialCategory,
+  SelectionStatus,
+  SupplierCategory,
+  ViewType,
   ApartmentStatus,
   ApprovalKind,
   ApprovalStatus,
@@ -429,3 +436,164 @@ export const PROJECT_TABS = {
   reports: "דוחות",
   history: "היסטוריה",
 } as const;
+
+// ---------------------------------------------------------------------------
+// V2 — ספקים, קטלוגים ותצורת דירה
+// ---------------------------------------------------------------------------
+
+export const SUPPLIER_CATEGORY_LABELS: Record<SupplierCategory, string> = {
+  KITCHEN: "מטבחים",
+  FLOORING: "ריצוף",
+  SANITARY: "כלים סניטריים",
+  DOORS: "דלתות",
+  LIGHTING: "תאורה",
+  HVAC: "מיזוג אוויר",
+  WINDOWS: "חלונות",
+  OUTDOOR: "מרפסת וחוץ",
+  FURNITURE: "ריהוט",
+  APPLIANCES: "מוצרי חשמל",
+  OTHER: "אחר",
+};
+
+/** שם הקטגוריה כפי שהיא מוצגת לדייר בלשוניות המגדיר */
+export const TENANT_CATEGORY_LABELS: Record<SupplierCategory, string> = {
+  KITCHEN: "מטבח",
+  FLOORING: "ריצוף",
+  SANITARY: "חדרי רחצה",
+  DOORS: "דלתות",
+  LIGHTING: "תאורה",
+  HVAC: "מיזוג",
+  WINDOWS: "חלונות",
+  OUTDOOR: "מרפסת",
+  FURNITURE: "ריהוט",
+  APPLIANCES: "מוצרי חשמל",
+  OTHER: "אחר",
+};
+
+export const SELECTION_STATUS_LABELS: Record<SelectionStatus, string> = {
+  DRAFT: "טיוטה",
+  REQUESTED: "נשלח לבדיקה",
+  UNDER_REVIEW: "בבדיקה",
+  APPROVED: "מאושר",
+  REJECTED: "נדחה",
+  PRICED: "תומחר",
+  PAID: "שולם",
+};
+
+export const SELECTION_STATUS_TONE: Record<SelectionStatus, StatusTone> = {
+  DRAFT: "neutral",
+  REQUESTED: "brand",
+  UNDER_REVIEW: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  PRICED: "brand",
+  PAID: "success",
+};
+
+export const CONFIGURATION_STATUS_LABELS: Record<ConfigurationStatus, string> = {
+  DRAFT: "טיוטה",
+  SUBMITTED: "נשלחה לבדיקה",
+  UNDER_REVIEW: "בבדיקה",
+  APPROVED: "מאושרת",
+  SUPERSEDED: "הוחלפה בגרסה חדשה",
+};
+
+export const CONFIGURATION_STATUS_TONE: Record<ConfigurationStatus, StatusTone> = {
+  DRAFT: "neutral",
+  SUBMITTED: "brand",
+  UNDER_REVIEW: "warning",
+  APPROVED: "success",
+  SUPERSEDED: "neutral",
+};
+
+export const CHANGE_REQUEST_STATUS_LABELS: Record<ChangeRequestStatus, string> = {
+  DRAFT: "טיוטה",
+  SUBMITTED: "נשלחה",
+  UNDER_REVIEW: "בבדיקה",
+  REQUIRES_CONSULTANT: "ממתינה ליועץ",
+  PRICED: "תומחרה",
+  APPROVED: "אושרה",
+  REJECTED: "נדחתה",
+};
+
+export const CHANGE_REQUEST_STATUS_TONE: Record<ChangeRequestStatus, StatusTone> = {
+  DRAFT: "neutral",
+  SUBMITTED: "brand",
+  UNDER_REVIEW: "warning",
+  REQUIRES_CONSULTANT: "consultant",
+  PRICED: "brand",
+  APPROVED: "success",
+  REJECTED: "danger",
+};
+
+export const EXCEPTION_REQUEST_STATUS_LABELS: Record<ExceptionRequestStatus, string> = {
+  SUBMITTED: "נשלחה",
+  UNDER_REVIEW: "בבדיקה",
+  SENT_TO_SUPPLIER: "הועברה לספק",
+  MORE_INFO_REQUIRED: "נדרש מידע נוסף",
+  APPROVED: "אושרה באופן חריג",
+  REJECTED: "נדחתה",
+};
+
+export const EXCEPTION_REQUEST_STATUS_TONE: Record<ExceptionRequestStatus, StatusTone> = {
+  SUBMITTED: "brand",
+  UNDER_REVIEW: "warning",
+  SENT_TO_SUPPLIER: "consultant",
+  MORE_INFO_REQUIRED: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+};
+
+export const MATERIAL_CATEGORY_LABELS: Record<MaterialCategory, string> = {
+  FLOOR: "ריצוף",
+  WALL: "קיר",
+  COUNTERTOP: "משטח עבודה",
+  CABINET_FRONT: "חזית ארון",
+  DOOR: "דלת",
+  FIXTURE: "קבועה",
+  OUTDOOR: "חוץ",
+  OTHER: "אחר",
+};
+
+export const VIEW_TYPE_LABELS: Record<ViewType, string> = {
+  SEA: "נוף לים",
+  CITY: "נוף עירוני",
+  PARK: "נוף לפארק",
+  STREET: "פנים רחוב",
+  MOUNTAIN: "נוף להרים",
+  OTHER: "אחר",
+};
+
+/** זמני היום בתצוגה התלת-ממדית */
+export const SCENE_TIME_LABELS = {
+  MORNING: "בוקר",
+  MIDDAY: "צהריים",
+  SUNSET: "שקיעה",
+  NIGHT: "לילה",
+} as const;
+
+export type SceneTime = keyof typeof SCENE_TIME_LABELS;
+
+/** תוויות ניווט בפורטל הדיירים */
+export const TENANT_NAV_LABELS = {
+  home: "הדירה שלי",
+  configurator: "עיצוב הדירה",
+  requests: "הבקשות שלי",
+  pricing: "המחיר שלי",
+} as const;
+
+/** תוויות מצב זמינות מוצר — מה שהדייר רואה על כרטיס המוצר */
+export const PRODUCT_ELIGIBILITY_LABELS = {
+  INCLUDED: "כלול בסטנדרט",
+  UPGRADE: "בתוספת תשלום",
+  NEEDS_REVIEW: "נדרשת בדיקה",
+} as const;
+
+export const PRODUCT_ELIGIBILITY_TONE: Record<
+  keyof typeof PRODUCT_ELIGIBILITY_LABELS,
+  StatusTone
+> = {
+  INCLUDED: "success",
+  UPGRADE: "brand",
+  NEEDS_REVIEW: "warning",
+};

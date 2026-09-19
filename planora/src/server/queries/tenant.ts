@@ -1,0 +1,264 @@
+import type { SupplierCategory } from "@prisma/client";
+
+import { prisma } from "@/lib/db";
+import {
+  evaluateProductAvailability,
+  TENANT_CATEGORY_ORDER,
+  type EligibilityResult,
+} from "@/lib/catalog/availability";
+import { computeConfigurationPricing } from "@/lib/pricing/configuration";
+import { recommendForSelections } from "@/lib/recommendations/engine";
+import { MATERIAL_CATEGORY_TO_SLOT } from "@/lib/three/materials";
+import type { ProductMaterial } from "@/lib/three/materials";
+import type { MaterialSlot } from "@/lib/three/scene-model";
+import type { DrawingDocument } from "@/lib/drawing/types";
+
+export interface TenantVariant {
+  id: string;
+  name: string;
+  optionType: string;
+  priceDelta: number;
+  imageUrl: string | null;
+  color: string | null;
+}
+
+export interface TenantProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  category: SupplierCategory;
+  supplierName: string;
+  imageUrl: string | null;
+  eligibility: EligibilityResult;
+  variants: TenantVariant[];
+  isStandard: boolean;
+  selectedVariantId: string | null;
+  selectionId: string | null;
+  selectionStatus: string | null;
+}
+
+/**
+ * טוען את כל מה שהמגדיר של הדייר צריך.
+ *
+ * מוצר נכנס לתוצאה רק אם הוא עבר את שער הזמינות של הפרויקט. מוצר שאינו
+ * זמין אינו מוחזר כלל — לא כאפשרות מנוטרלת.
+ */
+export async function getTenantConfigurator(apartmentId: string) {
+  const apartment = await prisma.apartment.findUniqueOrThrow({
+    where: { id: apartmentId },
+    include: {
+      building: true,
+      floor: true,
+      apartmentType: true,
+      project: { select: { id: true, name: true, developerName: true, changeDeadline: true } },
+      plans: {
+        include: { versions: { orderBy: { versionNo: "asc" } } },
+      },
+      standardPackages: {
+        include: { product: { include: { supplier: true } }, variant: true },
+      },
+      viewProfile: true,
+    },
+  });
+
+  const rooms = apartment.apartmentType?.rooms ?? null;
+
+  const configuration = await prisma.apartmentConfiguration.findFirst({
+    where: { apartmentId },
+    orderBy: { versionNo: "desc" },
+    include: {
+      selections: {
+        include: {
+          product: { include: { supplier: true } },
+          variant: true,
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  const availability = await prisma.projectProductAvailability.findMany({
+    where: { projectId: apartment.projectId },
+    include: {
+      product: {
+        include: {
+          supplier: true,
+          variants: { where: { active: true }, orderBy: { sortOrder: "asc" } },
+          materials: true,
+        },
+      },
+    },
+  });
+
+  const selectionByProduct = new Map(
+    (configuration?.selections ?? []).map((selection) => [selection.productId, selection]),
+  );
+  const standardProductIds = new Set(
+    apartment.standardPackages.map((entry) => entry.productId),
+  );
+
+  const products: TenantProduct[] = [];
+
+  for (const entry of availability) {
+    if (!entry.product.active) continue;
+
+    const eligibility = evaluateProductAvailability(entry, { rooms });
+    if (eligibility.eligibility === "UNAVAILABLE") continue;
+
+    const selection = selectionByProduct.get(entry.productId);
+
+    products.push({
+      id: entry.product.id,
+      name: entry.product.name,
+      description: entry.product.description,
+      category: entry.product.category,
+      supplierName: entry.product.supplier.name,
+      imageUrl: entry.product.imageUrl,
+      eligibility,
+      isStandard: standardProductIds.has(entry.productId),
+      selectedVariantId: selection?.variantId ?? null,
+      selectionId: selection?.id ?? null,
+      selectionStatus: selection?.status ?? null,
+      variants: entry.product.variants.map((variant) => ({
+        id: variant.id,
+        name: variant.name,
+        optionType: variant.optionType,
+        priceDelta: variant.priceDelta,
+        imageUrl: variant.imageUrl,
+        color:
+          entry.product.materials.find((material) => material.variantId === variant.id)?.color ??
+          null,
+      })),
+    });
+  }
+
+  const categories = TENANT_CATEGORY_ORDER.filter((category) =>
+    products.some((product) => product.category === category),
+  );
+
+  // --- המלצות ---
+  const links = await prisma.productRecommendation.findMany({
+    where: { active: true, sourceProductId: { in: [...selectionByProduct.keys()] } },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  const recommendations = recommendForSelections({
+    selectedProductIds: [...selectionByProduct.keys()],
+    links: links.map((link) => ({
+      sourceProductId: link.sourceProductId,
+      targetProductId: link.targetProductId,
+      reason: link.reason,
+      sortOrder: link.sortOrder,
+    })),
+    candidates: products.map((product) => ({
+      productId: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.eligibility.price,
+      imageUrl: product.imageUrl,
+      selectable: true,
+    })),
+    limit: 4,
+  });
+
+  // --- תמחור ---
+  const pricingSheet = await prisma.pricingSheet.findFirst({
+    where: { apartmentId, status: { in: ["DRAFT", "SENT_TO_TENANT", "APPROVED_BY_TENANT", "PAID"] } },
+    include: { lines: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const pricing = computeConfigurationPricing({
+    selections: (configuration?.selections ?? []).map((selection) => ({
+      id: selection.id,
+      category: selection.category,
+      productName: selection.product.name,
+      variantName: selection.variant?.name ?? null,
+      quantity: selection.quantity,
+      price: selection.price,
+      status: selection.status,
+    })),
+    professionalChanges: (pricingSheet?.lines ?? []).map((line) => ({
+      description: line.description,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+    })),
+    vatRate: pricingSheet?.vatRate ?? 18,
+    includeDrafts: true,
+  });
+
+  // --- חומרים לתצוגה התלת-ממדית ---
+  const materials: ProductMaterial[] = [];
+  for (const selection of configuration?.selections ?? []) {
+    const productMaterials = await prisma.materialDefinition.findMany({
+      where: {
+        OR: [
+          selection.variantId ? { variantId: selection.variantId } : { id: "__none__" },
+          { productId: selection.productId, variantId: null },
+        ],
+      },
+    });
+
+    for (const material of productMaterials) {
+      const slot = MATERIAL_CATEGORY_TO_SLOT[material.category] as MaterialSlot | undefined;
+      if (!slot) continue;
+      materials.push({
+        slot,
+        color: material.color,
+        roughness: material.roughness,
+        metalness: material.metalness,
+        sourceLabel: `${selection.product.name}${selection.variant ? ` · ${selection.variant.name}` : ""}`,
+      });
+    }
+  }
+
+  const standardPlan = apartment.plans.find((plan) => plan.kind === "STANDARD");
+  const modifiedPlan = apartment.plans.find((plan) => plan.kind === "MODIFIED");
+  const currentVersion =
+    modifiedPlan?.versions.filter((version) => version.isCurrent).at(-1) ??
+    standardPlan?.versions.at(-1);
+
+  return {
+    apartment,
+    configuration,
+    products,
+    categories,
+    recommendations,
+    pricing,
+    materials,
+    document: (currentVersion?.elements as unknown as DrawingDocument | null) ?? null,
+  };
+}
+
+export type TenantConfiguratorData = Awaited<ReturnType<typeof getTenantConfigurator>>;
+
+/** סיכום קצר ללוח הבית של הדייר */
+export async function getTenantOverview(apartmentId: string) {
+  const [apartment, configuration, changeRequests, exceptionRequests] = await Promise.all([
+    prisma.apartment.findUniqueOrThrow({
+      where: { id: apartmentId },
+      include: {
+        building: true,
+        floor: true,
+        apartmentType: true,
+        project: { select: { id: true, name: true, changeDeadline: true } },
+        assignedManager: { select: { name: true } },
+      },
+    }),
+    prisma.apartmentConfiguration.findFirst({
+      where: { apartmentId },
+      orderBy: { versionNo: "desc" },
+      include: { selections: { include: { product: true, variant: true } } },
+    }),
+    prisma.changeRequest.findMany({
+      where: { apartmentId },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.exceptionRequest.findMany({
+      where: { apartmentId },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return { apartment, configuration, changeRequests, exceptionRequests };
+}

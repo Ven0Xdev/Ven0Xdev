@@ -26,6 +26,15 @@ export const CAPABILITIES = [
   "rules:manage",
   "priceBook:manage",
   "learning:view",
+  // --- V2 ---
+  "supplier:manage",
+  "catalog:manage",
+  "availability:manage",
+  "selection:decide",
+  "selection:make",
+  "request:submit",
+  "request:handle",
+  "commercial:view",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -36,6 +45,12 @@ export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
   SUPER_ADMIN: ALL,
   ORGANIZATION_ADMIN: ALL,
   PROJECT_MANAGER: [
+    "supplier:manage",
+    "catalog:manage",
+    "availability:manage",
+    "selection:decide",
+    "request:handle",
+    "commercial:view",
     "project:manage",
     "project:view",
     "apartment:manage",
@@ -52,6 +67,12 @@ export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
     "learning:view",
   ],
   TENANT_CHANGE_MANAGER: [
+    "supplier:manage",
+    "catalog:manage",
+    "availability:manage",
+    "selection:decide",
+    "request:handle",
+    "commercial:view",
     "project:view",
     "apartment:manage",
     "plan:upload",
@@ -66,6 +87,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
     "learning:view",
   ],
   TENANT_CHANGE_COORDINATOR: [
+    "request:handle",
     "project:view",
     "plan:upload",
     "review:perform",
@@ -80,9 +102,15 @@ export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
   PLUMBING_CONSULTANT: ["project:view", "change:comment", "consultant:respond"],
   ELECTRICAL_CONSULTANT: ["project:view", "change:comment", "consultant:respond"],
   STRUCTURAL_CONSULTANT: ["project:view", "change:comment", "consultant:respond"],
-  PRICING_MANAGER: ["project:view", "pricing:manage", "pricing:approve", "change:comment"],
-  TENANT: ["project:view"],
-  FINANCE: ["project:view", "payment:record", "pricing:approve"],
+  PRICING_MANAGER: [
+    "project:view",
+    "pricing:manage",
+    "pricing:approve",
+    "change:comment",
+    "commercial:view",
+  ],
+  TENANT: ["selection:make", "request:submit"],
+  FINANCE: ["project:view", "payment:record", "pricing:approve", "commercial:view"],
 };
 
 /** תפקידים שיש להם סמכות מקצועית לאשר זיהוי שינוי */
@@ -117,6 +145,25 @@ export function hasProfessionalAuthority(role: UserRole | null | undefined): boo
 
 export function isConsultantRole(role: UserRole | null | undefined): boolean {
   return Boolean(role && CONSULTANT_ROLES.includes(role));
+}
+
+/**
+ * תפקידים שרשאים להכריע בבחירת מוצר של דייר.
+ * הדייר בוחר — אדם מורשה מאשר.
+ */
+export const SELECTION_DECISION_ROLES: UserRole[] = [
+  "SUPER_ADMIN",
+  "ORGANIZATION_ADMIN",
+  "PROJECT_MANAGER",
+  "TENANT_CHANGE_MANAGER",
+];
+
+export function canDecideSelections(role: UserRole | null | undefined): boolean {
+  return Boolean(role && SELECTION_DECISION_ROLES.includes(role));
+}
+
+export function isTenantRole(role: UserRole | null | undefined): boolean {
+  return role === "TENANT";
 }
 
 /** התאמה בין תפקיד יועץ לסוג הבקשה */

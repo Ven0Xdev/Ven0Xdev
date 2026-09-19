@@ -5,8 +5,10 @@ import {
   ROLE_CAPABILITIES,
   can,
   canAny,
+  canDecideSelections,
   hasProfessionalAuthority,
   isConsultantRole,
+  isTenantRole,
 } from "@/lib/auth/permissions";
 
 describe("הרשאות לפי תפקיד", () => {
@@ -37,10 +39,42 @@ describe("הרשאות לפי תפקיד", () => {
     expect(isConsultantRole("PLUMBING_CONSULTANT")).toBe(true);
   });
 
-  it("דייר יכול לצפות בלבד", () => {
-    expect(ROLE_CAPABILITIES.TENANT).toEqual(["project:view"]);
-    expect(can("TENANT", "change:decide")).toBe(false);
-    expect(can("TENANT", "pricing:manage")).toBe(false);
+  it("דייר בוחר מוצרים ומגיש בקשות — ותו לא", () => {
+    expect(can("TENANT", "selection:make")).toBe(true);
+    expect(can("TENANT", "request:submit")).toBe(true);
+  });
+
+  it("דייר אינו יכול להכריע, לתמחר, לראות מידע מסחרי או להגיע למסכים המקצועיים", () => {
+    for (const capability of [
+      "change:decide",
+      "selection:decide",
+      "pricing:manage",
+      "pricing:approve",
+      "commercial:view",
+      "supplier:manage",
+      "catalog:manage",
+      "availability:manage",
+      "request:handle",
+      "execution:release",
+      "project:view",
+    ] as const) {
+      expect(can("TENANT", capability)).toBe(false);
+    }
+  });
+
+  it("רק תפקידים מורשים מכריעים בבחירות דיירים", () => {
+    expect(canDecideSelections("TENANT_CHANGE_MANAGER")).toBe(true);
+    expect(canDecideSelections("PROJECT_MANAGER")).toBe(true);
+    expect(canDecideSelections("TENANT_CHANGE_COORDINATOR")).toBe(false);
+    expect(canDecideSelections("TENANT")).toBe(false);
+    expect(canDecideSelections(null)).toBe(false);
+  });
+
+  it("המודל המסחרי של Planora חסום בפני דייר, מעצבת ויועצים", () => {
+    for (const role of ["TENANT", "DESIGNER", "PLUMBING_CONSULTANT", "ARCHITECT"] as const) {
+      expect(can(role, "commercial:view")).toBe(false);
+    }
+    expect(can("TENANT_CHANGE_MANAGER", "commercial:view")).toBe(true);
   });
 
   it("מנהל מערכת מקבל את כל היכולות", () => {
@@ -70,6 +104,11 @@ describe("הרשאות לפי תפקיד", () => {
     for (const role of Object.keys(ROLE_CAPABILITIES) as UserRole[]) {
       expect(hasProfessionalAuthority(role)).toBe(authorised.includes(role));
     }
+  });
+
+  it("מזהה תפקיד דייר", () => {
+    expect(isTenantRole("TENANT")).toBe(true);
+    expect(isTenantRole("TENANT_CHANGE_MANAGER")).toBe(false);
   });
 
   it("אף תפקיד שאינו יועץ אינו יכול להשיב כיועץ", () => {
