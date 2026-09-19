@@ -345,6 +345,30 @@ export function getProceduralTextures(
   return result;
 }
 
+/**
+ * מייצר מראש את מרקמי מפרט הסטנדרט.
+ *
+ * הם המרקמים שכל דירה משתמשת בהם, ויצירתם עולה זמן מעבד. הכנה בזמן שהדפדפן
+ * פנוי מונעת קפיצה ברגע שהדייר מחליף חומר.
+ */
+export function preloadStandardTextures(
+  surfaces: { texture?: ProceduralTexture; baseColor: string; normalStrength?: number }[],
+  size: number,
+): void {
+  if (typeof window === "undefined") return;
+
+  const run = () => {
+    for (const surface of surfaces) {
+      getProceduralTextures(surface.texture, surface.baseColor, surface.normalStrength ?? 0, size);
+    }
+  };
+
+  const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number })
+    .requestIdleCallback;
+  if (idle) idle(run);
+  else window.setTimeout(run, 400);
+}
+
 /** משחרר את כל המרקמים מהזיכרון. נקרא כשהמסך נסגר. */
 export function disposeProceduralTextures(): void {
   for (const textures of cache.values()) {

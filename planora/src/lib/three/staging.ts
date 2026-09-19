@@ -728,9 +728,15 @@ function stageBalcony(room: RoomGeometry, box: RoomBox): StagingItem[] {
  * @param cutHeightM גובה חיתוך התצוגה. רהיט גבוה נחתך יחד עם הקירות, אחרת
  *                   ארון היה בולט מעל דירה חתוכה ונראה כמו טעות.
  */
+export type StagingDetail = "FULL" | "REDUCED";
+
+/** פריטים שמוסרים ברמת פירוט מופחתת — נוי, לא הבנה של החלל */
+const DECORATIVE = /:(cushion|pillow|plant|planter|foliage|pot|rug|tv|pendant)/;
+
 export function buildStaging(
   geometry: ApartmentGeometry,
   cutHeightM: number,
+  detail: StagingDetail = "FULL",
 ): StagingItem[] {
   const items: StagingItem[] = [];
 
@@ -757,6 +763,8 @@ export function buildStaging(
   }
 
   return items
+    // ברמת פירוט מופחתת נשארים הרהיטים שמלמדים על גודל החדר, ונעלם הנוי
+    .filter((item) => detail === "FULL" || !DECORATIVE.test(item.id))
     .filter((item) => item.baseM < cutHeightM)
     .map((item) =>
       item.baseM + item.heightM <= cutHeightM

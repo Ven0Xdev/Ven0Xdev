@@ -19,6 +19,7 @@ import { SCENE_LIGHTING } from "../lighting";
 import { resolveSurfaces } from "../resolve";
 import { QUALITY_SETTINGS, resolveQuality, type ResolvedQuality } from "../quality";
 import type { ApartmentGeometry, RoomKind } from "@/lib/geometry/types";
+import type { StagingDetail } from "@/lib/three/staging";
 import type { ApartmentVisualizationProvider } from "../provider";
 import type {
   ApplyMaterialInput,
@@ -121,7 +122,7 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
 
     // פונקציה טהורה וזולה; אין כאן קריאת רשת ואין טעינת נכסים חיצוניים.
     this.geometry = input.geometry;
-    this.scene = buildSceneModel(input.geometry, DOLLHOUSE_CUT_M);
+    this.scene = buildSceneModel(input.geometry, DOLLHOUSE_CUT_M, this.stagingDetail);
     this.assignments.clear();
 
     this.state = {
@@ -215,7 +216,7 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
     // במצב סיור הקירות עומדים בגובהם האמיתי. חיתוך "בית בובות" נכון למבט
     // מלמעלה, אבל אדם שהולך בדירה אינו רואה את הקירות נגמרים בגובה החזה.
     if (this.geometry) {
-      this.scene = buildSceneModel(this.geometry, CEILING_HEIGHT_M);
+      this.scene = buildSceneModel(this.geometry, CEILING_HEIGHT_M, this.stagingDetail);
     }
 
     const path = options?.path ?? [];
@@ -231,7 +232,7 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
   async stopWalkthrough(): Promise<VisualizationState> {
     this.assertLive();
     if (this.geometry) {
-      this.scene = buildSceneModel(this.geometry, DOLLHOUSE_CUT_M);
+      this.scene = buildSceneModel(this.geometry, DOLLHOUSE_CUT_M, this.stagingDetail);
     }
     this.state = { ...this.state, cameraMode: "ORBIT", tourPath: [] };
     return this.render();
@@ -239,7 +240,19 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
 
   async setQualityMode(mode: QualityMode): Promise<VisualizationState> {
     this.assertLive();
-    this.state = { ...this.state, qualityMode: mode, effectiveQuality: resolveQuality(mode) };
+    const effectiveQuality = resolveQuality(mode);
+    this.state = { ...this.state, qualityMode: mode, effectiveQuality };
+
+    // רמת הפירוט של הריהוט היא חלק מהמודל, ולכן הסצנה נבנית מחדש. במצב
+    // ביצועים נשאר מה שמלמד על גודל החדר, ונעלם הנוי.
+    if (this.geometry) {
+      this.scene = buildSceneModel(
+        this.geometry,
+        this.state.cameraMode === "WALK" ? CEILING_HEIGHT_M : DOLLHOUSE_CUT_M,
+        effectiveQuality === "PERFORMANCE" ? "REDUCED" : "FULL",
+      );
+    }
+
     return this.render();
   }
 
@@ -248,7 +261,7 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
     // חזרה למפרט הסטנדרט ולמבט הפתיחה. הדירה עצמה נשארת טעונה.
     this.assignments.clear();
     if (this.geometry) {
-      this.scene = buildSceneModel(this.geometry, DOLLHOUSE_CUT_M);
+      this.scene = buildSceneModel(this.geometry, DOLLHOUSE_CUT_M, this.stagingDetail);
     }
     this.state = {
       ...this.state,
@@ -259,6 +272,11 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
       message: null,
     };
     return this.render();
+  }
+
+  /** רמת הפירוט של הריהוט לרמת האיכות הפעילה */
+  private get stagingDetail(): StagingDetail {
+    return this.state.effectiveQuality === "PERFORMANCE" ? "REDUCED" : "FULL";
   }
 
   /** הגדרות הרינדור לרמת האיכות הפעילה */

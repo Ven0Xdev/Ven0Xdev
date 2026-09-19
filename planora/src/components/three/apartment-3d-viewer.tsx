@@ -27,6 +27,7 @@ import type {
   MaterialAssignment,
   TimeOfDay,
 } from "@/lib/visualization/types";
+import type { SupplierAssetSource } from "@/lib/visualization/asset-registry";
 import { cn } from "@/lib/utils";
 
 /**
@@ -86,6 +87,7 @@ export function Apartment3DViewer({
   document,
   materials,
   environment,
+  supplierAssets,
   onSelectCategory,
   selectedCategory,
   availableCategories = [],
@@ -95,6 +97,8 @@ export function Apartment3DViewer({
   document: DrawingDocument;
   materials: MaterialAssignment[];
   environment?: ExteriorEnvironment | null;
+  /** נכסי הספקים שהוצהרו לדירה הזו */
+  supplierAssets?: SupplierAssetSource[];
   onSelectCategory?: (category: string, label: string) => void;
   selectedCategory?: string | null;
   /** הקטגוריות שיש להן מוצרים זמינים לדירה הזו */
@@ -109,7 +113,13 @@ export function Apartment3DViewer({
     startWalkthrough,
     stopWalkthrough,
     setQualityMode,
-  } = useApartmentVisualization({ apartmentId, document, materials, environment });
+  } = useApartmentVisualization({
+    apartmentId,
+    document,
+    materials,
+    environment,
+    supplierAssets,
+  });
 
   const [showLabels, setShowLabels] = useState(true);
   const [showSettings, setShowSettings] = useState(false);

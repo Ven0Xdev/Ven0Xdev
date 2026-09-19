@@ -8,7 +8,10 @@ import { PrismaClient } from "@prisma/client";
 import type { ApartmentStatus, SupplierCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-import { modifiedApartment42, standardApartment42 } from "../src/lib/drawing/demo/apartment-42";
+import {
+  modifiedPlanForApartmentType,
+  planForApartmentType,
+} from "../src/lib/drawing/demo/apartment-types";
 
 const prisma = new PrismaClient();
 
@@ -122,7 +125,7 @@ async function main() {
   ];
 
   console.log("יוצר 40 דירות...");
-  const apartments: { id: string; number: string }[] = [];
+  const apartments: { id: string; number: string; typeName: string }[] = [];
 
   for (let index = 0; index < 40; index += 1) {
     const floorNumber = Math.floor(index / 3) + 1;
@@ -187,7 +190,7 @@ async function main() {
       },
     });
 
-    apartments.push({ id: apartment.id, number });
+    apartments.push({ id: apartment.id, number, typeName: type.name });
   }
 
   // מחירון ותנאים מסחריים
@@ -285,15 +288,18 @@ async function main() {
 async function seedTenants(
   organizationId: string,
   projectId: string,
-  apartments: { id: string; number: string }[],
+  apartments: { id: string; number: string; typeName: string }[],
 ) {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
-  const standardDocument = standardApartment42();
-  const modifiedDocument = modifiedApartment42();
 
   for (const spec of DEMO_TENANTS) {
     const apartment = apartments.find((item) => item.number === spec.apartmentNumber);
     if (!apartment) continue;
+
+    // כל דירה מקבלת את התוכנית של הטיפוס שלה. שתי דירות מטיפוסים שונים
+    // נבדלות בחדרים, בקירות, בפתחים ובמרפסת — לא רק בשם.
+    const standardDocument = planForApartmentType(apartment.typeName);
+    const modifiedDocument = modifiedPlanForApartmentType(apartment.typeName);
 
     const user = await prisma.user.upsert({
       where: { email: spec.email },
@@ -325,40 +331,71 @@ async function seedTenants(
       data: { tenantUserId: user.id, buyerName: spec.name },
     });
 
-    // תוכניות לדירה — בסיס לתצוגה הדו-ממדית והתלת-ממדית
-    const hasPlan = await prisma.plan.findFirst({ where: { apartmentId: apartment.id } });
-    if (!hasPlan) {
-      const standardPlan = await prisma.plan.create({
-        data: { apartmentId: apartment.id, kind: "STANDARD", title: "תוכנית סטנדרט" },
+    // תוכניות לדירה — בסיס לתצוגה הדו-ממדית והתלת-ממדית.
+    // התוכנית נכתבת מחדש בכל הרצה: טיפוס הדירה עשוי להשתנות, ותוכנית ישנה
+    // שנשארת במקומה הייתה מציגה לדייר דירה שאינה שלו.
+    {
+      const standardPlan =
+        (await prisma.plan.findFirst({
+          where: { apartmentId: apartment.id, kind: "STANDARD" },
+        })) ??
+        (await prisma.plan.create({
+          data: { apartmentId: apartment.id, kind: "STANDARD", title: "תוכנית סטנדרט" },
+        }));
+
+      const standardVersion = await prisma.planVersion.findFirst({
+        where: { planId: standardPlan.id },
+        orderBy: { versionNo: "asc" },
       });
-      await prisma.planVersion.create({
-        data: {
-          planId: standardPlan.id,
-          versionNo: 1,
-          title: "תוכנית סטנדרט",
-          status: "APPROVED",
-          isCurrent: true,
-          approvedAt: daysAgo(60),
-          elements: standardDocument as never,
-        },
-      });
+
+      const standardData = {
+        planId: standardPlan.id,
+        versionNo: 1,
+        title: "תוכנית סטנדרט",
+        status: "APPROVED" as const,
+        isCurrent: true,
+        approvedAt: daysAgo(60),
+        elements: standardDocument as never,
+      };
+
+      if (standardVersion) {
+        await prisma.planVersion.update({ where: { id: standardVersion.id }, data: standardData });
+      } else {
+        await prisma.planVersion.create({ data: standardData });
+      }
 
       // לדירה של נועם יש גם תוכנית שינויים, כדי שההשוואה תהיה אמיתית
       if (spec.apartmentNumber === "18") {
-        const modifiedPlan = await prisma.plan.create({
-          data: { apartmentId: apartment.id, kind: "MODIFIED", title: "תוכנית שינויים" },
+        const modifiedPlan =
+          (await prisma.plan.findFirst({
+            where: { apartmentId: apartment.id, kind: "MODIFIED" },
+          })) ??
+          (await prisma.plan.create({
+            data: { apartmentId: apartment.id, kind: "MODIFIED", title: "תוכנית שינויים" },
+          }));
+
+        const modifiedVersion = await prisma.planVersion.findFirst({
+          where: { planId: modifiedPlan.id },
+          orderBy: { versionNo: "asc" },
         });
-        await prisma.planVersion.create({
-          data: {
-            planId: modifiedPlan.id,
-            versionNo: 2,
-            title: "שינויי מעצבת",
-            status: "IN_REVIEW",
-            isCurrent: true,
-            createdAt: daysAgo(5),
-            elements: modifiedDocument as never,
-          },
-        });
+
+        const modifiedData = {
+          planId: modifiedPlan.id,
+          versionNo: 2,
+          title: "שינויי מעצבת",
+          status: "IN_REVIEW" as const,
+          isCurrent: true,
+          elements: modifiedDocument as never,
+        };
+
+        if (modifiedVersion) {
+          await prisma.planVersion.update({
+            where: { id: modifiedVersion.id },
+            data: modifiedData,
+          });
+        } else {
+          await prisma.planVersion.create({ data: { ...modifiedData, createdAt: daysAgo(5) } });
+        }
       }
     }
 

@@ -30,6 +30,7 @@ export default async function TenantApartmentPage() {
         recommendations={data.recommendations}
         materials={data.materials}
         environment={data.environment}
+        supplierAssets={data.supplierAssets}
         document={data.document}
         isLocked={isLocked}
         isSubmitted={isLocked}

@@ -9,7 +9,9 @@ import { RoundedBoxGeometry } from "three-stdlib";
 import {
   disposeProceduralTextures,
   getProceduralTextures,
+  preloadStandardTextures,
 } from "@/lib/three/procedural-textures";
+import { STANDARD_SURFACES } from "@/lib/visualization/material-library";
 import type { MaterialSlot, SceneBox, SceneModel } from "@/lib/three/scene-model";
 import { CameraRig, type CameraMode } from "./camera-rig";
 import { BALCONY_LIGHT_COLOR, INTERIOR_LIGHT_COLOR } from "@/lib/visualization/lighting";
@@ -444,9 +446,16 @@ function RoomLabels({ rooms }: { rooms: SceneModel["rooms"] }) {
   );
 }
 
-/** משחרר את המרקמים כשהמסך נסגר */
-function TextureCleanup() {
-  useEffect(() => () => disposeProceduralTextures(), []);
+/**
+ * מכין מראש את מרקמי הסטנדרט ומשחרר את כולם כשהמסך נסגר.
+ * בלי השחרור, מעבר בין מסכים היה משאיר מרקמים בזיכרון הכרטיס.
+ */
+function TextureLifecycle({ maxTextureSize }: { maxTextureSize: number }) {
+  useEffect(() => {
+    preloadStandardTextures(Object.values(STANDARD_SURFACES), Math.min(maxTextureSize, 1024));
+    return () => disposeProceduralTextures();
+  }, [maxTextureSize]);
+
   return null;
 }
 
@@ -495,7 +504,7 @@ export function ApartmentScene({
         background: `linear-gradient(180deg, ${lighting.background} 0%, ${lighting.horizonColor} 100%)`,
       }}
     >
-      <TextureCleanup />
+      <TextureLifecycle maxTextureSize={quality.maxTextureSize} />
 
       {/*
         המפתח מאלץ אפייה מחדש של מפת הסביבה כשהתאורה משתנה. בלעדיו המפה

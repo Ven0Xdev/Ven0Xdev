@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/i18n/format";
 import { TENANT_CATEGORY_LABELS } from "@/lib/i18n/he";
 import type { DrawingDocument } from "@/lib/drawing/types";
 import type { ExteriorEnvironment, MaterialAssignment } from "@/lib/visualization/types";
+import type { SupplierAssetSource } from "@/lib/visualization/asset-registry";
 import type { ConfigurationPricing } from "@/lib/pricing/configuration";
 import type { Recommendation } from "@/lib/recommendations/engine";
 import { selectProduct } from "@/server/actions/selections";
@@ -32,6 +33,7 @@ export function Configurator({
   recommendations,
   materials,
   environment,
+  supplierAssets,
   document,
   isLocked,
   isSubmitted,
@@ -43,6 +45,7 @@ export function Configurator({
   recommendations: Recommendation[];
   materials: MaterialAssignment[];
   environment?: ExteriorEnvironment | null;
+  supplierAssets?: SupplierAssetSource[];
   document: DrawingDocument | null;
   isLocked: boolean;
   isSubmitted: boolean;
@@ -140,6 +143,7 @@ export function Configurator({
                 apartmentId={apartmentId}
                 document={document}
                 environment={environment}
+                supplierAssets={supplierAssets}
                 materials={materials}
                 selectedCategory={activeCategory}
                 availableCategories={categories}

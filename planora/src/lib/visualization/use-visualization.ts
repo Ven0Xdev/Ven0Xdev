@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createVisualizationProvider, type ApartmentVisualizationProvider } from "./provider";
 import { createGeometryProvider } from "@/lib/geometry/provider";
 import { detectQualityMode, isWebGLAvailable } from "./quality";
+import { registerSupplierAssets, type SupplierAssetSource } from "./asset-registry";
 import {
   VisualizationUnsupportedError,
   type ExteriorEnvironment,
@@ -47,11 +48,14 @@ export function useApartmentVisualization({
   document,
   materials,
   environment,
+  supplierAssets,
 }: {
   apartmentId: string;
   document: DrawingDocument;
   materials: MaterialAssignment[];
   environment?: ExteriorEnvironment | null;
+  /** נכסי הספקים שקיימים למוצרים של הדירה הזו */
+  supplierAssets?: SupplierAssetSource[];
 }) {
   const [provider, setProvider] = useState<ApartmentVisualizationProvider | null>(null);
   const [state, setState] = useState<VisualizationState>(INITIAL_STATE);
@@ -60,6 +64,14 @@ export function useApartmentVisualization({
   // מחדש של התצורה — וקפיצה של המצלמה — כשדבר לא באמת השתנה.
   const materialsKey = useMemo(() => JSON.stringify(materials), [materials]);
   const autoQuality = useMemo(() => detectQualityMode(), []);
+
+  // הצהרת נכסי הספקים במרשם. אין כאן טעינה — רק רישום, כדי שכתובת נכס לא
+  // תיקבר בתוך רכיב תצוגה.
+  const assetsKey = useMemo(() => JSON.stringify(supplierAssets ?? []), [supplierAssets]);
+  useEffect(() => {
+    const declared = JSON.parse(assetsKey) as SupplierAssetSource[];
+    if (declared.length > 0) registerSupplierAssets(declared);
+  }, [assetsKey]);
   const materialsRef = useRef(materials);
   materialsRef.current = materials;
 

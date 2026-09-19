@@ -10,6 +10,7 @@ import { computeConfigurationPricing } from "@/lib/pricing/configuration";
 import { recommendForSelections } from "@/lib/recommendations/engine";
 import { toMaterialAssignment } from "@/lib/visualization/materials";
 import { resolveViewType } from "@/lib/visualization/environment";
+import type { SupplierAssetSource } from "@/lib/visualization/asset-registry";
 import type { ExteriorEnvironment, MaterialAssignment } from "@/lib/visualization/types";
 import type { DrawingDocument } from "@/lib/drawing/types";
 
@@ -20,6 +21,9 @@ export interface TenantVariant {
   priceDelta: number;
   imageUrl: string | null;
   color: string | null;
+  /** נכסי הספק של הווריאנט, כאשר הועלו */
+  modelUrl: string | null;
+  textureUrl: string | null;
 }
 
 export interface TenantProduct {
@@ -29,6 +33,8 @@ export interface TenantProduct {
   category: SupplierCategory;
   supplierName: string;
   imageUrl: string | null;
+  /** נכס תלת-ממד של הספק, כאשר קיים. טקסטורות יושבות על הווריאנט. */
+  modelUrl: string | null;
   eligibility: EligibilityResult;
   variants: TenantVariant[];
   isStandard: boolean;
@@ -123,6 +129,7 @@ export async function getTenantConfigurator(apartmentId: string) {
       category: entry.product.category,
       supplierName: entry.product.supplier.name,
       imageUrl: entry.product.imageUrl,
+      modelUrl: entry.product.modelUrl,
       eligibility,
       isStandard: standardProductIds.has(entry.productId),
       selectedVariantId: selection?.variantId ?? null,
@@ -134,6 +141,8 @@ export async function getTenantConfigurator(apartmentId: string) {
         optionType: variant.optionType,
         priceDelta: variant.priceDelta,
         imageUrl: variant.imageUrl,
+        modelUrl: variant.modelUrl,
+        textureUrl: variant.textureUrl,
         color:
           entry.product.materials.find((material) => material.variantId === variant.id)?.color ??
           null,
@@ -244,6 +253,31 @@ export async function getTenantConfigurator(apartmentId: string) {
         }
       : null;
 
+  // נכסי הספקים שקיימים בפועל למוצרים של הדירה הזו. מוצר בלי נכס אינו
+  // מוצהר — המרשם אינו ממציא כתובות.
+  const supplierAssets: SupplierAssetSource[] = [
+    ...products
+      .filter((product) => product.modelUrl)
+      .map((product) => ({
+        productId: product.id,
+        variantId: null,
+        name: product.name,
+        modelUrl: product.modelUrl,
+        textureUrl: null,
+      })),
+    ...products.flatMap((product) =>
+      product.variants
+        .filter((variant) => variant.modelUrl || variant.textureUrl)
+        .map((variant) => ({
+          productId: product.id,
+          variantId: variant.id,
+          name: `${product.name} · ${variant.name}`,
+          modelUrl: variant.modelUrl,
+          textureUrl: variant.textureUrl,
+        })),
+    ),
+  ];
+
   return {
     apartment,
     configuration,
@@ -253,6 +287,7 @@ export async function getTenantConfigurator(apartmentId: string) {
     pricing,
     materials,
     environment,
+    supplierAssets,
     document: (currentVersion?.elements as unknown as DrawingDocument | null) ?? null,
   };
 }

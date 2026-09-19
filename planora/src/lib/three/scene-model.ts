@@ -10,7 +10,7 @@
 
 import type { ApartmentGeometry, Vec2 } from "@/lib/geometry/types";
 import type { PbrMaterial } from "@/lib/visualization/material-library";
-import { buildStaging, type StagingShape } from "./staging";
+import { buildStaging, type StagingDetail, type StagingShape } from "./staging";
 
 /** גובה חלל פנימי סטנדרטי במטרים */
 export const CEILING_HEIGHT_M = 2.7;
@@ -133,6 +133,7 @@ function outlineBox(outline: Vec2[]): { center: Vec2; width: number; depth: numb
 export function buildSceneModel(
   geometry: ApartmentGeometry,
   cutHeightM: number = DOLLHOUSE_CUT_M,
+  stagingDetail: StagingDetail = "FULL",
 ): SceneModel {
   const boxes: SceneBox[] = [];
   const openings: SceneOpening[] = [];
@@ -267,7 +268,7 @@ export function buildSceneModel(
   }
 
   // ריהוט המחשה נוסף אחרון, אחרי כל מה שמגיע מהתוכנית
-  for (const item of buildStaging(geometry, cutHeightM)) {
+  for (const item of buildStaging(geometry, cutHeightM, stagingDetail)) {
     boxes.push({
       id: item.id,
       kind: "STAGING",
