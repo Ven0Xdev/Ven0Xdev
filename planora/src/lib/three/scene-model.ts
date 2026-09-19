@@ -183,11 +183,26 @@ export function buildSceneModel(
     });
   }
 
-  // הערה על תקרות: תקרה גאומטרית נראית כמו הפתרון הנכון למצב סיור, אבל היא
-  // חוסמת את המצלמה, מבלבלת את בדיקת ההתנגשויות ומחשיכה את החלל לגמרי —
-  // כי אין כאן תאורה גלובלית שתחזיר אור מהתקרה בחזרה לחדר. במקום זאת
-  // `enclosed` מסמן לשכבת התאורה להתנהג כאילו יש תקרה: שמיים מוחלשים,
-  // אור שנכנס מהפתחים, ותאורה פנימית דולקת.
+  // --- תקרות ---
+  // רק במצב סיור. בלעדיהן המצלמה רואה מעל הקירות אל השמיים, והחלל מפסיק
+  // להרגיש כמו חדר. התקרה נושאת `kind: "CEILING"` בכוונה — כשהיא נחשבה
+  // לקיר, בדיקת ההתנגשויות ראתה את כל החדר כחסום.
+  if (enclosed) {
+    for (const ceiling of geometry.ceilings) {
+      const room = roomById.get(ceiling.roomId);
+      if (!room || room.isOutdoor) continue;
+
+      const { center, width, depth } = outlineBox(room.outline);
+      boxes.push({
+        id: ceiling.id,
+        kind: "CEILING",
+        position: [center.x, ceiling.heightM + 0.06, center.z],
+        size: [width, 0.12, depth],
+        materialSlot: "wall",
+        selectable: false,
+      });
+    }
+  }
 
   // --- פתחים ---
   for (const opening of geometry.openings) {

@@ -112,10 +112,11 @@ export const FAMILY_DEFAULTS: Record<MaterialFamily, Omit<PbrMaterial, "family" 
     envIntensity: 0.4,
   },
   GLASS: {
-    roughness: 0.06,
+    roughness: 0.05,
     metalness: 0,
-    opacity: 0.28,
-    envIntensity: 1.6,
+    // כמעט שקופה — מה שנראה דרכה הוא הנוף, לא הזכוכית
+    opacity: 0.13,
+    envIntensity: 1.8,
     normalStrength: 0,
   },
   METAL: {
@@ -216,7 +217,7 @@ export const STANDARD_SURFACES: Record<MaterialSurface, PbrMaterial> = {
   },
   windowFrame: {
     family: "GLASS",
-    baseColor: "#b7cfdd",
+    baseColor: "#dceaf2",
     ...FAMILY_DEFAULTS.GLASS,
   },
   sanitary: {

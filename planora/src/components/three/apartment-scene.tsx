@@ -168,6 +168,7 @@ function Surface({
       ? lighten(material.baseColor)
       : material.baseColor;
   const usePhysical = material.family === "GLASS" || (material.clearcoat ?? 0) > 0;
+  const isGlass = material.family === "GLASS";
 
   const common = {
     color: tint,
@@ -179,6 +180,9 @@ function Surface({
     envMapIntensity: material.envIntensity ?? 0.5,
     transparent,
     opacity: material.opacity ?? 1,
+    // זכוכית אינה מטילה צל ואינה חוסמת את המבט
+    depthWrite: !isGlass,
+    side: isGlass ? THREE.DoubleSide : THREE.FrontSide,
     // הדגשה נעשית באור עצמי ולא בשינוי הגוון, כדי שהחומר שנבחר יישאר נאמן.
     // גוף תאורה נושא אור עצמי משלו, ואין להחליף אותו בכחול ההדגשה.
     emissive: active ? "#2f5d99" : (material.emissive ?? "#000000"),
@@ -193,8 +197,8 @@ function Surface({
     <mesh
       geometry={geometry}
       position={box.position}
-      castShadow={box.kind !== "FLOOR"}
-      receiveShadow
+      castShadow={box.kind !== "FLOOR" && box.kind !== "CEILING" && !isGlass}
+      receiveShadow={!isGlass}
       onPointerOver={(event) => {
         if (!isInteractive) return;
         event.stopPropagation();
@@ -217,8 +221,8 @@ function Surface({
           {...common}
           clearcoat={material.clearcoat ?? 0}
           clearcoatRoughness={0.15}
-          transmission={material.family === "GLASS" ? 0.6 : 0}
-          thickness={material.family === "GLASS" ? 0.02 : 0}
+          // זכוכית שקופה ממש, בלי transmission: הנוף שמאחוריה כבר מרונדר,
+          // וחלון שרואים דרכו הוא מה שהופך חדר לחדר ולא לקופסה.
           ior={1.45}
         />
       ) : (
@@ -332,9 +336,10 @@ function InteriorLights({
         return (
           <pointLight
             key={room.id}
-            position={[room.center[0], outdoor ? 2.2 : 2.45, room.center[1]]}
+            // נמוך מהתקרה: גוף אור צמוד לתקרה שורף עליה כתם, כמו על קיר
+            position={[room.center[0], outdoor ? 2.1 : 2.05, room.center[1]]}
             // עוצמה נמוכה ומרחק גדול: אור חזק קרוב לקיר נשרף לכתם לבן
-            intensity={intensity * (outdoor ? 5 : 7) * exposure}
+            intensity={intensity * (outdoor ? 4 : 5.5) * exposure}
             distance={outdoor ? 7 : 11}
             decay={2}
             color={outdoor ? BALCONY_LIGHT_COLOR : INTERIOR_LIGHT_COLOR}
@@ -357,11 +362,14 @@ function DaylightOpenings({
   lighting,
   exposure,
   maxLights,
+  center,
 }: {
   openings: SceneModel["openings"];
   lighting: SceneLightingDescriptor;
   exposure: number;
   maxLights: number;
+  /** מרכז הדירה — לקביעת הכיוון שאליו האור נכנס */
+  center: [number, number];
 }) {
   // בלילה לא נכנס אור יום; התאורה הפנימית עושה את העבודה
   const strength = lighting.sunIntensity * 0.3 * exposure;
@@ -374,16 +382,29 @@ function DaylightOpenings({
 
   return (
     <>
-      {lit.map((opening) => (
+      {lit.map((opening) => {
+        // האור מוזז פנימה מהפתח. גוף אור שנשאר בתוך הפתח שורף כתם לבן על
+        // הקיר שסביבו, במקום להאיר את החדר.
+        const toCentre = [center[0] - opening.position[0], center[1] - opening.position[2]];
+        const length = Math.hypot(toCentre[0], toCentre[1]) || 1;
+        const inset = 1.1;
+        const position: [number, number, number] = [
+          opening.position[0] + (toCentre[0] / length) * inset,
+          opening.position[1],
+          opening.position[2] + (toCentre[1] / length) * inset,
+        ];
+
+        return (
         <pointLight
           key={opening.id}
-          position={opening.position}
+          position={position}
           intensity={strength * (opening.isBalconyDoor ? 2 : 1) * opening.widthM}
           distance={opening.isBalconyDoor ? 11 : 7}
           decay={2}
           color={lighting.skyColor}
         />
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -567,6 +588,7 @@ export function ApartmentScene({
           lighting={lighting}
           exposure={exposure}
           maxLights={quality.maxLocalLights}
+          center={model.center}
         />
       ) : null}
       <CityLights lighting={lighting} span={span} />
