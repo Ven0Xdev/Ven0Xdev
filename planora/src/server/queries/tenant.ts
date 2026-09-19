@@ -9,7 +9,8 @@ import {
 import { computeConfigurationPricing } from "@/lib/pricing/configuration";
 import { recommendForSelections } from "@/lib/recommendations/engine";
 import { toMaterialAssignment } from "@/lib/visualization/materials";
-import type { MaterialAssignment } from "@/lib/visualization/types";
+import { resolveViewType } from "@/lib/visualization/environment";
+import type { ExteriorEnvironment, MaterialAssignment } from "@/lib/visualization/types";
 import type { DrawingDocument } from "@/lib/drawing/types";
 
 export interface TenantVariant {
@@ -49,7 +50,16 @@ export async function getTenantConfigurator(apartmentId: string) {
       building: true,
       floor: true,
       apartmentType: true,
-      project: { select: { id: true, name: true, developerName: true, changeDeadline: true } },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          developerName: true,
+          changeDeadline: true,
+          city: true,
+          defaultViewType: true,
+        },
+      },
       plans: {
         include: { versions: { orderBy: { versionNo: "asc" } } },
       },
@@ -213,6 +223,27 @@ export async function getTenantConfigurator(apartmentId: string) {
     modifiedPlan?.versions.filter((version) => version.isCurrent).at(-1) ??
     standardPlan?.versions.at(-1);
 
+  // --- הנוף מסביב לדירה ---
+  // פרופיל הדירה גובר על ברירת המחדל של הפרויקט. גובה הקומה נגזר מהקומה
+  // עצמה כאשר לא הוזן במפורש, כדי שדירה בקומה 6 לא תוצג בגובה הקרקע.
+  const viewProfile = apartment.viewProfile;
+  const environment: ExteriorEnvironment | null =
+    viewProfile || apartment.project.defaultViewType
+      ? {
+          viewType: resolveViewType(
+            viewProfile?.viewType,
+            apartment.project.defaultViewType,
+          ),
+          floorHeightM:
+            viewProfile?.floorHeightM ??
+            (apartment.floor ? apartment.floor.number * 3 : null),
+          orientation: viewProfile?.orientation ?? null,
+          balconyDirection: viewProfile?.balconyDirection ?? null,
+          latitude: viewProfile?.latitude ?? null,
+          longitude: viewProfile?.longitude ?? null,
+        }
+      : null;
+
   return {
     apartment,
     configuration,
@@ -221,6 +252,7 @@ export async function getTenantConfigurator(apartmentId: string) {
     recommendations,
     pricing,
     materials,
+    environment,
     document: (currentVersion?.elements as unknown as DrawingDocument | null) ?? null,
   };
 }

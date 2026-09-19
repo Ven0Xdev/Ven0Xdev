@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/misc";
 import { formatCurrency } from "@/lib/i18n/format";
 import { TENANT_CATEGORY_LABELS } from "@/lib/i18n/he";
 import type { DrawingDocument } from "@/lib/drawing/types";
-import type { MaterialAssignment } from "@/lib/visualization/types";
+import type { ExteriorEnvironment, MaterialAssignment } from "@/lib/visualization/types";
 import type { ConfigurationPricing } from "@/lib/pricing/configuration";
 import type { Recommendation } from "@/lib/recommendations/engine";
 import { selectProduct } from "@/server/actions/selections";
@@ -31,6 +31,7 @@ export function Configurator({
   pricing,
   recommendations,
   materials,
+  environment,
   document,
   isLocked,
   isSubmitted,
@@ -41,6 +42,7 @@ export function Configurator({
   pricing: ConfigurationPricing;
   recommendations: Recommendation[];
   materials: MaterialAssignment[];
+  environment?: ExteriorEnvironment | null;
   document: DrawingDocument | null;
   isLocked: boolean;
   isSubmitted: boolean;
@@ -108,6 +110,7 @@ export function Configurator({
               <Apartment3DViewer
                 apartmentId={apartmentId}
                 document={document}
+                environment={environment}
                 materials={materials}
                 selectedCategory={activeCategory}
                 onSelectCategory={(category) => {

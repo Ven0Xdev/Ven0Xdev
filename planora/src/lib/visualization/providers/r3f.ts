@@ -49,7 +49,8 @@ const R3F_CAPABILITIES: VisualizationCapabilities = {
   roomNavigation: true,
   guidedTour: true,
   interiorLighting: true,
-  exteriorEnvironment: false,
+  // נוף אופייני לפי סוג הנוף, גובה הקומה וכיוון המרפסת — לא נוף גיאוגרפי מדויק
+  exteriorEnvironment: true,
   walkthrough: true,
   balconyVisualization: true,
   supplierDrivenMaterials: true,

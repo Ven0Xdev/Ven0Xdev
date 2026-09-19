@@ -417,6 +417,10 @@ model Project {
   contractorName        String?
   address               String?
   city                  String?
+  /// סוג הנוף שברירת המחדל של הפרויקט — דירה ללא פרופיל נוף יורשת אותו
+  defaultViewType       ViewType?
+  /// ערכת סביבה ברמת הפרויקט
+  environmentPreset     String?
   status                ProjectStatus @default(PLANNING)
   description           String?
   tenantChangeManagerId String?
@@ -1665,6 +1669,10 @@ model ApartmentViewProfile {
   orientation      Float?
   viewType         ViewType  @default(OTHER)
   balconyDirection Float?
+  /// העיר שבה נמצא הבניין — קובעת את אופי הנוף
+  city             String?
+  /// ערכת סביבה מפורשת, כאשר יש לעקוף את ברירת המחדל של סוג הנוף
+  environmentPreset String?
   notes            String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

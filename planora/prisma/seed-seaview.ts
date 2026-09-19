@@ -66,6 +66,7 @@ async function main() {
       contractorName: "בנייה הדגמה",
       address: "טיילת הים 9",
       city: "בת ים",
+      defaultViewType: "SEA",
       status: "TENANT_CHANGES",
       description: "40 דירות מול הים. שלב שינויי דיירים פתוח, עם פורטל אישי לכל דייר.",
       tenantChangeManagerId: manager?.id,
@@ -156,6 +157,35 @@ async function main() {
     const apartment = existing
       ? await prisma.apartment.update({ where: { id: existing.id }, data })
       : await prisma.apartment.create({ data });
+
+    // פרופיל הנוף — Sea View Residence בנתניה, החזית פונה מערבה אל הים.
+    // דירות בחזית מקבלות נוף לים; העורפיות מקבלות נוף עירוני.
+    // דירות ההדגמה של הדיירים פונות לים — הן החזית של הפרויקט
+    const isDemoTenantApartment = DEMO_TENANTS.some(
+      (tenant) => tenant.apartmentNumber === number,
+    );
+    const facesSea = isDemoTenantApartment || index % 3 !== 2;
+    await prisma.apartmentViewProfile.upsert({
+      where: { apartmentId: apartment.id },
+      create: {
+        apartmentId: apartment.id,
+        viewType: facesSea ? "SEA" : "CITY",
+        // גובה קומה אופייני 3 מ', והקומה הראשונה מוגבהת מעל הלובי
+        floorHeightM: 1.5 + floorNumber * 3,
+        orientation: facesSea ? 270 : 90,
+        balconyDirection: facesSea ? 270 : 90,
+        latitude: 32.0171,
+        longitude: 34.7445,
+        city: "בת ים",
+      },
+      update: {
+        viewType: facesSea ? "SEA" : "CITY",
+        floorHeightM: 1.5 + floorNumber * 3,
+        orientation: facesSea ? 270 : 90,
+        balconyDirection: facesSea ? 270 : 90,
+        city: "בת ים",
+      },
+    });
 
     apartments.push({ id: apartment.id, number });
   }

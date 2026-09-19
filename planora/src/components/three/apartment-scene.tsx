@@ -14,7 +14,13 @@ import type { MaterialSlot, SceneBox, SceneModel } from "@/lib/three/scene-model
 import { CameraRig, type CameraMode } from "./camera-rig";
 import { BALCONY_LIGHT_COLOR, INTERIOR_LIGHT_COLOR } from "@/lib/visualization/lighting";
 import type { QualitySettings } from "@/lib/visualization/quality";
-import type { ResolvedMaterial, SceneLightingDescriptor } from "@/lib/visualization/types";
+import type {
+  ExteriorEnvironment,
+  ResolvedMaterial,
+  SceneLightingDescriptor,
+  TimeOfDay,
+} from "@/lib/visualization/types";
+import { Exterior } from "./exterior";
 import { PostEffects } from "./post-effects";
 
 export type { CameraMode };
@@ -24,6 +30,9 @@ interface SceneProps {
   materials: Record<MaterialSlot, ResolvedMaterial>;
   lighting: SceneLightingDescriptor;
   quality: QualitySettings;
+  /** הנוף מסביב לבניין. `null` — תצוגת דירה בלבד. */
+  environment: ExteriorEnvironment | null;
+  timeOfDay: TimeOfDay;
   cameraMode: CameraMode;
   focusedRoomId: string | null;
   /** מסלול הסיור הקולנועי. ריק = אין סיור פעיל. */
@@ -443,6 +452,8 @@ export function ApartmentScene({
   materials,
   lighting,
   quality,
+  environment,
+  timeOfDay,
   cameraMode,
   focusedRoomId,
   tourRoomIds,
@@ -475,6 +486,7 @@ export function ApartmentScene({
         gl.toneMappingExposure = 1;
       }}
       // רקע מדורג: שמיים למעלה, ערפילי אופק למטה. רקע שטוח שיטח גם את הדירה.
+      // הרקע מגיע מכיפת השמיים של הסביבה; הגרדיאנט נשאר כגיבוי עד שהיא נטענת
       style={{
         background: `linear-gradient(180deg, ${lighting.background} 0%, ${lighting.horizonColor} 100%)`,
       }}
@@ -487,6 +499,19 @@ export function ApartmentScene({
         בתאורה נראה כאילו אין לו השפעה.
       */}
       <SceneEnvironment key={environmentKey} lighting={lighting} />
+
+      {/*
+        ערפילי מרחק. חייבים להיות ילד ישיר של הסצנה — בתוך group הם נתלים על
+        ה-group ואינם משפיעים על דבר.
+      */}
+      <fog attach="fog" args={[lighting.horizonColor, 260, 1200]} />
+
+      <Exterior
+        environment={environment}
+        timeOfDay={timeOfDay}
+        quality={quality}
+        apartmentSpanM={span}
+      />
 
       {/*
         מילוי שמחליף את האור החוזר מהקירות ומהתקרה. אין כאן תאורה גלובלית,
@@ -533,7 +558,7 @@ export function ApartmentScene({
       ) : null}
       <CityLights lighting={lighting} span={span} />
 
-      {/* משטח בסיס — מעגן את הדירה בלי להשתלט על התמונה */}
+      {/* רצפת הבניין — התקרה של הקומה שמתחת. תמיד מתחת לדירה בלבד. */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[model.center[0], -0.15, model.center[1]]}

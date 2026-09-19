@@ -6,7 +6,7 @@ import { Apartment3DViewer } from "@/components/three/apartment-3d-viewer";
 import { PlanViewer } from "@/components/drawing/plan-viewer";
 import { EmptyState } from "@/components/ui/misc";
 import type { DrawingDocument } from "@/lib/drawing/types";
-import type { MaterialAssignment } from "@/lib/visualization/types";
+import type { ExteriorEnvironment, MaterialAssignment } from "@/lib/visualization/types";
 import { cn } from "@/lib/utils";
 
 type Version = "ORIGINAL" | "MINE";
@@ -21,12 +21,14 @@ export function ApartmentView({
   standardDocument,
   currentDocument,
   materials,
+  environment,
   mode,
 }: {
   apartmentId: string;
   standardDocument: DrawingDocument | null;
   currentDocument: DrawingDocument | null;
   materials: MaterialAssignment[];
+  environment?: ExteriorEnvironment | null;
   mode: "3D" | "2D";
 }) {
   const [version, setVersion] = useState<Version>("MINE");
@@ -77,6 +79,7 @@ export function ApartmentView({
         <Apartment3DViewer
           apartmentId={apartmentId}
           document={document}
+          environment={environment}
           materials={activeMaterials}
           className="h-[min(64vh,600px)]"
         />

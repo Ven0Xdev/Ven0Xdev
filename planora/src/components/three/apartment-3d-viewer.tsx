@@ -22,7 +22,11 @@ import { SCENE_TIME_LABELS } from "@/lib/i18n/he";
 import type { SceneModel } from "@/lib/three/scene-model";
 import { QUALITY_LABELS, QUALITY_SETTINGS, type ResolvedQuality } from "@/lib/visualization/quality";
 import { useApartmentVisualization } from "@/lib/visualization/use-visualization";
-import type { MaterialAssignment, TimeOfDay } from "@/lib/visualization/types";
+import type {
+  ExteriorEnvironment,
+  MaterialAssignment,
+  TimeOfDay,
+} from "@/lib/visualization/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -81,6 +85,7 @@ export function Apartment3DViewer({
   apartmentId,
   document,
   materials,
+  environment,
   onSelectCategory,
   selectedCategory,
   className,
@@ -88,6 +93,7 @@ export function Apartment3DViewer({
   apartmentId: string;
   document: DrawingDocument;
   materials: MaterialAssignment[];
+  environment?: ExteriorEnvironment | null;
   onSelectCategory?: (category: string, label: string) => void;
   selectedCategory?: string | null;
   className?: string;
@@ -100,7 +106,7 @@ export function Apartment3DViewer({
     startWalkthrough,
     stopWalkthrough,
     setQualityMode,
-  } = useApartmentVisualization({ apartmentId, document, materials });
+  } = useApartmentVisualization({ apartmentId, document, materials, environment });
 
   const [showLabels, setShowLabels] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -143,6 +149,8 @@ export function Apartment3DViewer({
           materials={presentation.materials}
           lighting={presentation.lighting}
           quality={QUALITY_SETTINGS[state.effectiveQuality]}
+          environment={state.environment}
+          timeOfDay={state.timeOfDay}
           cameraMode={state.cameraMode}
           focusedRoomId={state.focusedRoomId}
           tourRoomIds={state.tourPath}
@@ -370,7 +378,9 @@ export function Apartment3DViewer({
           <p className="absolute bottom-3 end-3 max-w-56 rounded-control bg-surface/88 px-2.5 py-1.5 text-[11px] leading-4 text-ink-muted shadow-subtle backdrop-blur-sm">
             {state.cameraMode === "WALK" && !isTouring
               ? "גררו כדי להסתכל מסביב, והשתמשו במקשי החיצים כדי להתקדם."
-              : "התצוגה ממחישה את מפרט הדירה. הריהוט להמחשה בלבד ואינו כלול. הגימור הסופי נקבע במפרט הטכני ובתוכניות המאושרות."}
+              : `התצוגה ממחישה את מפרט הדירה. הריהוט להמחשה בלבד ואינו כלול${
+                  environment ? ", והנוף מסביב אופייני ואינו הנוף המדויק" : ""
+                }. הגימור הסופי נקבע במפרט הטכני ובתוכניות המאושרות.`}
           </p>
         </>
       ) : null}

@@ -33,6 +33,7 @@ export default async function TenantViewPage() {
         standardDocument={(standardVersion?.elements as unknown as DrawingDocument | null) ?? null}
         currentDocument={data.document}
         materials={data.materials}
+        environment={data.environment}
       />
     </>
   );
