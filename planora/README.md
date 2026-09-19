@@ -326,7 +326,7 @@ Supplier ─┬─ Catalog ─── CatalogProduct ─┬─ ProductVariant ─
 
 ```
 מסך → useApartmentVisualization → ApartmentVisualizationProvider
-                                      ├── PrototypeVisualizationProvider    (Three.js, פעיל)
+                                      ├── R3FVisualizationProvider          (React Three Fiber, פעיל)
                                       └── UnrealPixelStreamingProvider      (Unreal, עתידי — שלד בלבד)
 ```
 
@@ -334,7 +334,7 @@ Supplier ─┬─ Catalog ─── CatalogProduct ─┬─ ProductVariant ─
 `REMOTE_STREAM`. החלפת המנוע נעשית במשתנה סביבה אחד:
 
 ```bash
-NEXT_PUBLIC_VISUALIZATION_PROVIDER=prototype-three   # ברירת מחדל
+NEXT_PUBLIC_VISUALIZATION_PROVIDER=r3f-webgl         # ברירת מחדל
 ```
 
 פירוט מלא, כולל מה צריך להיבנות בצד שרת ה-Unreal: [`docs/VISUALIZATION.md`](docs/VISUALIZATION.md).

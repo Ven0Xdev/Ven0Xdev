@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Environment, Html, Lightformer, OrbitControls } from "@react-three/drei";
+import { useEffect, useMemo, useState } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { ContactShadows, Environment, Html, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 
 import {
@@ -10,12 +10,13 @@ import {
   getProceduralTextures,
 } from "@/lib/three/procedural-textures";
 import type { MaterialSlot, SceneBox, SceneModel } from "@/lib/three/scene-model";
+import { CameraRig, type CameraMode } from "./camera-rig";
 import { BALCONY_LIGHT_COLOR, INTERIOR_LIGHT_COLOR } from "@/lib/visualization/lighting";
 import type { QualitySettings } from "@/lib/visualization/quality";
 import type { ResolvedMaterial, SceneLightingDescriptor } from "@/lib/visualization/types";
 import { PostEffects } from "./post-effects";
 
-export type CameraMode = "ORBIT" | "WALK";
+export type { CameraMode };
 
 interface SceneProps {
   model: SceneModel;
@@ -23,6 +24,9 @@ interface SceneProps {
   lighting: SceneLightingDescriptor;
   quality: QualitySettings;
   cameraMode: CameraMode;
+  focusedRoomId: string | null;
+  /** מסלול הסיור הקולנועי. ריק = אין סיור פעיל. */
+  tourRoomIds: string[];
   selectedCategory: string | null;
   onSelect?: (category: string, label: string) => void;
   showRoomLabels: boolean;
@@ -193,12 +197,15 @@ function SceneEnvironment({ lighting }: { lighting: SceneLightingDescriptor }) {
         position={[0, 12, 0]}
         rotation-x={Math.PI / 2}
       />
-      {/* אור השמש מהכיוון שלה */}
+      {/*
+        השמש במפת הסביבה קיימת בשביל ההשתקפויות בלבד — עוצמת האור עצמה מגיעה
+        מה-directionalLight. עוצמה גבוהה כאן יצרה כתם זוהר על קירות מט.
+      */}
       <Lightformer
-        form="rect"
-        intensity={lighting.sunIntensity * 1.4}
+        form="ring"
+        intensity={lighting.sunIntensity * 0.45}
         color={lighting.sunColor}
-        scale={12}
+        scale={8}
         position={lighting.sunPosition}
       />
       {/* ערפילי האופק — נותנים לזכוכית קו רקיע להחזיר */}
@@ -245,7 +252,9 @@ function InteriorLights({
   lighting: SceneLightingDescriptor;
   maxLights: number;
 }) {
-  if (lighting.interiorIntensity < 0.05) return null;
+  // באור יום מלא לא מדליקים את האור בבית. גוף תאורה דולק בצהריים יצר כתם
+  // זוהר על הקיר הקרוב ונראה כמו תקלה.
+  if (lighting.interiorIntensity < 0.2) return null;
 
   // חדרים גדולים ראשונים — כשיש תקציב אורות מוגבל, הם אלה שנראים
   const lit = [...rooms].sort((a, b) => b.area - a.area).slice(0, maxLights);
@@ -255,7 +264,7 @@ function InteriorLights({
       {lit.map((room) => {
         const outdoor = room.isOutdoor;
         const intensity = outdoor ? lighting.balconyIntensity : lighting.interiorIntensity;
-        if (intensity < 0.05) return null;
+        if (intensity < 0.2) return null;
 
         return (
           <pointLight
@@ -307,25 +316,6 @@ function CityLights({ lighting, span }: { lighting: SceneLightingDescriptor; spa
   );
 }
 
-/** מצב הליכה בסיסי — המצלמה נעה בגובה עיניים */
-function WalkCamera({ center }: { center: [number, number] }) {
-  const { camera } = useThree();
-  const angle = useRef(0);
-
-  useFrame((_, delta) => {
-    angle.current += delta * 0.12;
-    const radius = 2.4;
-    camera.position.set(
-      center[0] + Math.cos(angle.current) * radius,
-      1.65,
-      center[1] + Math.sin(angle.current) * radius,
-    );
-    camera.lookAt(center[0], 1.5, center[1]);
-  });
-
-  return null;
-}
-
 function RoomLabels({ rooms }: { rooms: SceneModel["rooms"] }) {
   return (
     <>
@@ -336,7 +326,7 @@ function RoomLabels({ rooms }: { rooms: SceneModel["rooms"] }) {
             key={room.id}
             position={[room.center[0], 0.05, room.center[1]]}
             center
-            distanceFactor={14}
+            distanceFactor={9}
             occlude={false}
             zIndexRange={[10, 0]}
           >
@@ -361,15 +351,12 @@ export function ApartmentScene({
   lighting,
   quality,
   cameraMode,
+  focusedRoomId,
+  tourRoomIds,
   selectedCategory,
   onSelect,
   showRoomLabels,
 }: SceneProps) {
-  const target = useMemo<[number, number, number]>(
-    () => [model.center[0], 0.9, model.center[1]],
-    [model.center],
-  );
-
   const span = Math.max(model.size[0], model.size[1], 6);
 
   return (
@@ -455,7 +442,8 @@ export function ApartmentScene({
           <Surface
             key={`${box.id}-${index}`}
             box={box}
-            material={materials[box.materialSlot]}
+            // ריהוט המחשה נושא חומר קבוע; כל השאר נגזר מבחירת הדייר
+            material={box.appearance ?? materials[box.materialSlot]}
             highlighted={Boolean(box.category && box.category === selectedCategory)}
             quality={quality}
             onSelect={onSelect}
@@ -467,19 +455,12 @@ export function ApartmentScene({
 
       <PostEffects quality={quality} lighting={lighting} />
 
-      {cameraMode === "WALK" ? (
-        <WalkCamera center={model.center} />
-      ) : (
-        <OrbitControls
-          target={target}
-          enableDamping
-          dampingFactor={0.08}
-          minDistance={3}
-          maxDistance={span * 2.2}
-          maxPolarAngle={Math.PI / 2.08}
-          makeDefault
-        />
-      )}
+      <CameraRig
+        model={model}
+        mode={cameraMode}
+        focusedRoomId={focusedRoomId}
+        tourRoomIds={tourRoomIds}
+      />
     </Canvas>
   );
 }

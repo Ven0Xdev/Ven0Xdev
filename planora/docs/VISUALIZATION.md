@@ -23,10 +23,14 @@ Visualization ברמת luxury real-estate — חומרים מציאותיים, �
 src/lib/visualization/
 ├── types.ts                              טיפוסים שאינם תלויים במנוע
 ├── provider.ts                           ApartmentVisualizationProvider + בחירת מנוע
+├── material-library.ts                   משפחות חומר, מפרט הסטנדרט, ערכות מראה
 ├── materials.ts                          גזירת חומרים ממוצרי הספקים
+├── resolve.ts                            מיזוג סטנדרט עם בחירות הדייר
+├── lighting.ts                           תאורה לפי שעה ביום
+├── quality.ts                            זיהוי מכשיר ורמות איכות
 ├── use-visualization.ts                  חיבור React למנוע
 └── providers/
-    ├── prototype.ts                      PrototypeVisualizationProvider   (פעיל)
+    ├── r3f.ts                            R3FVisualizationProvider         (פעיל)
     └── unreal-pixel-streaming.ts         UnrealPixelStreamingProvider     (עתידי)
 ```
 
@@ -35,7 +39,7 @@ src/lib/visualization/
                                               │
                           ┌───────────────────┴────────────────────┐
                           ▼                                        ▼
-            PrototypeVisualizationProvider          UnrealPixelStreamingProvider
+            R3FVisualizationProvider                UnrealPixelStreamingProvider
             (Three.js בדפדפן)                        (Unreal + Pixel Streaming)
                           │                                        │
                     LOCAL_SCENE                             REMOTE_STREAM
@@ -58,6 +62,8 @@ interface ApartmentVisualizationProvider {
   focusRoom(roomId: string | null): Promise<VisualizationState>;
   startWalkthrough(options?: WalkthroughOptions): Promise<VisualizationState>;
   stopWalkthrough(): Promise<VisualizationState>;
+  setQualityMode(mode: QualityMode): Promise<VisualizationState>;
+  resetScene(): Promise<VisualizationState>;
 
   getState(): VisualizationState;
   subscribe(listener: VisualizationListener): () => void;
@@ -94,6 +100,8 @@ type VisualizationPresentation =
 | `reflections` | ✗ | ✓ |
 | `realisticGlass` | ✗ | ✓ |
 | `cinematicCamera` | ✗ | ✓ |
+| `roomNavigation` | ✓ | ✓ |
+| `guidedTour` | ✓ | ✓ |
 | `exteriorEnvironment` | ✗ | ✓ |
 | `interiorLighting` | ✓ | ✓ |
 | `walkthrough` | ✓ | ✓ |
@@ -107,7 +115,7 @@ type VisualizationPresentation =
 נקודת ההחלפה היחידה:
 
 ```bash
-NEXT_PUBLIC_VISUALIZATION_PROVIDER=prototype-three        # ברירת מחדל
+NEXT_PUBLIC_VISUALIZATION_PROVIDER=r3f-webgl              # ברירת מחדל
 NEXT_PUBLIC_VISUALIZATION_PROVIDER=unreal-pixel-streaming # כשיוטמע
 ```
 
@@ -116,15 +124,23 @@ NEXT_PUBLIC_VISUALIZATION_PROVIDER=unreal-pixel-streaming # כשיוטמע
 
 ---
 
-# המימוש הנוכחי — `PrototypeVisualizationProvider`
+# המימוש הנוכחי — `R3FVisualizationProvider`
 
-- הגאומטריה נגזרת מאותו `DrawingDocument` שמשמש את ההשוואה הדו-ממדית
-  (`buildSceneModel`). **אין קובץ מודל נפרד**, ולכן התוכנית והתלת-ממד אינם
-  יכולים לצאת מסנכרון — וזה בדיוק הכשל שהמערכת נועדה למנוע.
-- קירות נחתכים בגובה 1.35 מ' ("בית בובות"), כדי שכל הדירה תיקרא מלמעלה.
-- חומר נכנס לסצנה רק אם הוא מקושר ל`MaterialDefinition` של מוצר או וריאנט
+- הגאומטריה מגיעה מ-`ApartmentGeometry`, שנגזרת מהתוכנית שהקבלן העלה
+  (ראו [`GEOMETRY.md`](GEOMETRY.md)). **אין קובץ מודל נפרד**, ולכן התוכנית
+  והתלת-ממד אינם יכולים לצאת מסנכרון.
+- קירות נחתכים בגובה 1.35 מ' ("בית בובות") בתצוגה מלמעלה, ועומדים בגובהם
+  המלא (2.7 מ') במצב סיור.
+- **חומרים:** כל משטח נושא משפחת חומר, ומקבל מרקם פרוצדורלי שנוצר בזמן ריצה —
+  סיב עץ, עורקי שיש, פוגות, מרקם בטון. אין קובצי תמונה ואין הורדה מהרשת.
+  טקסטורת ספק אמיתית (`textureUrl`) תגבר עליו כשתחובר.
+- **תאורה:** מפת סביבה מחושבת (Lightformer) להשתקפויות, שמש מכוונת, צללי
+  מגע, מיפוי גוונים ACES וחשיפה משתנה לפי שעה. בלילה הדירה נדלקת מבפנים.
+- **מצלמה:** מעבר חלק אל חדר נבחר, סיור בגובה עיניים עם התנגשויות ועדשה
+  רחבה, וסיור מודרך אוטומטי בין החדרים.
+- **ריהוט:** מסומן `visualizationOnly` ואינו חלק מהביצוע. הממשק אומר זאת לדייר.
+- חומר נכנס לסצנה רק אם הוא מקושר ל-`MaterialDefinition` של מוצר או וריאנט
   שאושר לפרויקט.
-- `textureUrl` נשמר במצב אך אינו נטען: לאב-טיפוס אין צנרת טקסטורות.
 - קבועות סניטריות אינן ממופות למשטח — ברז בגוון שחור אינו הופך את האסלה לשחורה.
 - `setExteriorEnvironment` שומר את הנתון ומחזיר הודעה מפורשת שהנוף אינו מרונדר.
   המנוע מדווח מה הוא לא עושה, במקום להציג "נוף לים" שאינו נראה.

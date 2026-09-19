@@ -25,6 +25,8 @@ const INITIAL_STATE: VisualizationState = {
   focusedRoomId: null,
   cameraMode: "ORBIT",
   rooms: [],
+  tourPath: [],
+  suggestedTour: [],
   presentation: null,
   message: null,
 };
@@ -157,9 +159,12 @@ export function useApartmentVisualization({
     [provider],
   );
 
-  const startWalkthrough = useCallback(() => {
-    void provider?.startWalkthrough().catch(() => undefined);
-  }, [provider]);
+  const startWalkthrough = useCallback(
+    (options?: { path?: string[]; loop?: boolean; startRoomId?: string | null }) => {
+      void provider?.startWalkthrough(options).catch(() => undefined);
+    },
+    [provider],
+  );
 
   const stopWalkthrough = useCallback(() => {
     void provider?.stopWalkthrough().catch(() => undefined);

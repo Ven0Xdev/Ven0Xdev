@@ -76,6 +76,8 @@ export const UNREAL_CAPABILITIES: VisualizationCapabilities = {
   reflections: true,
   realisticGlass: true,
   cinematicCamera: true,
+  roomNavigation: true,
+  guidedTour: true,
   interiorLighting: true,
   exteriorEnvironment: true,
   walkthrough: true,
@@ -108,6 +110,8 @@ export class UnrealPixelStreamingProvider implements ApartmentVisualizationProvi
     focusedRoomId: null,
     cameraMode: "ORBIT",
     rooms: [],
+    tourPath: [],
+    suggestedTour: [],
     presentation: null,
     message: NOT_IMPLEMENTED,
   };

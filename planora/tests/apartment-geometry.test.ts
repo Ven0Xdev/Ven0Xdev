@@ -229,3 +229,49 @@ describe("הרנדרר צורך גאומטריה מנורמלת", () => {
     expect(JSON.stringify(modified.walls)).not.toBe(JSON.stringify(standard.walls));
   });
 });
+
+describe("ריהוט המחשה", () => {
+  it("מסומן כהמחשה בלבד ולעולם אינו ניתן לבחירה", async () => {
+    const geometry = await standardGeometry();
+    const scene = buildSceneModel(geometry);
+    const staging = scene.boxes.filter((box) => box.kind === "STAGING");
+
+    expect(staging.length).toBeGreaterThan(0);
+    for (const item of staging) {
+      // רהיט אינו חלק מהביצוע: אין לו קטגוריית מוצר ואי אפשר ללחוץ עליו
+      expect(item.visualizationOnly, item.id).toBe(true);
+      expect(item.selectable, item.id).toBe(false);
+      expect(item.category, item.id).toBeUndefined();
+      // החומר קבוע ואינו נגזר מבחירת הדייר
+      expect(item.appearance, item.id).toBeDefined();
+    }
+  });
+
+  it("אינו חורג מגובה החיתוך של התצוגה", async () => {
+    const geometry = await standardGeometry();
+    const scene = buildSceneModel(geometry, 1.35);
+
+    for (const item of scene.boxes.filter((box) => box.kind === "STAGING")) {
+      const top = item.position[1] + item.size[1] / 2;
+      expect(top, item.id).toBeLessThanOrEqual(1.36);
+    }
+  });
+
+  it("מסדרון, ממ\"ד וחדר רחצה נשארים כפי שהתוכנית מגדירה אותם", async () => {
+    const geometry = await standardGeometry();
+    const scene = buildSceneModel(geometry);
+    const staged = new Set(
+      scene.boxes
+        .filter((box) => box.kind === "STAGING")
+        .map((box) => box.id.split(":")[0]),
+    );
+
+    const untouched = geometry.rooms.filter(
+      (room) => room.kind === "CORRIDOR" || room.kind === "SAFE_ROOM" || room.kind === "BATHROOM",
+    );
+    expect(untouched.length).toBeGreaterThan(0);
+    for (const room of untouched) {
+      expect(staged.has(room.id), room.label).toBe(false);
+    }
+  });
+});

@@ -33,6 +33,10 @@ export interface VisualizationCapabilities {
   realisticGlass: boolean;
   /** תנועת מצלמה קולנועית בין נקודות עניין */
   cinematicCamera: boolean;
+  /** מעבר מצלמה חלק אל חדר נבחר */
+  roomNavigation: boolean;
+  /** סיור אוטומטי מודרך בין החדרים */
+  guidedTour: boolean;
   interiorLighting: boolean;
   /** סביבה חיצונית — נוף, קו רקיע, מזג אוויר */
   exteriorEnvironment: boolean;
@@ -145,6 +149,7 @@ export interface VisualizationRoom {
   id: string;
   label: string;
   areaSqm: number;
+  isOutdoor: boolean;
 }
 
 /**
@@ -210,6 +215,10 @@ export interface VisualizationState {
   focusedRoomId: string | null;
   cameraMode: CameraMode;
   rooms: VisualizationRoom[];
+  /** מסלול הסיור הפעיל. ריק = הליכה חופשית. */
+  tourPath: string[];
+  /** סדר החדרים המוצע לסיור — סלון, מטבח, פינת אוכל, שינה, רחצה, מרפסת */
+  suggestedTour: string[];
   presentation: VisualizationPresentation | null;
   /** הודעה בעברית להצגה למשתמש כאשר משהו אינו זמין */
   message: string | null;

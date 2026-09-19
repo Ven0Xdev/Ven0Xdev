@@ -323,3 +323,68 @@ describe("רמת איכות", () => {
     expect(reset.rooms.length).toBeGreaterThan(0);
   });
 });
+
+describe("ניווט וסיור", () => {
+  it("מציע סיור שמתחיל בסלון ונגמר במרפסת", async () => {
+    const provider = await loadedViewer();
+    const { suggestedTour, rooms } = provider.getState();
+
+    expect(suggestedTour.length).toBeGreaterThan(2);
+    const labels = suggestedTour.map(
+      (id) => rooms.find((room) => room.id === id)?.label ?? "",
+    );
+    expect(labels[0]).toMatch(/סלון/);
+    expect(labels.at(-1)).toMatch(/מרפסת/);
+    // חדר אחד מכל סוג — סיור בשלושה חדרי שינה מייגע
+    expect(new Set(suggestedTour).size).toBe(suggestedTour.length);
+  });
+
+  it("סיור מודרך נכנס למצב הליכה ושומר את המסלול", async () => {
+    const provider = await loadedViewer();
+    const tour = provider.getState().suggestedTour;
+    const state = await provider.startWalkthrough({ path: tour, loop: true });
+
+    expect(state.cameraMode).toBe("WALK");
+    expect(state.tourPath).toEqual(tour);
+  });
+
+  it("חדר שאינו בדירה אינו נכנס למסלול", async () => {
+    const provider = await loadedViewer();
+    const state = await provider.startWalkthrough({ path: ["no-such-room"] });
+    expect(state.tourPath).toEqual([]);
+  });
+
+  it("במצב סיור הקירות עומדים בגובהם האמיתי", async () => {
+    const provider = await loadedViewer();
+
+    const dollhouse = provider.getState();
+    if (dollhouse.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
+    const scene = dollhouse.presentation.scene as { boxes: { kind: string; size: number[] }[] };
+    const cutWall = scene.boxes.find((box) => box.kind === "WALL");
+
+    const walking = await provider.startWalkthrough();
+    if (walking.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
+    const walkScene = walking.presentation.scene as {
+      boxes: { kind: string; size: number[] }[];
+    };
+    const fullWall = walkScene.boxes.find((box) => box.kind === "WALL");
+
+    expect(cutWall?.size[1]).toBe(1.35);
+    expect(fullWall?.size[1]).toBe(2.7);
+
+    // יציאה מהסיור מחזירה את חתך "בית הבובות"
+    const back = await provider.stopWalkthrough();
+    if (back.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
+    const backScene = back.presentation.scene as { boxes: { kind: string; size: number[] }[] };
+    expect(backScene.boxes.find((box) => box.kind === "WALL")?.size[1]).toBe(1.35);
+    expect(back.tourPath).toEqual([]);
+  });
+
+  it("המנוע מדווח שהוא יודע לנווט לחדר ולסייר, אך אינו קולנועי", () => {
+    const { capabilities } = new R3FVisualizationProvider();
+    expect(capabilities.roomNavigation).toBe(true);
+    expect(capabilities.guidedTour).toBe(true);
+    // אין מסלולי מצלמה מתוסרטים ואין עומק שדה
+    expect(capabilities.cinematicCamera).toBe(false);
+  });
+});

@@ -9,11 +9,16 @@
  * `UnrealPixelStreamingProvider` בעתיד, בלי שינוי בקוד המסך.
  */
 
-import { buildSceneModel, type SceneModel } from "@/lib/three/scene-model";
+import {
+  CEILING_HEIGHT_M,
+  DOLLHOUSE_CUT_M,
+  buildSceneModel,
+  type SceneModel,
+} from "@/lib/three/scene-model";
 import { SCENE_LIGHTING } from "../lighting";
 import { resolveSurfaces } from "../resolve";
 import { QUALITY_SETTINGS, resolveQuality, type ResolvedQuality } from "../quality";
-import type { ApartmentGeometry } from "@/lib/geometry/types";
+import type { ApartmentGeometry, RoomKind } from "@/lib/geometry/types";
 import type { ApartmentVisualizationProvider } from "../provider";
 import type {
   ApplyMaterialInput,
@@ -38,7 +43,11 @@ const R3F_CAPABILITIES: VisualizationCapabilities = {
   globalIllumination: false,
   reflections: false,
   realisticGlass: false,
+  // אין מסלולי מצלמה מתוסרטים ואין עומק שדה — אבל יש מעבר חלק לחדר
+  // וסיור מודרך, ולכן שתי היכולות האלה מדווחות בנפרד.
   cinematicCamera: false,
+  roomNavigation: true,
+  guidedTour: true,
   interiorLighting: true,
   exteriorEnvironment: false,
   walkthrough: true,
@@ -47,6 +56,33 @@ const R3F_CAPABILITIES: VisualizationCapabilities = {
   runsInBrowser: true,
   requiresStreaming: false,
 };
+
+/**
+ * סדר החדרים בסיור המודרך.
+ * מתחיל בסלון ונגמר במרפסת — הסדר שבו אדם מראה את הדירה שלו למישהו.
+ */
+const TOUR_ORDER: RoomKind[] = [
+  "LIVING",
+  "KITCHEN",
+  "DINING",
+  "BEDROOM",
+  "BATHROOM",
+  "BALCONY",
+];
+
+function suggestTour(geometry: ApartmentGeometry): string[] {
+  const path: string[] = [];
+
+  for (const kind of TOUR_ORDER) {
+    // חדר אחד מכל סוג — הגדול שבהם. סיור שעובר בשלושה חדרי שינה מייגע.
+    const room = geometry.rooms
+      .filter((candidate) => candidate.kind === kind)
+      .sort((a, b) => b.areaSqm - a.areaSqm)[0];
+    if (room) path.push(room.id);
+  }
+
+  return path;
+}
 
 function emptyState(quality: ResolvedQuality): VisualizationState {
   return {
@@ -59,6 +95,8 @@ function emptyState(quality: ResolvedQuality): VisualizationState {
     focusedRoomId: null,
     cameraMode: "ORBIT",
     rooms: [],
+    tourPath: [],
+    suggestedTour: [],
     presentation: null,
     message: null,
   };
@@ -82,7 +120,7 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
 
     // פונקציה טהורה וזולה; אין כאן קריאת רשת ואין טעינת נכסים חיצוניים.
     this.geometry = input.geometry;
-    this.scene = buildSceneModel(input.geometry);
+    this.scene = buildSceneModel(input.geometry, DOLLHOUSE_CUT_M);
     this.assignments.clear();
 
     this.state = {
@@ -96,7 +134,10 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
         id: room.id,
         label: room.label,
         areaSqm: room.area,
+        isOutdoor: room.isOutdoor,
       })),
+      tourPath: [],
+      suggestedTour: suggestTour(input.geometry),
       message: null,
     };
 
@@ -169,18 +210,29 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
 
   async startWalkthrough(options?: WalkthroughOptions): Promise<VisualizationState> {
     this.assertLive();
-    // אין מסלול מצלמה קולנועי באב-טיפוס; `path` ו-`loop` יישמרו למנוע העתידי.
+
+    // במצב סיור הקירות עומדים בגובהם האמיתי. חיתוך "בית בובות" נכון למבט
+    // מלמעלה, אבל אדם שהולך בדירה אינו רואה את הקירות נגמרים בגובה החזה.
+    if (this.geometry) {
+      this.scene = buildSceneModel(this.geometry, CEILING_HEIGHT_M);
+    }
+
+    const path = options?.path ?? [];
     this.state = {
       ...this.state,
       cameraMode: "WALK",
       focusedRoomId: options?.startRoomId ?? this.state.focusedRoomId,
+      tourPath: path.filter((id) => this.state.rooms.some((room) => room.id === id)),
     };
     return this.render();
   }
 
   async stopWalkthrough(): Promise<VisualizationState> {
     this.assertLive();
-    this.state = { ...this.state, cameraMode: "ORBIT" };
+    if (this.geometry) {
+      this.scene = buildSceneModel(this.geometry, DOLLHOUSE_CUT_M);
+    }
+    this.state = { ...this.state, cameraMode: "ORBIT", tourPath: [] };
     return this.render();
   }
 
@@ -194,11 +246,15 @@ export class R3FVisualizationProvider implements ApartmentVisualizationProvider 
     this.assertLive();
     // חזרה למפרט הסטנדרט ולמבט הפתיחה. הדירה עצמה נשארת טעונה.
     this.assignments.clear();
+    if (this.geometry) {
+      this.scene = buildSceneModel(this.geometry, DOLLHOUSE_CUT_M);
+    }
     this.state = {
       ...this.state,
       timeOfDay: "MIDDAY",
       cameraMode: "ORBIT",
       focusedRoomId: null,
+      tourPath: [],
       message: null,
     };
     return this.render();

@@ -47,7 +47,7 @@ export function PostEffects({
       )}
       <Bloom
         intensity={bloomIntensity}
-        luminanceThreshold={0.85}
+        luminanceThreshold={0.95}
         luminanceSmoothing={0.3}
         mipmapBlur
       />

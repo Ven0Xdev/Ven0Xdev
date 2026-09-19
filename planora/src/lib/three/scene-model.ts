@@ -9,6 +9,8 @@
  */
 
 import type { ApartmentGeometry, Vec2 } from "@/lib/geometry/types";
+import type { PbrMaterial } from "@/lib/visualization/material-library";
+import { buildStaging } from "./staging";
 
 /** גובה חלל פנימי סטנדרטי במטרים */
 export const CEILING_HEIGHT_M = 2.7;
@@ -30,7 +32,8 @@ export type SurfaceKind =
   | "WINDOW"
   | "KITCHEN"
   | "SANITARY"
-  | "FIXTURE";
+  | "FIXTURE"
+  | "STAGING";
 
 export interface SceneBox {
   id: string;
@@ -46,6 +49,13 @@ export interface SceneBox {
   selectable: boolean;
   /** הקטגוריה שנפתחת בלחיצה */
   category?: "KITCHEN" | "FLOORING" | "SANITARY" | "DOORS" | "OUTDOOR";
+  /** חומר קבוע — לפריטים שאינם נגזרים מבחירת הדייר */
+  appearance?: PbrMaterial;
+  /**
+   * פריט המחשה בלבד: אינו חלק מהביצוע, אינו במפרט ואינו במחיר.
+   * הממשק חייב לומר זאת לדייר במפורש.
+   */
+  visualizationOnly?: boolean;
 }
 
 /** משבצות חומר שהתצורה יכולה להחליף */
@@ -65,6 +75,8 @@ export interface SceneRoom {
   id: string;
   label: string;
   center: [number, number];
+  /** מידות החדר במטרים — נדרשות למיקום מצלמה בתוך החדר */
+  size: [number, number];
   area: number;
   isOutdoor: boolean;
 }
@@ -215,16 +227,35 @@ export function buildSceneModel(
     });
   }
 
+  // ריהוט המחשה נוסף אחרון, אחרי כל מה שמגיע מהתוכנית
+  for (const item of buildStaging(geometry, cutHeightM)) {
+    boxes.push({
+      id: item.id,
+      kind: "STAGING",
+      position: [item.center.x, item.baseM + item.heightM / 2, item.center.z],
+      size: [item.widthM, item.heightM, item.depthM],
+      label: item.label,
+      materialSlot: "wall",
+      appearance: item.appearance,
+      selectable: false,
+      visualizationOnly: true,
+    });
+  }
+
   return {
     boxes,
     center: [geometry.bounds.center.x, geometry.bounds.center.z],
     size: [geometry.bounds.sizeX, geometry.bounds.sizeZ],
-    rooms: geometry.rooms.map((room) => ({
-      id: room.id,
-      label: room.label,
-      center: [room.center.x, room.center.z],
-      area: room.areaSqm,
-      isOutdoor: room.isOutdoor,
-    })),
+    rooms: geometry.rooms.map((room) => {
+      const outline = outlineBox(room.outline);
+      return {
+        id: room.id,
+        label: room.label,
+        center: [room.center.x, room.center.z] as [number, number],
+        size: [outline.width, outline.depth] as [number, number],
+        area: room.areaSqm,
+        isOutdoor: room.isOutdoor,
+      };
+    }),
   };
 }
