@@ -432,7 +432,7 @@ async function main() {
   console.log(`  ספקים: ${SUPPLIERS.length}`);
   console.log(`  מוצרים: ${productsBySku.size}`);
   console.log("\n  כניסת דייר להדגמה:");
-  console.log("    noam@planora.demo   — נועם לוי, דירה 42");
+  console.log("    noam@oviax.demo   — נועם לוי, דירה 42");
 }
 
 async function seedRecommendations(products: Map<string, string>) {
@@ -544,10 +544,10 @@ async function seedTenant(
   if (!apartment) return;
 
   const tenant = await prisma.user.upsert({
-    where: { email: "noam@planora.demo" },
+    where: { email: "noam@oviax.demo" },
     create: {
       name: "נועם לוי",
-      email: "noam@planora.demo",
+      email: "noam@oviax.demo",
       emailVerified: new Date(),
       title: "דייר",
     },

@@ -58,7 +58,7 @@ export function Sidebar({
   return (
     <div className="flex h-full flex-col border-e border-line bg-surface">
       <div className="flex h-14 items-center px-5">
-        <Link href="/" className="rounded-control" aria-label="Planora — לוח בקרה">
+        <Link href="/" className="rounded-control" aria-label="OVIAX — לוח בקרה">
           <Logo />
         </Link>
       </div>

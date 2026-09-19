@@ -19,8 +19,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Planora — שינויי דיירים, במקום אחד",
-    template: "%s · Planora",
+    default: "OVIAX — שינויי דיירים, במקום אחד",
+    template: "%s · OVIAX",
   },
   description:
     "בדיקת תוכניות, ניהול שינויי דיירים, אישורי יועצים ותמחור — בתהליך אחד מסודר.",

@@ -5,5 +5,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    setupFiles: ["tests/setup-db.ts"],
+    // בדיקות שנוגעות במסד הנתונים רצות בסדרה
+    fileParallelism: false,
   },
 });

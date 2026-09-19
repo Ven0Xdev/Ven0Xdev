@@ -284,6 +284,8 @@ model User {
   image         String?
   phone         String?
   title         String?
+  /// גיבוב סיסמה — קיים רק עבור משתמשים שנוצרו עם כניסת דואר וסיסמה
+  passwordHash  String?
   isSuperAdmin  Boolean   @default(false)
   lastSeenAt    DateTime?
   createdAt     DateTime  @default(now())
@@ -419,6 +421,17 @@ model Project {
   description           String?
   tenantChangeManagerId String?
   changeDeadline        DateTime?
+  /// חלון שינויי הדיירים — נקבע על ידי הקבלן
+  tenantChangesOpenDate  DateTime?
+  tenantChangesCloseDate DateTime?
+  /// מיתוג פורטל הדיירים של הפרויקט
+  logoUrl             String?
+  coverImageUrl       String?
+  brandColor          String?
+  portalWelcomeText   String?
+  supportPhone        String?
+  supportEmail        String?
+  supportHours        String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
@@ -500,6 +513,7 @@ model Apartment {
   buyerName       String?
   buyerContact    String?
   status          ApartmentStatus @default(STANDARD)
+  paymentStatus   PaymentStatus   @default(NOT_REQUIRED)
   dueDate         DateTime?
   assignedManagerId     String?
   assignedCoordinatorId String?
@@ -1105,9 +1119,16 @@ model Notification {
 // ===========================================================================
 // V2 — ספקים, קטלוגים ותצורת דירה
 //
-// עיקרון: Planora אינה מערכת עיצוב חופשית אלא מערכת תצורה מבוקרת.
+// עיקרון: OVIAX אינה מערכת עיצוב חופשית אלא מערכת תצורה מבוקרת.
 // מוצר מוצג לדייר רק אם הוא משויך במפורש לפרויקט דרך ProjectProductAvailability.
 // ===========================================================================
+
+enum PaymentStatus {
+  NOT_REQUIRED
+  PENDING
+  PARTIALLY_PAID
+  PAID
+}
 
 enum SupplierCategory {
   KITCHEN

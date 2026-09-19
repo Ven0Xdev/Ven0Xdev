@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * סימן Planora — תוכנית קומה מופשטת: מסגרת, קיר פנימי ופתח.
+ * סימן OVIAX — תוכנית קומה מופשטת: מסגרת, קיר פנימי ופתח.
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
@@ -40,7 +40,7 @@ export function Logo({
       <LogoMark />
       {showName ? (
         <span className="font-numeric text-[17px] leading-none font-semibold tracking-tight text-ink">
-          Planora
+          OVIAX
         </span>
       ) : null}
     </span>

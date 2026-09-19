@@ -40,7 +40,7 @@ import type {
   VatBehavior,
 } from "@prisma/client";
 
-export const APP_NAME = "Planora";
+export const APP_NAME = "OVIAX";
 
 export const USER_ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: "מנהל מערכת",
@@ -576,10 +576,15 @@ export type SceneTime = keyof typeof SCENE_TIME_LABELS;
 
 /** תוויות ניווט בפורטל הדיירים */
 export const TENANT_NAV_LABELS = {
-  home: "הדירה שלי",
-  configurator: "עיצוב הדירה",
-  requests: "הבקשות שלי",
-  pricing: "המחיר שלי",
+  overview: "סקירה",
+  apartment: "הדירה שלי",
+  view3d: "תלת-ממד",
+  plans: "תוכניות",
+  changes: "השינויים שלי",
+  selections: "בחירות ושדרוגים",
+  pricing: "תמחור",
+  documents: "מסמכים",
+  notifications: "התראות",
 } as const;
 
 /** תוויות מצב זמינות מוצר — מה שהדייר רואה על כרטיס המוצר */

@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import bcrypt from "bcryptjs";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Provider } from "next-auth/providers";
 
@@ -18,6 +19,34 @@ if (isGoogleConfigured) {
     }),
   );
 }
+
+/**
+ * כניסה עם דואר אלקטרוני וסיסמה.
+ * משמשת בעיקר דיירים, שאינם בהכרח בעלי חשבון Google ארגוני.
+ */
+providers.push(
+  Credentials({
+    id: "password",
+    name: "דואר אלקטרוני וסיסמה",
+    credentials: {
+      email: { label: "דואר אלקטרוני", type: "email" },
+      password: { label: "סיסמה", type: "password" },
+    },
+    async authorize(credentials) {
+      const email = typeof credentials?.email === "string" ? credentials.email.trim() : null;
+      const password = typeof credentials?.password === "string" ? credentials.password : null;
+      if (!email || !password) return null;
+
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user?.passwordHash) return null;
+
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isValid) return null;
+
+      return { id: user.id, name: user.name, email: user.email, image: user.image };
+    },
+  }),
+);
 
 /**
  * כניסת הדגמה.

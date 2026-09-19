@@ -27,20 +27,25 @@ export default async function TenantLayout({ children }: { children: React.React
     );
   }
 
-  const apartment = await prisma.apartment.findUniqueOrThrow({
-    where: { id: apartmentId },
-    select: {
-      number: true,
-      building: { select: { name: true } },
-      project: { select: { name: true } },
-    },
-  });
+  const [apartment, unreadCount] = await Promise.all([
+    prisma.apartment.findUniqueOrThrow({
+      where: { id: apartmentId },
+      select: {
+        number: true,
+        building: { select: { name: true } },
+        project: { select: { name: true, brandColor: true } },
+      },
+    }),
+    prisma.notification.count({ where: { userId: user.id, readAt: null } }),
+  ]);
 
   return (
     <TenantShell
       user={{ name: user.name, image: user.image }}
       apartmentLabel={`${formatApartment(apartment.number)} · ${apartment.building.name}`}
       projectName={apartment.project.name}
+      brandColor={apartment.project.brandColor}
+      unreadCount={unreadCount}
     >
       {children}
       <Toaster dir="rtl" position="top-center" richColors closeButton />

@@ -1,5 +1,5 @@
 /**
- * נתוני הדגמה עבור Planora.
+ * נתוני הדגמה עבור OVIAX.
  *
  * הנתונים נבנים דרך אותם שירותים שמשמשים בייצור — השינויים נוצרים על ידי
  * מנוע ההשוואה ומנוע הכללים, ולא נכתבים ידנית לבסיס הנתונים.
@@ -462,9 +462,9 @@ async function main() {
   console.log(`  פרויקטים: ${project.name}, ${secondProject.name}`);
   console.log(`  דירות: ${apartments.length}`);
   console.log("\n  כניסה להדגמה (DEMO_LOGIN_ENABLED=true):");
-  console.log("    yael@planora.demo   — מנהלת שינויי דיירים");
-  console.log("    eyal@planora.demo   — יועץ אינסטלציה");
-  console.log("    dana@planora.demo   — מנהלת פרויקט");
+  console.log("    yael@oviax.demo   — מנהלת שינויי דיירים");
+  console.log("    eyal@oviax.demo   — יועץ אינסטלציה");
+  console.log("    dana@oviax.demo   — מנהלת פרויקט");
 }
 
 // ---------------------------------------------------------------------------
@@ -491,56 +491,56 @@ async function seedUsers(serviceOrgId: string, developerOrgId: string) {
 
   const yael = await createUser(
     "יעל כהן",
-    "yael@planora.demo",
+    "yael@oviax.demo",
     "TENANT_CHANGE_MANAGER",
     serviceOrgId,
     "מנהלת שינויי דיירים",
   );
   const ronit = await createUser(
     "רונית אבידן",
-    "ronit@planora.demo",
+    "ronit@oviax.demo",
     "TENANT_CHANGE_COORDINATOR",
     serviceOrgId,
     "מתאמת שינויי דיירים",
   );
   const dana = await createUser(
     "דנה שלו",
-    "dana@planora.demo",
+    "dana@oviax.demo",
     "PROJECT_MANAGER",
     serviceOrgId,
     "מנהלת פרויקט",
   );
   const noa = await createUser(
     "נועה ברק",
-    "noa@planora.demo",
+    "noa@oviax.demo",
     "DESIGNER",
     serviceOrgId,
     "מעצבת פנים",
   );
   const eyal = await createUser(
     "אייל רוזן",
-    "eyal@planora.demo",
+    "eyal@oviax.demo",
     "PLUMBING_CONSULTANT",
     serviceOrgId,
     "יועץ אינסטלציה",
   );
   const uri = await createUser(
     "אורי גלעד",
-    "uri@planora.demo",
+    "uri@oviax.demo",
     "HVAC_CONSULTANT",
     serviceOrgId,
     "יועץ מיזוג אוויר",
   );
   const michal = await createUser(
     "מיכל ברנע",
-    "michal@planora.demo",
+    "michal@oviax.demo",
     "PRICING_MANAGER",
     serviceOrgId,
     "מנהלת תמחור",
   );
   const nir = await createUser(
     "ניר אלון",
-    "nir@planora.demo",
+    "nir@oviax.demo",
     "SUPER_ADMIN",
     serviceOrgId,
     "מנהל מערכת",

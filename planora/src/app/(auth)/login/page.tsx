@@ -9,6 +9,7 @@ import { Logo } from "@/components/brand/logo";
 import { USER_ROLE_LABELS } from "@/lib/i18n/he";
 import { BlueprintArt } from "./blueprint";
 import { DemoSignIn, GoogleSignInButton } from "./sign-in-forms";
+import { PasswordSignInForm } from "./password-form";
 
 export const metadata: Metadata = { title: "כניסה" };
 
@@ -18,7 +19,7 @@ export default async function LoginPage() {
 
   const demoUsers = env.demoLoginEnabled
     ? await prisma.user.findMany({
-        where: { email: { endsWith: "@planora.demo" } },
+        where: { email: { endsWith: "@oviax.demo" } },
         include: { memberships: { take: 1, orderBy: { createdAt: "asc" } } },
         orderBy: { createdAt: "asc" },
       })
@@ -48,7 +49,15 @@ export default async function LoginPage() {
             בדיקת תוכניות, ניהול שינויים, אישורי יועצים ותמחור — בתהליך אחד מסודר.
           </p>
 
-          <div className="mt-9 space-y-3">
+          <div className="mt-9 space-y-4">
+            <PasswordSignInForm />
+
+            <div className="flex items-center gap-3" aria-hidden>
+              <span className="h-px flex-1 bg-line" />
+              <span className="text-[11px] text-ink-subtle">או</span>
+              <span className="h-px flex-1 bg-line" />
+            </div>
+
             <GoogleSignInButton configured={isGoogleConfigured} />
 
             {!isGoogleConfigured ? (
@@ -72,7 +81,7 @@ export default async function LoginPage() {
         </div>
 
         <p className="text-[12px] text-ink-subtle">
-          Planora · מערכת לניהול שינויי דיירים בפרויקטי מגורים
+          OVIAX · מערכת לניהול שינויי דיירים בפרויקטי מגורים
         </p>
       </div>
 

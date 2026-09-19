@@ -2,7 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, LogOut, MessageSquare, Receipt } from "lucide-react";
+import {
+  Bell,
+  Box,
+  FileText,
+  Home,
+  LayoutGrid,
+  LogOut,
+  Map,
+  Receipt,
+  Sparkles,
+  Wrench,
+} from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
 import { Avatar } from "@/components/ui/misc";
@@ -12,31 +23,43 @@ import { cn } from "@/lib/utils";
 import { signOutAction } from "@/server/actions/session";
 
 const NAV = [
-  { href: "/tenant", label: TENANT_NAV_LABELS.home, icon: Home, exact: true },
-  { href: "/tenant/apartment", label: TENANT_NAV_LABELS.configurator, icon: LayoutGrid },
-  { href: "/tenant/requests", label: TENANT_NAV_LABELS.requests, icon: MessageSquare },
+  { href: "/tenant", label: TENANT_NAV_LABELS.overview, icon: Home, exact: true },
+  { href: "/tenant/apartment", label: TENANT_NAV_LABELS.apartment, icon: LayoutGrid },
+  { href: "/tenant/view", label: TENANT_NAV_LABELS.view3d, icon: Box },
+  { href: "/tenant/plans", label: TENANT_NAV_LABELS.plans, icon: Map },
+  { href: "/tenant/changes", label: TENANT_NAV_LABELS.changes, icon: Wrench },
+  { href: "/tenant/selections", label: TENANT_NAV_LABELS.selections, icon: Sparkles },
   { href: "/tenant/pricing", label: TENANT_NAV_LABELS.pricing, icon: Receipt },
+  { href: "/tenant/documents", label: TENANT_NAV_LABELS.documents, icon: FileText },
+  { href: "/tenant/notifications", label: TENANT_NAV_LABELS.notifications, icon: Bell },
 ] as const;
 
 export function TenantShell({
   user,
   apartmentLabel,
   projectName,
+  brandColor,
+  unreadCount,
   children,
 }: {
   user: { name: string; image: string | null };
   apartmentLabel: string;
   projectName: string;
+  brandColor?: string | null;
+  unreadCount?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
 
   return (
     <TooltipProvider delayDuration={250}>
-      <div className="flex min-h-dvh flex-col bg-canvas">
+      <div
+        className="flex min-h-dvh flex-col bg-canvas"
+        style={brandColor ? ({ "--brand-accent": brandColor } as React.CSSProperties) : undefined}
+      >
         <header className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur-md">
           <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-            <Link href="/tenant" className="rounded-control" aria-label="Planora">
+            <Link href="/tenant" className="rounded-control" aria-label="OVIAX">
               <Logo />
             </Link>
 
@@ -61,28 +84,38 @@ export function TenantShell({
 
           <nav
             aria-label="ניווט"
-            className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6"
+            className="mx-auto flex w-full max-w-6xl gap-0.5 overflow-x-auto px-4 sm:px-6"
           >
             {NAV.map((item) => {
               const isActive =
                 "exact" in item && item.exact
                   ? pathname === item.href
                   : pathname.startsWith(item.href);
+              const badge = item.href === "/tenant/notifications" ? (unreadCount ?? 0) : 0;
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
+                  aria-label={badge > 0 ? `${item.label}, ${badge}` : undefined}
                   className={cn(
-                    "flex items-center gap-2 border-b-2 px-3 py-3 text-[13px] font-medium whitespace-nowrap transition-colors",
+                    "flex items-center gap-1.5 border-b-2 px-2.5 py-3 text-[13px] font-medium whitespace-nowrap transition-colors",
                     isActive
                       ? "border-brand-600 text-brand-700"
                       : "border-transparent text-ink-muted hover:text-ink",
                   )}
                 >
-                  <item.icon className="size-4" aria-hidden />
+                  <item.icon className="size-4 shrink-0" aria-hidden />
                   {item.label}
+                  {badge > 0 ? (
+                    <span
+                      aria-hidden
+                      className="font-numeric rounded-pill bg-danger-600 px-1.5 text-[10px] leading-4 font-semibold text-white"
+                    >
+                      {badge}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MessageSquarePlus, PlusCircle } from "lucide-react";
 import type {
   ChangeCategoryKey,
+  ChangeItemStatus,
   ChangeRequestStatus,
   ExceptionRequestStatus,
   SupplierCategory,
@@ -22,7 +23,31 @@ import {
   EXCEPTION_REQUEST_STATUS_TONE,
   TENANT_CATEGORY_LABELS,
 } from "@/lib/i18n/he";
+import type { StatusTone } from "@/lib/i18n/he";
 import { ChangeRequestDialog, ExceptionRequestDialog } from "./request-dialogs";
+
+/** ניסוח הסטטוס כפי שהדייר רואה אותו — ללא מונחים פנימיים */
+const TENANT_CHANGE_STATUS: Record<ChangeItemStatus, { label: string; tone: StatusTone }> = {
+  DETECTED: { label: "בבדיקה מקצועית", tone: "warning" },
+  CONFIRMED: { label: "אושר", tone: "success" },
+  DISMISSED: { label: "לא רלוונטי", tone: "neutral" },
+  REJECTED: { label: "לא אושר", tone: "danger" },
+  AWAITING_CONSULTANT: { label: "ממתין ליועץ", tone: "consultant" },
+  CONSULTANT_APPROVED: { label: "אושר", tone: "success" },
+  CONSULTANT_CONDITIONAL: { label: "אושר בתנאים", tone: "warning" },
+  CONSULTANT_REJECTED: { label: "לא אושר", tone: "danger" },
+  PRICED: { label: "תומחר", tone: "brand" },
+};
+
+interface PlanChange {
+  id: string;
+  description: string;
+  categoryKey: ChangeCategoryKey;
+  roomLabel: string | null;
+  status: ChangeItemStatus;
+  price: number;
+  notes: string | null;
+}
 
 interface ChangeRequestView {
   id: string;
@@ -47,17 +72,20 @@ interface ExceptionRequestView {
   decisionNotes: string | null;
 }
 
-export function TenantRequests({
+export function TenantChanges({
+  planChanges,
   changeRequests,
   exceptionRequests,
 }: {
+  planChanges: PlanChange[];
   changeRequests: ChangeRequestView[];
   exceptionRequests: ExceptionRequestView[];
 }) {
   const [isChangeOpen, setIsChangeOpen] = useState(false);
   const [isExceptionOpen, setIsExceptionOpen] = useState(false);
 
-  const isEmpty = changeRequests.length === 0 && exceptionRequests.length === 0;
+  const isEmpty =
+    planChanges.length === 0 && changeRequests.length === 0 && exceptionRequests.length === 0;
 
   return (
     <>
@@ -74,14 +102,51 @@ export function TenantRequests({
 
       {isEmpty ? (
         <EmptyState
-          title="עדיין לא שלחת בקשות."
-          description="אפשר לבקש שינוי בתוכנית הדירה, או אפשרות שאינה מופיעה בקטלוג."
+          title="עדיין אין שינויים בדירה שלך."
+          description="אפשר לבקש שינוי בתוכנית, או לבחור שדרוגים מתוך האפשרויות שמתאימות לדירה."
         />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-7">
+          {planChanges.length > 0 ? (
+            <section>
+              <h2 className="mb-3 text-[14px] font-semibold text-ink">שינויים בתוכנית הדירה</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {planChanges.map((change) => {
+                  const status = TENANT_CHANGE_STATUS[change.status];
+                  return (
+                    <Card key={change.id}>
+                      <CardContent className="pt-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-medium text-ink">
+                              {change.description}
+                            </p>
+                            <p className="mt-0.5 text-[12px] text-ink-muted">
+                              {CHANGE_CATEGORY_LABELS[change.categoryKey]}
+                              {change.roomLabel ? ` · ${change.roomLabel}` : ""}
+                            </p>
+                          </div>
+                          <Badge tone={status.tone} size="sm">
+                            {status.label}
+                          </Badge>
+                        </div>
+
+                        {change.price > 0 ? (
+                          <p className="font-numeric mt-3 border-t border-line pt-2.5 text-[13px] font-medium text-ink">
+                            {formatCurrency(change.price)}
+                          </p>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
           {changeRequests.length > 0 ? (
             <section>
-              <h2 className="mb-3 text-[14px] font-semibold text-ink">בקשות שינוי</h2>
+              <h2 className="mb-3 text-[14px] font-semibold text-ink">הבקשות שלי</h2>
               <div className="space-y-3">
                 {changeRequests.map((request) => (
                   <Card key={request.id}>

@@ -241,7 +241,21 @@ export async function getTenantOverview(apartmentId: string) {
         building: true,
         floor: true,
         apartmentType: true,
-        project: { select: { id: true, name: true, changeDeadline: true } },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            changeDeadline: true,
+            tenantChangesOpenDate: true,
+            tenantChangesCloseDate: true,
+            portalWelcomeText: true,
+            brandColor: true,
+            supportPhone: true,
+            supportEmail: true,
+            supportHours: true,
+            developerName: true,
+          },
+        },
         assignedManager: { select: { name: true } },
       },
     }),
@@ -261,4 +275,62 @@ export async function getTenantOverview(apartmentId: string) {
   ]);
 
   return { apartment, configuration, changeRequests, exceptionRequests };
+}
+
+/**
+ * כל מה שדרוש למסך הסקירה של הדייר, כולל מצב התהליך.
+ * השינויים המקצועיים מוצגים ללא נתוני זיהוי פנימיים.
+ */
+export async function getTenantJourneyData(apartmentId: string) {
+  const [overview, pricingSheet, changeSet] = await Promise.all([
+    getTenantOverview(apartmentId),
+    prisma.pricingSheet.findFirst({
+      where: { apartmentId, status: { in: ["SENT_TO_TENANT", "APPROVED_BY_TENANT", "PAID"] } },
+      include: { lines: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.changeSet.findFirst({
+      where: { apartmentId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          orderBy: { code: "asc" },
+          include: { consultantRequests: { select: { status: true }, take: 1 } },
+        },
+      },
+    }),
+  ]);
+
+  return { ...overview, pricingSheet, changeSet };
+}
+
+/** התראות אישיות של הדייר */
+export async function getTenantNotifications(userId: string) {
+  return prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+}
+
+/** מסמכים שהדייר רשאי לראות */
+export async function getTenantDocuments(apartmentId: string) {
+  const [versions, pricingSheets, approvals] = await Promise.all([
+    prisma.planVersion.findMany({
+      where: { plan: { apartmentId }, status: { in: ["APPROVED", "IN_REVIEW", "SUBMITTED"] } },
+      include: { plan: { select: { kind: true } }, drawingFiles: true },
+      orderBy: { versionNo: "desc" },
+    }),
+    prisma.pricingSheet.findMany({
+      where: { apartmentId, status: { in: ["SENT_TO_TENANT", "APPROVED_BY_TENANT", "PAID"] } },
+      include: { lines: { select: { id: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.approval.findMany({
+      where: { apartmentId, status: "GRANTED" },
+      orderBy: { grantedAt: "desc" },
+    }),
+  ]);
+
+  return { versions, pricingSheets, approvals };
 }
