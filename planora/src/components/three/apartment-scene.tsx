@@ -295,14 +295,11 @@ function InteriorLights({
   lighting,
   maxLights,
   exposure,
-  forceOn = false,
 }: {
   rooms: SceneModel["rooms"];
   lighting: SceneLightingDescriptor;
   maxLights: number;
   exposure: number;
-  /** מצב סיור: החדרים סגורים בתקרה וזקוקים לאור גם ביום */
-  forceOn?: boolean;
 }) {
   // באור יום מלא לא מדליקים את האור בבית. גוף תאורה דולק בצהריים יצר כתם
   // זוהר על הקיר הקרוב ונראה כמו תקלה — אלא אם החדר סגור בתקרה.
@@ -315,13 +312,7 @@ function InteriorLights({
     <>
       {lit.map((room) => {
         const outdoor = room.isOutdoor;
-        // ביום אין מדליקים את גופי התאורה גם במצב סיור: המילוי מגיע מהשמיים
-        // המוחלשים ומהאור שנכנס דרך הפתחים.
-        const daylightFill = 0;
-        const intensity = Math.max(
-          outdoor ? lighting.balconyIntensity : lighting.interiorIntensity,
-          outdoor ? 0 : daylightFill,
-        );
+        const intensity = outdoor ? lighting.balconyIntensity : lighting.interiorIntensity;
         if (intensity < 0.05) return null;
 
         return (
@@ -531,7 +522,6 @@ export function ApartmentScene({
         lighting={lighting}
         maxLights={quality.maxLocalLights}
         exposure={exposure}
-        forceOn={model.enclosed}
       />
       {model.enclosed ? (
         <DaylightOpenings
