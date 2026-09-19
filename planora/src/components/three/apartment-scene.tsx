@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, Html, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three-stdlib";
 
 import {
   disposeProceduralTextures,
@@ -65,6 +66,20 @@ function scaleFaceUvs(geometry: THREE.BoxGeometry, size: [number, number, number
   uv.needsUpdate = true;
 }
 
+/**
+ * מתיחת מרקם אחידה — לגאומטריה שאינה תיבה פשוטה.
+ * פחות מדויק ממתיחה לפי פאה, אבל מספיק לבד ולעץ על רהיט.
+ */
+function scaleUniformUvs(geometry: THREE.BufferGeometry, span: number, scaleM: number) {
+  const uv = geometry.attributes.uv;
+  if (!uv) return;
+  const repeat = Math.max(0.5, span / scaleM);
+  for (let index = 0; index < uv.count; index += 1) {
+    uv.setXY(index, uv.getX(index) * repeat, uv.getY(index) * repeat);
+  }
+  uv.needsUpdate = true;
+}
+
 /** משטח בודד בסצנה */
 function Surface({
   box,
@@ -95,10 +110,36 @@ function Surface({
   );
 
   const geometry = useMemo(() => {
-    const geo = new THREE.BoxGeometry(...box.size);
-    if (textures.map) scaleFaceUvs(geo, box.size, material.texture?.scaleM ?? 1);
+    const [width, height, depth] = box.size;
+    const scaleM = material.texture?.scaleM ?? 1;
+
+    if (box.shape === "CYLINDER") {
+      const geo = new THREE.CylinderGeometry(width / 2, width / 2, height, 20);
+      return geo;
+    }
+
+    if (box.shape === "SPHERE") {
+      // כדור רחב מעט מגובהו — צמרת של צמח אינה כדור מושלם
+      const geo = new THREE.SphereGeometry(0.5, 20, 14);
+      geo.scale(width, height, depth);
+      return geo;
+    }
+
+    if (box.shape === "ROUNDED") {
+      // פינות מעוגלות תופסות אור לאורך הקצה. בלי זה כל רהיט נראה כמו קופסה.
+      const radius = Math.min(
+        box.cornerRadius ?? 0.03,
+        Math.min(width, height, depth) / 2 - 0.001,
+      );
+      const geo = new RoundedBoxGeometry(width, height, depth, 3, Math.max(0.002, radius));
+      if (textures.map) scaleUniformUvs(geo, Math.max(width, height, depth), scaleM);
+      return geo;
+    }
+
+    const geo = new THREE.BoxGeometry(width, height, depth);
+    if (textures.map) scaleFaceUvs(geo, box.size, scaleM);
     return geo;
-  }, [box.size, textures.map, material.texture?.scaleM]);
+  }, [box.size, box.shape, box.cornerRadius, textures.map, material.texture?.scaleM]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -124,9 +165,14 @@ function Surface({
     envMapIntensity: material.envIntensity ?? 0.5,
     transparent,
     opacity: material.opacity ?? 1,
-    // הדגשה נעשית באור עצמי ולא בשינוי הגוון, כדי שהחומר שנבחר יישאר נאמן
-    emissive: active ? "#2f5d99" : "#000000",
-    emissiveIntensity: highlighted ? 0.22 : active ? 0.1 : 0,
+    // הדגשה נעשית באור עצמי ולא בשינוי הגוון, כדי שהחומר שנבחר יישאר נאמן.
+    // גוף תאורה נושא אור עצמי משלו, ואין להחליף אותו בכחול ההדגשה.
+    emissive: active ? "#2f5d99" : (material.emissive ?? "#000000"),
+    emissiveIntensity: highlighted
+      ? 0.22
+      : active
+        ? 0.1
+        : (material.emissiveIntensity ?? 0),
   };
 
   return (
@@ -186,12 +232,13 @@ function lighten(hex: string): string {
  * ובלי לשלוח דבר החוצה.
  */
 function SceneEnvironment({ lighting }: { lighting: SceneLightingDescriptor }) {
+  const exposure = lighting.exposure;
   return (
     <Environment frames={1} resolution={128} background={false}>
       {/* כיפת שמיים */}
       <Lightformer
         form="ring"
-        intensity={lighting.ambientIntensity * 2.4}
+        intensity={lighting.ambientIntensity * 2.4 * exposure}
         color={lighting.skyColor}
         scale={30}
         position={[0, 12, 0]}
@@ -203,7 +250,7 @@ function SceneEnvironment({ lighting }: { lighting: SceneLightingDescriptor }) {
       */}
       <Lightformer
         form="ring"
-        intensity={lighting.sunIntensity * 0.45}
+        intensity={lighting.sunIntensity * 0.45 * exposure}
         color={lighting.sunColor}
         scale={8}
         position={lighting.sunPosition}
@@ -211,14 +258,14 @@ function SceneEnvironment({ lighting }: { lighting: SceneLightingDescriptor }) {
       {/* ערפילי האופק — נותנים לזכוכית קו רקיע להחזיר */}
       <Lightformer
         form="rect"
-        intensity={lighting.envIntensity * 1.6}
+        intensity={lighting.envIntensity * 1.6 * exposure}
         color={lighting.horizonColor}
         scale={[40, 6, 1]}
         position={[0, 1.5, -22]}
       />
       <Lightformer
         form="rect"
-        intensity={lighting.envIntensity * 1.2}
+        intensity={lighting.envIntensity * 1.2 * exposure}
         color={lighting.horizonColor}
         scale={[40, 6, 1]}
         position={[0, 1.5, 22]}
@@ -227,7 +274,7 @@ function SceneEnvironment({ lighting }: { lighting: SceneLightingDescriptor }) {
       {/* קרקע */}
       <Lightformer
         form="rect"
-        intensity={lighting.ambientIntensity}
+        intensity={lighting.ambientIntensity * exposure}
         color={lighting.groundColor}
         scale={40}
         position={[0, -6, 0]}
@@ -247,36 +294,91 @@ function InteriorLights({
   rooms,
   lighting,
   maxLights,
+  exposure,
+  forceOn = false,
 }: {
   rooms: SceneModel["rooms"];
   lighting: SceneLightingDescriptor;
   maxLights: number;
+  exposure: number;
+  /** מצב סיור: החדרים סגורים בתקרה וזקוקים לאור גם ביום */
+  forceOn?: boolean;
 }) {
   // באור יום מלא לא מדליקים את האור בבית. גוף תאורה דולק בצהריים יצר כתם
-  // זוהר על הקיר הקרוב ונראה כמו תקלה.
+  // זוהר על הקיר הקרוב ונראה כמו תקלה — אלא אם החדר סגור בתקרה.
   if (lighting.interiorIntensity < 0.2) return null;
 
   // חדרים גדולים ראשונים — כשיש תקציב אורות מוגבל, הם אלה שנראים
-  const lit = [...rooms].sort((a, b) => b.area - a.area).slice(0, maxLights);
+  const lit = [...rooms].sort((a, b) => b.area - a.area).slice(0, Math.min(maxLights, 4));
 
   return (
     <>
       {lit.map((room) => {
         const outdoor = room.isOutdoor;
-        const intensity = outdoor ? lighting.balconyIntensity : lighting.interiorIntensity;
-        if (intensity < 0.2) return null;
+        // ביום אין מדליקים את גופי התאורה גם במצב סיור: המילוי מגיע מהשמיים
+        // המוחלשים ומהאור שנכנס דרך הפתחים.
+        const daylightFill = 0;
+        const intensity = Math.max(
+          outdoor ? lighting.balconyIntensity : lighting.interiorIntensity,
+          outdoor ? 0 : daylightFill,
+        );
+        if (intensity < 0.05) return null;
 
         return (
           <pointLight
             key={room.id}
             position={[room.center[0], outdoor ? 2.2 : 2.45, room.center[1]]}
-            intensity={intensity * (outdoor ? 6 : 9)}
-            distance={outdoor ? 6 : 8}
+            // עוצמה נמוכה ומרחק גדול: אור חזק קרוב לקיר נשרף לכתם לבן
+            intensity={intensity * (outdoor ? 5 : 7) * exposure}
+            distance={outdoor ? 7 : 11}
             decay={2}
             color={outdoor ? BALCONY_LIGHT_COLOR : INTERIOR_LIGHT_COLOR}
           />
         );
       })}
+    </>
+  );
+}
+
+/**
+ * אור יום שנכנס דרך הפתחים.
+ *
+ * אין כאן תאורה גלובלית, ולכן חדר סגור לא היה מקבל אור כלל. גוף אור בכל
+ * פתח ממלא את התפקיד שממלא בפועל החלון: החלל בהיר ליד הפתח ומתעמעם פנימה.
+ * זה מה שנותן לחדר עומק במקום תאורה אחידה.
+ */
+function DaylightOpenings({
+  openings,
+  lighting,
+  exposure,
+  maxLights,
+}: {
+  openings: SceneModel["openings"];
+  lighting: SceneLightingDescriptor;
+  exposure: number;
+  maxLights: number;
+}) {
+  // בלילה לא נכנס אור יום; התאורה הפנימית עושה את העבודה
+  const strength = lighting.sunIntensity * 0.3 * exposure;
+  if (strength < 0.03) return null;
+
+  // פתחים רחבים קודם — דלת מרפסת מאירה חלל שלם, חלון שירותים כמעט לא
+  // מספר האורות בסצנה חסום בכוונה: מעבר לכך הצללת החומרים מפסיקה להתקמפל
+  // בחלק מהמכשירים, וכל הדירה מוצגת שחורה.
+  const lit = [...openings].sort((a, b) => b.widthM - a.widthM).slice(0, Math.min(maxLights, 4));
+
+  return (
+    <>
+      {lit.map((opening) => (
+        <pointLight
+          key={opening.id}
+          position={opening.position}
+          intensity={strength * (opening.isBalconyDoor ? 2 : 1) * opening.widthM}
+          distance={opening.isBalconyDoor ? 11 : 7}
+          decay={2}
+          color={lighting.skyColor}
+        />
+      ))}
     </>
   );
 }
@@ -358,6 +460,9 @@ export function ApartmentScene({
   showRoomLabels,
 }: SceneProps) {
   const span = Math.max(model.size[0], model.size[1], 6);
+  // חשיפת "המצלמה" — מוחלת על כל מקורות האור יחד
+  const exposure = lighting.exposure;
+  const environmentKey = `${lighting.background}:${lighting.exposure}:${lighting.envIntensity}`;
 
   return (
     <Canvas
@@ -366,14 +471,17 @@ export function ApartmentScene({
       shadows={quality.shadows ? "soft" : false}
       dpr={[1, quality.maxDpr]}
       camera={{
-        position: [model.center[0] + span * 0.7, span * 0.72, model.center[1] + span * 0.8],
+        position: [model.center[0] + span * 0.82, span * 0.52, model.center[1] + span * 0.92],
         fov: 42,
       }}
       gl={{ antialias: true }}
       onCreated={({ gl }) => {
-        // מיפוי גוונים קולנועי — בלעדיו אזורים מוארים נשרפים ללבן שטוח
+        // מיפוי גוונים קולנועי — בלעדיו אזורים מוארים נשרפים ללבן שטוח.
+        // החשיפה עצמה מוחלת על עוצמות האור ולא כאן: שרשרת העיבוד שאחרי
+        // הרינדור אינה מעבירה שינוי ב-toneMappingExposure, וכך הערך הזה היה
+        // נראה כאילו אין לו השפעה.
         gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = lighting.exposure;
+        gl.toneMappingExposure = 1;
       }}
       // רקע מדורג: שמיים למעלה, ערפילי אופק למטה. רקע שטוח שיטח גם את הדירה.
       style={{
@@ -381,31 +489,58 @@ export function ApartmentScene({
       }}
     >
       <TextureCleanup />
-      <ExposureSync exposure={lighting.exposure} />
 
-      <SceneEnvironment lighting={lighting} />
+      {/*
+        המפתח מאלץ אפייה מחדש של מפת הסביבה כשהתאורה משתנה. בלעדיו המפה
+        נאפית פעם אחת בלבד, ממשיכה להאיר את הסצנה בערכים הישנים, וכל שינוי
+        בתאורה נראה כאילו אין לו השפעה.
+      */}
+      <SceneEnvironment key={environmentKey} lighting={lighting} />
 
       {/*
         מילוי שמחליף את האור החוזר מהקירות ומהתקרה. אין כאן תאורה גלובלית,
         וללא המילוי הזה רצפת חדר סגור מקבלת כמעט אפס אור ונראית שחורה.
       */}
       <hemisphereLight
-        args={[lighting.skyColor, lighting.groundColor, lighting.ambientIntensity * 1.15]}
+        args={[
+          lighting.skyColor,
+          lighting.groundColor,
+          // במצב סיור הדירה מקורה. המילוי הפנימי מגיע מכאן ולא מגופי אור
+          // נקודתיים: גוף אור קרוב לקיר שורף עליו כתם לבן, תמיד.
+          lighting.ambientIntensity * exposure * (model.enclosed ? 2.6 : 1),
+        ]}
       />
       <directionalLight
         position={lighting.sunPosition}
-        intensity={lighting.sunIntensity}
+        // שמש ישירה כמעט אינה נכנסת לדירה מקורה; מה שנכנס מגיע דרך הפתחים
+        intensity={lighting.sunIntensity * exposure * (model.enclosed ? 0.3 : 1)}
         color={lighting.sunColor}
         castShadow={quality.shadows}
         shadow-mapSize={[quality.shadowMapSize, quality.shadowMapSize]}
-        shadow-bias={-0.0005}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
+        shadow-radius={3}
         shadow-camera-left={-14}
         shadow-camera-right={14}
         shadow-camera-top={14}
         shadow-camera-bottom={-14}
       />
 
-      <InteriorLights rooms={model.rooms} lighting={lighting} maxLights={quality.maxLocalLights} />
+      <InteriorLights
+        rooms={model.rooms}
+        lighting={lighting}
+        maxLights={quality.maxLocalLights}
+        exposure={exposure}
+        forceOn={model.enclosed}
+      />
+      {model.enclosed ? (
+        <DaylightOpenings
+          openings={model.openings}
+          lighting={lighting}
+          exposure={exposure}
+          maxLights={quality.maxLocalLights}
+        />
+      ) : null}
       <CityLights lighting={lighting} span={span} />
 
       {/* משטח בסיס — מעגן את הדירה בלי להשתלט על התמונה */}
@@ -414,14 +549,8 @@ export function ApartmentScene({
         position={[model.center[0], -0.15, model.center[1]]}
         receiveShadow
       >
-        <planeGeometry args={[span * 2.6, span * 2.6]} />
-        <meshStandardMaterial
-          color={lighting.groundColor}
-          roughness={1}
-          metalness={0}
-          transparent
-          opacity={0.9}
-        />
+        <planeGeometry args={[model.size[0] + 1.6, model.size[1] + 1.6]} />
+        <meshStandardMaterial color={lighting.groundColor} roughness={1} metalness={0} />
       </mesh>
 
       {/* צל מגע — מעגן את הדירה בקרקע ונותן עומק */}
@@ -430,8 +559,8 @@ export function ApartmentScene({
           position={[model.center[0], -0.12, model.center[1]]}
           scale={span * 2.4}
           resolution={quality.shadowMapSize}
-          blur={2.2}
-          opacity={0.55}
+          blur={2}
+          opacity={0.6}
           far={4}
           frames={1}
         />
@@ -463,19 +592,6 @@ export function ApartmentScene({
       />
     </Canvas>
   );
-}
-
-/**
- * מעדכן את חשיפת המצלמה כשמשתנה השעה ביום.
- * הערך נקבע על הרנדרר עצמו, ולכן הוא מוחל בלולאת הרינדור.
- */
-function ExposureSync({ exposure }: { exposure: number }) {
-  useFrame((state) => {
-    if (state.gl.toneMappingExposure !== exposure) {
-      state.gl.toneMappingExposure = exposure;
-    }
-  });
-  return null;
 }
 
 export type { THREE };

@@ -21,7 +21,11 @@ export interface QualitySettings {
   ambientOcclusion: boolean;
   contactShadows: boolean;
   reflections: boolean;
-  /** מספר אורות מקומיים מרבי */
+  /**
+   * מספר אורות מקומיים מרבי.
+   * מעבר לתקרה הזו הצללת החומרים מפסיקה להתקמפל בחלק מהמכשירים,
+   * והתוצאה אינה סצנה מוארת פחות אלא סצנה שחורה.
+   */
   maxLocalLights: number;
 }
 
@@ -35,7 +39,7 @@ export const QUALITY_SETTINGS: Record<ResolvedQuality, QualitySettings> = {
     ambientOcclusion: true,
     contactShadows: true,
     reflections: true,
-    maxLocalLights: 12,
+    maxLocalLights: 8,
   },
   BALANCED: {
     maxDpr: 1.6,
@@ -57,7 +61,7 @@ export const QUALITY_SETTINGS: Record<ResolvedQuality, QualitySettings> = {
     ambientOcclusion: false,
     contactShadows: false,
     reflections: false,
-    maxLocalLights: 4,
+    maxLocalLights: 3,
   },
 };
 

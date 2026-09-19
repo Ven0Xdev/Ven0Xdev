@@ -25,7 +25,7 @@ export function PostEffects({
 }) {
   // בלילה הדירה מוארת מבפנים; הזוהר מודגש מעט כדי שגופי התאורה ייראו דולקים
   const bloomIntensity = useMemo(
-    () => 0.18 + lighting.cityLights * 0.35,
+    () => 0.1 + lighting.cityLights * 0.3,
     [lighting.cityLights],
   );
 
@@ -35,9 +35,9 @@ export function PostEffects({
     <EffectComposer enableNormalPass={quality.ambientOcclusion} multisampling={0}>
       {quality.ambientOcclusion ? (
         <N8AO
-          aoRadius={0.5}
-          intensity={0.85}
-          distanceFalloff={0.7}
+          aoRadius={0.75}
+          intensity={1.35}
+          distanceFalloff={1}
           quality="medium"
           color="#2a2620"
           halfRes
@@ -47,7 +47,7 @@ export function PostEffects({
       )}
       <Bloom
         intensity={bloomIntensity}
-        luminanceThreshold={0.95}
+        luminanceThreshold={0.99}
         luminanceSmoothing={0.3}
         mipmapBlur
       />

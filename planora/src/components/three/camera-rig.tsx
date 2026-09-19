@@ -149,12 +149,13 @@ function OrbitRig({
         ),
       };
     } else {
+      // מבט שלושת-רבעי נמוך. מבט מלמעלה קורא כמו תוכנית, לא כמו דירה.
       goal.current = {
-        target: new THREE.Vector3(model.center[0], 0.9, model.center[1]),
+        target: new THREE.Vector3(model.center[0], 0.85, model.center[1]),
         position: new THREE.Vector3(
-          model.center[0] + span * 0.7,
-          span * 0.72,
-          model.center[1] + span * 0.8,
+          model.center[0] + span * 0.82,
+          span * 0.52,
+          model.center[1] + span * 0.92,
         ),
       };
     }

@@ -9,11 +9,16 @@
  *
  * מוצרים שכן משפיעים על הביצוע — מטבח, ריצוף, כלים סניטריים, דלתות —
  * מגיעים מהתוכנית ומקטלוג הספקים, לא מכאן.
+ *
+ * כל רהיט מורכב מכמה חלקים: לספה יש מושב, משענת, ידיות וכריות; לשולחן יש
+ * לוח ורגליים. קופסה אחת לכל רהיט נראית כמו מודל מחשב, ולא כמו חדר.
  */
 
 import type { ApartmentGeometry, RoomGeometry, Vec2 } from "@/lib/geometry/types";
 import type { PbrMaterial } from "@/lib/visualization/material-library";
 import { FAMILY_DEFAULTS } from "@/lib/visualization/material-library";
+
+export type StagingShape = "ROUNDED" | "CYLINDER" | "SPHERE";
 
 export interface StagingItem {
   id: string;
@@ -23,8 +28,11 @@ export interface StagingItem {
   widthM: number;
   depthM: number;
   heightM: number;
-  /** גובה הבסיס מהרצפה — שטיח על הרצפה, מדף על הקיר */
+  /** גובה הבסיס מהרצפה */
   baseM: number;
+  shape: StagingShape;
+  /** רדיוס הפינות. פינה חדה לחלוטין אינה תופסת אור ונראית מלאכותית. */
+  cornerRadius: number;
   appearance: PbrMaterial;
 }
 
@@ -40,18 +48,27 @@ function material(
   return { family, baseColor, ...FAMILY_DEFAULTS[family], ...overrides };
 }
 
-const UPHOLSTERY = material("FABRIC", "#8d8577");
-const UPHOLSTERY_DARK = material("FABRIC", "#5d6068");
-const RUG = material("FABRIC", "#b6ada0", { roughness: 0.98 });
-const OAK = material("WOOD", "#a87e52");
-const WALNUT = material("WOOD", "#6b4a33");
-const LINEN = material("FABRIC", "#e5e0d6");
-const PLANT = material("FABRIC", "#4b6b4a", { roughness: 0.85 });
-const PLANTER = material("CERAMIC", "#9c9184", { texture: undefined });
-const STONE_TOP = material("MARBLE", "#dedad3");
+const UPHOLSTERY = material("FABRIC", "#a49b8c");
+const UPHOLSTERY_CUSHION = material("FABRIC", "#b3a99a");
+const UPHOLSTERY_DARK = material("FABRIC", "#4f535c");
+const ACCENT_CUSHION = material("FABRIC", "#8a6f5c");
+const RUG = material("FABRIC", "#c3b9a9", { roughness: 0.99, envIntensity: 0.1 });
+const OAK = material("WOOD", "#b08a5e");
+const WALNUT = material("WOOD", "#5e4130");
+const MATTRESS = material("FABRIC", "#efece5");
+const PILLOW = material("FABRIC", "#f6f4ef");
+const FOLIAGE = material("FABRIC", "#4d6b4a", { roughness: 0.9, envIntensity: 0.2 });
+const POT = material("CERAMIC", "#9d9284", { texture: undefined, clearcoat: 0.1 });
+const STONE_TOP = material("MARBLE", "#e2ded6");
+const BLACK_METAL = material("METAL", "#2a2b2e", { roughness: 0.42, metalness: 0.7 });
+const LAMPSHADE = material("CERAMIC", "#f3ede2", {
+  texture: undefined,
+  emissive: "#ffd9a8",
+  emissiveIntensity: 0.55,
+});
 
 // ---------------------------------------------------------------------------
-// עזרי מיקום
+// מסגרת מיקום
 // ---------------------------------------------------------------------------
 
 interface RoomBox {
@@ -73,110 +90,409 @@ function roomBox(room: RoomGeometry): RoomBox {
   const maxX = Math.max(...xs);
   const minZ = Math.min(...zs);
   const maxZ = Math.max(...zs);
-  const width = maxX - minX;
-  const depth = maxZ - minZ;
 
   return {
     minX,
     maxX,
     minZ,
     maxZ,
-    width,
-    depth,
+    width: maxX - minX,
+    depth: maxZ - minZ,
     center: room.center,
-    horizontal: width >= depth,
+    horizontal: maxX - minX >= maxZ - minZ,
   };
 }
 
-/** מרווח מהקיר, כדי שרהיט לא ייראה שקוע בתוכו */
-const CLEARANCE = 0.22;
+/**
+ * ממקם חלקי רהיט במערכת צירים מקומית של החדר.
+ *
+ * `along` הוא הציר הארוך של החדר ו-`across` הקצר. כך אותו קוד מסדר ספה גם
+ * בחדר לרוחב וגם בחדר לאורך, בלי שכפול.
+ */
+function placer(anchor: Vec2, horizontal: boolean) {
+  return function place(
+    id: string,
+    label: string,
+    along: number,
+    across: number,
+    baseM: number,
+    sizeAlong: number,
+    sizeAcross: number,
+    heightM: number,
+    appearance: PbrMaterial,
+    options: { shape?: StagingShape; cornerRadius?: number } = {},
+  ): StagingItem {
+    return {
+      id,
+      label,
+      center: horizontal
+        ? { x: anchor.x + along, z: anchor.z + across }
+        : { x: anchor.x + across, z: anchor.z + along },
+      widthM: horizontal ? sizeAlong : sizeAcross,
+      depthM: horizontal ? sizeAcross : sizeAlong,
+      heightM,
+      baseM,
+      shape: options.shape ?? "ROUNDED",
+      cornerRadius: options.cornerRadius ?? 0.035,
+      appearance,
+    };
+  };
+}
+
+const CLEARANCE = 0.25;
+
+// ---------------------------------------------------------------------------
+// רהיטים מורכבים
+// ---------------------------------------------------------------------------
+
+/** ספה: בסיס, משענת, שתי ידיות, כריות מושב וכריות נוי */
+function sofa(
+  id: string,
+  place: ReturnType<typeof placer>,
+  along: number,
+  across: number,
+  length: number,
+): StagingItem[] {
+  const depth = 0.92;
+  const armWidth = 0.17;
+  const seatLength = length - armWidth * 2;
+
+  const items: StagingItem[] = [
+    place(`${id}:base`, "ספה", along, across, 0.08, length, depth, 0.3, UPHOLSTERY, {
+      cornerRadius: 0.05,
+    }),
+    place(
+      `${id}:back`,
+      "ספה",
+      along,
+      across - depth / 2 + 0.11,
+      0.08,
+      length,
+      0.22,
+      0.78,
+      UPHOLSTERY,
+      { cornerRadius: 0.06 },
+    ),
+  ];
+
+  for (const side of [-1, 1]) {
+    items.push(
+      place(
+        `${id}:arm${side > 0 ? "a" : "b"}`,
+        "ספה",
+        along + (side * (length - armWidth)) / 2,
+        across,
+        0.08,
+        armWidth,
+        depth,
+        0.56,
+        UPHOLSTERY,
+        { cornerRadius: 0.07 },
+      ),
+    );
+  }
+
+  // שתי כריות מושב, עם רווח ביניהן
+  for (const side of [-1, 1]) {
+    items.push(
+      place(
+        `${id}:seat${side > 0 ? "a" : "b"}`,
+        "ספה",
+        along + (side * seatLength) / 4,
+        across + 0.05,
+        0.38,
+        seatLength / 2 - 0.03,
+        depth - 0.26,
+        0.14,
+        UPHOLSTERY_CUSHION,
+        { cornerRadius: 0.06 },
+      ),
+    );
+  }
+
+  // כריות נוי — מה שהופך ספה מקופסה לרהיט
+  for (const side of [-1, 1]) {
+    items.push(
+      place(
+        `${id}:cushion${side > 0 ? "a" : "b"}`,
+        "כרית",
+        along + side * (seatLength / 2 - 0.26),
+        across - depth / 2 + 0.3,
+        0.52,
+        0.38,
+        0.14,
+        0.38,
+        ACCENT_CUSHION,
+        { cornerRadius: 0.08 },
+      ),
+    );
+  }
+
+  return items;
+}
+
+/** שולחן עם לוח וארבע רגליים */
+function table(
+  id: string,
+  label: string,
+  place: ReturnType<typeof placer>,
+  along: number,
+  across: number,
+  sizeAlong: number,
+  sizeAcross: number,
+  height: number,
+  top: PbrMaterial,
+  legs: PbrMaterial,
+  legThickness = 0.07,
+): StagingItem[] {
+  const items: StagingItem[] = [
+    place(
+      `${id}:top`,
+      label,
+      along,
+      across,
+      height - 0.05,
+      sizeAlong,
+      sizeAcross,
+      0.05,
+      top,
+      { cornerRadius: 0.02 },
+    ),
+  ];
+
+  const insetAlong = sizeAlong / 2 - legThickness / 2 - 0.08;
+  const insetAcross = sizeAcross / 2 - legThickness / 2 - 0.07;
+
+  for (const alongSide of [-1, 1]) {
+    for (const acrossSide of [-1, 1]) {
+      items.push(
+        place(
+          `${id}:leg${alongSide}${acrossSide}`,
+          label,
+          along + alongSide * insetAlong,
+          across + acrossSide * insetAcross,
+          0,
+          legThickness,
+          legThickness,
+          height - 0.05,
+          legs,
+          { cornerRadius: 0.012 },
+        ),
+      );
+    }
+  }
+
+  return items;
+}
+
+/** כיסא: מושב, משענת וארבע רגליים */
+function chair(
+  id: string,
+  place: ReturnType<typeof placer>,
+  along: number,
+  across: number,
+  backTowards: -1 | 1,
+): StagingItem[] {
+  const seat = 0.44;
+  const items: StagingItem[] = [
+    place(`${id}:seat`, "כיסא", along, across, 0.44, seat, seat, 0.06, UPHOLSTERY_DARK, {
+      cornerRadius: 0.03,
+    }),
+    place(
+      `${id}:back`,
+      "כיסא",
+      along,
+      across + backTowards * (seat / 2 - 0.04),
+      0.5,
+      seat,
+      0.06,
+      0.46,
+      UPHOLSTERY_DARK,
+      { cornerRadius: 0.04 },
+    ),
+  ];
+
+  for (const alongSide of [-1, 1]) {
+    for (const acrossSide of [-1, 1]) {
+      items.push(
+        place(
+          `${id}:leg${alongSide}${acrossSide}`,
+          "כיסא",
+          along + alongSide * (seat / 2 - 0.05),
+          across + acrossSide * (seat / 2 - 0.05),
+          0,
+          0.04,
+          0.04,
+          0.44,
+          WALNUT,
+          { cornerRadius: 0.008 },
+        ),
+      );
+    }
+  }
+
+  return items;
+}
+
+/** עציץ: כלי חרס וצמרת */
+function plant(
+  id: string,
+  place: ReturnType<typeof placer>,
+  along: number,
+  across: number,
+  scale = 1,
+): StagingItem[] {
+  return [
+    place(`${id}:pot`, "עציץ", along, across, 0, 0.34 * scale, 0.34 * scale, 0.36 * scale, POT, {
+      shape: "CYLINDER",
+    }),
+    place(
+      `${id}:foliage`,
+      "צמח",
+      along,
+      across,
+      0.32 * scale,
+      0.56 * scale,
+      0.56 * scale,
+      0.62 * scale,
+      FOLIAGE,
+      { shape: "SPHERE" },
+    ),
+  ];
+}
+
+/** מנורה תלויה — נדלקת בערב ומעגנת את פינת האוכל */
+function pendant(
+  id: string,
+  place: ReturnType<typeof placer>,
+  along: number,
+  across: number,
+  ceilingM: number,
+): StagingItem[] {
+  return [
+    place(`${id}:rod`, "מנורה", along, across, ceilingM - 0.55, 0.03, 0.03, 0.55, BLACK_METAL, {
+      shape: "CYLINDER",
+    }),
+    place(
+      `${id}:shade`,
+      "מנורה",
+      along,
+      across,
+      ceilingM - 0.72,
+      0.34,
+      0.34,
+      0.2,
+      LAMPSHADE,
+      { shape: "CYLINDER" },
+    ),
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // סידור לפי סוג חדר
 // ---------------------------------------------------------------------------
 
 function stageLiving(room: RoomGeometry, box: RoomBox): StagingItem[] {
-  // חדר קטן מדי לא מקבל סידור — עדיף חלל ריק מאשר רהיטים דחוסים
   if (box.width < 2.8 || box.depth < 2.6) return [];
 
-  const items: StagingItem[] = [];
+  const place = placer(box.center, box.horizontal);
   const along = box.horizontal ? box.width : box.depth;
   const across = box.horizontal ? box.depth : box.width;
 
-  const sofaLength = Math.min(2.4, along * 0.55);
-  const sofaDepth = 0.9;
+  // בחלל משולב הספה יושבת בחצי אחד, ופינת האוכל בשני
+  const combined = room.areaSqm >= 20;
+  const seatingCentre = combined ? -along * 0.22 : 0;
+  const sofaLength = Math.min(2.35, along * (combined ? 0.42 : 0.6));
+  const wallOffset = across / 2 - 0.92 / 2 - CLEARANCE;
 
-  // ספה צמודה לקיר, שולחן קפה מולה, שטיח ביניהם, יחידת טלוויזיה בצד הנגדי
-  const sofaOffset = across / 2 - sofaDepth / 2 - CLEARANCE;
-  const consoleOffset = across / 2 - 0.2 - CLEARANCE;
+  const items: StagingItem[] = [
+    place(
+      `${room.id}:rug`,
+      "שטיח",
+      seatingCentre,
+      0,
+      0.004,
+      Math.min(2.7, along * (combined ? 0.4 : 0.66)),
+      Math.min(2.1, across * 0.66),
+      0.012,
+      RUG,
+      { cornerRadius: 0.004 },
+    ),
+    ...sofa(`${room.id}:sofa`, place, seatingCentre, -wallOffset, sofaLength),
+    ...table(
+      `${room.id}:coffee`,
+      "שולחן סלון",
+      place,
+      seatingCentre,
+      0.1,
+      Math.min(1.1, sofaLength * 0.55),
+      0.58,
+      0.4,
+      WALNUT,
+      WALNUT,
+      0.05,
+    ),
+    // יחידת טלוויזיה נמוכה מול הספה
+    place(
+      `${room.id}:console`,
+      "יחידת טלוויזיה",
+      seatingCentre,
+      across / 2 - 0.22 - CLEARANCE,
+      0.06,
+      Math.min(1.9, sofaLength * 0.9),
+      0.42,
+      0.4,
+      OAK,
+      { cornerRadius: 0.02 },
+    ),
+    place(
+      `${room.id}:tv`,
+      "מסך",
+      seatingCentre,
+      across / 2 - 0.12 - CLEARANCE,
+      0.62,
+      Math.min(1.3, sofaLength * 0.62),
+      0.05,
+      0.72,
+      BLACK_METAL,
+      { cornerRadius: 0.01 },
+    ),
+    ...plant(`${room.id}:plant`, place, seatingCentre - along * 0.3, -wallOffset + 0.1, 1.05),
+  ];
 
-  const place = (offsetAcross: number, offsetAlong: number): Vec2 =>
-    box.horizontal
-      ? { x: box.center.x + offsetAlong, z: box.center.z + offsetAcross }
-      : { x: box.center.x + offsetAcross, z: box.center.z + offsetAlong };
+  if (combined) {
+    const diningCentre = along * 0.26;
+    items.push(
+      ...table(
+        `${room.id}:dining`,
+        "שולחן אוכל",
+        place,
+        diningCentre,
+        0,
+        Math.min(1.7, along * 0.3),
+        Math.min(0.95, across * 0.42),
+        0.75,
+        OAK,
+        WALNUT,
+      ),
+    );
 
-  const size = (lengthAlong: number, lengthAcross: number): [number, number] =>
-    box.horizontal ? [lengthAlong, lengthAcross] : [lengthAcross, lengthAlong];
+    for (const side of [-1, 1] as const) {
+      for (const offset of [-0.32, 0.32]) {
+        items.push(
+          ...chair(
+            `${room.id}:chair${side}${offset > 0 ? "a" : "b"}`,
+            place,
+            diningCentre + offset,
+            side * 0.72,
+            side,
+          ),
+        );
+      }
+    }
 
-  const [rugW, rugD] = size(Math.min(3, along * 0.62), Math.min(2.2, across * 0.62));
-  items.push({
-    id: `${room.id}:rug`,
-    label: "שטיח",
-    center: box.center,
-    widthM: rugW,
-    depthM: rugD,
-    heightM: 0.02,
-    baseM: 0,
-    appearance: RUG,
-  });
-
-  const [sofaW, sofaD] = size(sofaLength, sofaDepth);
-  items.push({
-    id: `${room.id}:sofa`,
-    label: "ספה",
-    center: place(-sofaOffset, 0),
-    widthM: sofaW,
-    depthM: sofaD,
-    heightM: 0.78,
-    baseM: 0,
-    appearance: UPHOLSTERY,
-  });
-
-  const [tableW, tableD] = size(Math.min(1.2, along * 0.3), 0.6);
-  items.push({
-    id: `${room.id}:coffee-table`,
-    label: "שולחן סלון",
-    center: box.center,
-    widthM: tableW,
-    depthM: tableD,
-    heightM: 0.4,
-    baseM: 0,
-    appearance: WALNUT,
-  });
-
-  const [consoleW, consoleD] = size(Math.min(1.8, along * 0.45), 0.4);
-  items.push({
-    id: `${room.id}:console`,
-    label: "יחידת טלוויזיה",
-    center: place(consoleOffset, 0),
-    widthM: consoleW,
-    depthM: consoleD,
-    heightM: 0.45,
-    baseM: 0,
-    appearance: OAK,
-  });
-
-  // עציץ בפינה
-  items.push({
-    id: `${room.id}:plant`,
-    label: "צמח",
-    center: place(-sofaOffset + 0.1, along / 2 - 0.55),
-    widthM: 0.45,
-    depthM: 0.45,
-    heightM: 1.05,
-    baseM: 0,
-    appearance: PLANT,
-  });
+    items.push(...pendant(`${room.id}:pendant`, place, diningCentre, 0, room.ceilingHeightM));
+  }
 
   return items;
 }
@@ -184,42 +500,38 @@ function stageLiving(room: RoomGeometry, box: RoomBox): StagingItem[] {
 function stageDining(room: RoomGeometry, box: RoomBox): StagingItem[] {
   if (box.width < 2.2 || box.depth < 2.2) return [];
 
-  const tableW = Math.min(1.6, box.width * 0.5);
-  const tableD = Math.min(0.95, box.depth * 0.45);
+  const place = placer(box.center, box.horizontal);
+  const along = box.horizontal ? box.width : box.depth;
+  const across = box.horizontal ? box.depth : box.width;
 
-  const items: StagingItem[] = [
-    {
-      id: `${room.id}:dining-table`,
-      label: "שולחן אוכל",
-      center: box.center,
-      widthM: tableW,
-      depthM: tableD,
-      heightM: 0.75,
-      baseM: 0,
-      appearance: OAK,
-    },
-  ];
+  const items = table(
+    `${room.id}:dining`,
+    "שולחן אוכל",
+    place,
+    0,
+    0,
+    Math.min(1.6, along * 0.5),
+    Math.min(0.95, across * 0.45),
+    0.75,
+    OAK,
+    WALNUT,
+  );
 
-  // ארבעה כיסאות, שניים בכל צד ארוך
-  const seatOffsets: [number, number][] = [
-    [-tableW / 3, -tableD / 2 - 0.35],
-    [tableW / 3, -tableD / 2 - 0.35],
-    [-tableW / 3, tableD / 2 + 0.35],
-    [tableW / 3, tableD / 2 + 0.35],
-  ];
+  for (const side of [-1, 1] as const) {
+    for (const offset of [-0.3, 0.3]) {
+      items.push(
+        ...chair(
+          `${room.id}:chair${side}${offset > 0 ? "a" : "b"}`,
+          place,
+          offset,
+          side * 0.7,
+          side,
+        ),
+      );
+    }
+  }
 
-  seatOffsets.forEach(([offsetX, offsetZ], index) => {
-    items.push({
-      id: `${room.id}:chair-${index}`,
-      label: "כיסא",
-      center: { x: box.center.x + offsetX, z: box.center.z + offsetZ },
-      widthM: 0.44,
-      depthM: 0.44,
-      heightM: 0.9,
-      baseM: 0,
-      appearance: UPHOLSTERY_DARK,
-    });
-  });
+  items.push(...pendant(`${room.id}:pendant`, place, 0, 0, room.ceilingHeightM));
 
   return items;
 }
@@ -227,71 +539,119 @@ function stageDining(room: RoomGeometry, box: RoomBox): StagingItem[] {
 function stageBedroom(room: RoomGeometry, box: RoomBox): StagingItem[] {
   if (box.width < 2.4 || box.depth < 2.4) return [];
 
-  // מיטה זוגית בחדר גדול, יחיד בקטן
+  // המיטה עומדת לאורך הציר הקצר, עם הראש אל הקיר
+  const headAtMin = box.depth >= box.width;
+  const place = placer(box.center, !headAtMin);
+  const roomAlong = headAtMin ? box.depth : box.width;
+  const roomAcross = headAtMin ? box.width : box.depth;
+
   const isMaster = room.areaSqm >= 11;
-  const bedWidth = isMaster ? 1.6 : 1.0;
-  const bedLength = 2.0;
+  const bedWidth = Math.min(isMaster ? 1.6 : 1.05, roomAcross - 1.1);
+  const bedLength = Math.min(2.0, roomAlong - 1.0);
+  if (bedWidth < 0.8 || bedLength < 1.6) return [];
 
-  const items: StagingItem[] = [];
-  const headAtMinZ = box.depth >= box.width;
+  const headAlong = -roomAlong / 2 + CLEARANCE;
+  const bedAlong = headAlong + bedLength / 2;
 
-  const bedCenter: Vec2 = headAtMinZ
-    ? { x: box.center.x, z: box.minZ + CLEARANCE + bedLength / 2 }
-    : { x: box.minX + CLEARANCE + bedLength / 2, z: box.center.z };
+  const items: StagingItem[] = [
+    // בסיס, מזרן וראש מיטה
+    place(`${room.id}:bed-base`, "מיטה", bedAlong, 0, 0.05, bedLength, bedWidth, 0.26, WALNUT, {
+      cornerRadius: 0.02,
+    }),
+    place(
+      `${room.id}:mattress`,
+      "מיטה",
+      bedAlong,
+      0,
+      0.31,
+      bedLength - 0.06,
+      bedWidth - 0.06,
+      0.26,
+      MATTRESS,
+      { cornerRadius: 0.05 },
+    ),
+    place(
+      `${room.id}:headboard`,
+      "מיטה",
+      headAlong + 0.05,
+      0,
+      0.05,
+      0.1,
+      bedWidth + 0.12,
+      1.0,
+      UPHOLSTERY,
+      { cornerRadius: 0.05 },
+    ),
+  ];
 
-  items.push({
-    id: `${room.id}:bed`,
-    label: "מיטה",
-    center: bedCenter,
-    widthM: headAtMinZ ? bedWidth : bedLength,
-    depthM: headAtMinZ ? bedLength : bedWidth,
-    heightM: 0.52,
-    baseM: 0,
-    appearance: LINEN,
-  });
-
-  // שידות לצד הראש
-  const nightstandOffset = bedWidth / 2 + 0.3;
+  // כריות
   for (const side of [-1, 1]) {
-    const center: Vec2 = headAtMinZ
-      ? { x: bedCenter.x + side * nightstandOffset, z: box.minZ + CLEARANCE + 0.28 }
-      : { x: box.minX + CLEARANCE + 0.28, z: bedCenter.z + side * nightstandOffset };
+    items.push(
+      place(
+        `${room.id}:pillow${side > 0 ? "a" : "b"}`,
+        "כרית",
+        headAlong + 0.42,
+        side * (bedWidth / 4),
+        0.56,
+        0.36,
+        bedWidth / 2 - 0.08,
+        0.12,
+        PILLOW,
+        { cornerRadius: 0.06 },
+      ),
+    );
+  }
 
-    if (
-      center.x < box.minX + 0.1 ||
-      center.x > box.maxX - 0.1 ||
-      center.z < box.minZ + 0.1 ||
-      center.z > box.maxZ - 0.1
-    ) {
-      continue;
+  // שידות לצד הראש, רק אם יש מקום
+  const nightstandAcross = bedWidth / 2 + 0.28;
+  if (nightstandAcross + 0.22 < roomAcross / 2 - 0.1) {
+    for (const side of [-1, 1]) {
+      items.push(
+        place(
+          `${room.id}:nightstand${side > 0 ? "a" : "b"}`,
+          "שידה",
+          headAlong + 0.24,
+          side * nightstandAcross,
+          0,
+          0.42,
+          0.38,
+          0.48,
+          WALNUT,
+          { cornerRadius: 0.02 },
+        ),
+      );
     }
-
-    items.push({
-      id: `${room.id}:nightstand-${side > 0 ? "a" : "b"}`,
-      label: "שידה",
-      center,
-      widthM: 0.45,
-      depthM: 0.4,
-      heightM: 0.5,
-      baseM: 0,
-      appearance: WALNUT,
-    });
   }
 
   // ארון לאורך הקיר הנגדי
-  const wardrobeLength = Math.min(2.2, (headAtMinZ ? box.width : box.depth) * 0.6);
-  items.push({
-    id: `${room.id}:wardrobe`,
-    label: "ארון",
-    center: headAtMinZ
-      ? { x: box.center.x, z: box.maxZ - CLEARANCE - 0.3 }
-      : { x: box.maxX - CLEARANCE - 0.3, z: box.center.z },
-    widthM: headAtMinZ ? wardrobeLength : 0.6,
-    depthM: headAtMinZ ? 0.6 : wardrobeLength,
-    heightM: 2.1,
-    baseM: 0,
-    appearance: LINEN,
-  });
+  const wardrobeAcross = Math.min(2.1, roomAcross * 0.62);
+  items.push(
+    place(
+      `${room.id}:wardrobe`,
+      "ארון",
+      roomAlong / 2 - CLEARANCE - 0.3,
+      0,
+      0,
+      0.58,
+      wardrobeAcross,
+      2.15,
+      MATTRESS,
+      { cornerRadius: 0.015 },
+    ),
+    // קו הפרדה בין דלתות הארון
+    place(
+      `${room.id}:wardrobe-line`,
+      "ארון",
+      roomAlong / 2 - CLEARANCE - 0.005,
+      0,
+      0.1,
+      0.02,
+      0.02,
+      1.95,
+      BLACK_METAL,
+      { cornerRadius: 0.005 },
+    ),
+  );
 
   return items;
 }
@@ -299,49 +659,63 @@ function stageBedroom(room: RoomGeometry, box: RoomBox): StagingItem[] {
 function stageBalcony(room: RoomGeometry, box: RoomBox): StagingItem[] {
   if (room.areaSqm < 3) return [];
 
-  const items: StagingItem[] = [];
+  const place = placer(box.center, box.horizontal);
   const along = box.horizontal ? box.width : box.depth;
+  const across = box.horizontal ? box.depth : box.width;
 
-  // שני מושבים ושולחן קטן ביניהם
+  const items: StagingItem[] = [];
+  const seatOffset = Math.min(0.7, along * 0.22);
+
   for (const side of [-1, 1]) {
-    items.push({
-      id: `${room.id}:lounge-${side > 0 ? "a" : "b"}`,
-      label: "כורסת חוץ",
-      center: box.horizontal
-        ? { x: box.center.x + side * Math.min(0.75, along * 0.2), z: box.center.z }
-        : { x: box.center.x, z: box.center.z + side * Math.min(0.75, along * 0.2) },
-      widthM: 0.7,
-      depthM: 0.7,
-      heightM: 0.72,
-      baseM: 0,
-      appearance: UPHOLSTERY_DARK,
-    });
+    const id = `${room.id}:lounge${side > 0 ? "a" : "b"}`;
+    items.push(
+      place(`${id}:seat`, "כורסת חוץ", side * seatOffset, 0, 0.1, 0.66, 0.68, 0.3, UPHOLSTERY_DARK, {
+        cornerRadius: 0.05,
+      }),
+      place(
+        `${id}:back`,
+        "כורסת חוץ",
+        side * seatOffset,
+        -0.26,
+        0.1,
+        0.66,
+        0.14,
+        0.68,
+        UPHOLSTERY_DARK,
+        { cornerRadius: 0.05 },
+      ),
+      place(
+        `${id}:cushion`,
+        "כורסת חוץ",
+        side * seatOffset,
+        0.04,
+        0.38,
+        0.58,
+        0.56,
+        0.1,
+        UPHOLSTERY_CUSHION,
+        { cornerRadius: 0.05 },
+      ),
+    );
   }
 
-  items.push({
-    id: `${room.id}:outdoor-table`,
-    label: "שולחן חוץ",
-    center: box.center,
-    widthM: 0.5,
-    depthM: 0.5,
-    heightM: 0.42,
-    baseM: 0,
-    appearance: STONE_TOP,
-  });
-
-  // עציצים לאורך המעקה
-  items.push({
-    id: `${room.id}:planter`,
-    label: "עציץ",
-    center: box.horizontal
-      ? { x: box.maxX - CLEARANCE - 0.25, z: box.center.z }
-      : { x: box.center.x, z: box.maxZ - CLEARANCE - 0.25 },
-    widthM: 0.42,
-    depthM: 0.42,
-    heightM: 0.85,
-    baseM: 0,
-    appearance: PLANTER,
-  });
+  items.push(
+    ...table(
+      `${room.id}:outdoor-table`,
+      "שולחן חוץ",
+      place,
+      0,
+      0.05,
+      0.5,
+      0.5,
+      0.44,
+      STONE_TOP,
+      BLACK_METAL,
+      0.04,
+    ),
+    ...plant(`${room.id}:planter-a`, place, along / 2 - 0.4, across / 2 - 0.35, 0.85),
+    ...plant(`${room.id}:planter-b`, place, -along / 2 + 0.4, across / 2 - 0.35, 0.7),
+  );
 
   return items;
 }
@@ -366,17 +740,6 @@ export function buildStaging(
     switch (room.kind) {
       case "LIVING":
         items.push(...stageLiving(room, box));
-        // חלל משולב מקבל גם פינת אוכל, בצד הרחוק מהספה
-        if (room.areaSqm >= 20) {
-          items.push(
-            ...stageDining(
-              room,
-              box.horizontal
-                ? { ...box, center: { x: box.center.x + box.width * 0.26, z: box.center.z } }
-                : { ...box, center: { x: box.center.x, z: box.center.z + box.depth * 0.26 } },
-            ),
-          );
-        }
         break;
       case "DINING":
         items.push(...stageDining(room, box));
@@ -393,9 +756,11 @@ export function buildStaging(
     }
   }
 
-  return items.map((item) =>
-    item.baseM + item.heightM <= cutHeightM
-      ? item
-      : { ...item, heightM: Math.max(0.1, cutHeightM - item.baseM) },
-  );
+  return items
+    .filter((item) => item.baseM < cutHeightM)
+    .map((item) =>
+      item.baseM + item.heightM <= cutHeightM
+        ? item
+        : { ...item, heightM: Math.max(0.05, cutHeightM - item.baseM) },
+    );
 }

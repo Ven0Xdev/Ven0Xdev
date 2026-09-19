@@ -67,6 +67,9 @@ export interface PbrMaterial {
   envIntensity?: number;
   /** שכבת לכה עליונה — חזיתות מטבח מבריקות, קרמיקה מזוגגת */
   clearcoat?: number;
+  /** אור עצמי — לגופי תאורה בלבד */
+  emissive?: string;
+  emissiveIntensity?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,8 +85,8 @@ export const FAMILY_DEFAULTS: Record<MaterialFamily, Omit<PbrMaterial, "family" 
     roughness: 0.52,
     metalness: 0,
     texture: { pattern: "WOOD_GRAIN", scaleM: 1.2, contrast: 0.32, accentColor: "#8a5f38" },
-    normalStrength: 0.7,
-    envIntensity: 0.6,
+    normalStrength: 0.75,
+    envIntensity: 0.45,
     clearcoat: 0.15,
   },
   MARBLE: {
@@ -105,8 +108,8 @@ export const FAMILY_DEFAULTS: Record<MaterialFamily, Omit<PbrMaterial, "family" 
     roughness: 0.82,
     metalness: 0.02,
     texture: { pattern: "CONCRETE", scaleM: 1.6, contrast: 0.2, accentColor: "#8f8f8c" },
-    normalStrength: 0.55,
-    envIntensity: 0.6,
+    normalStrength: 0.6,
+    envIntensity: 0.4,
   },
   GLASS: {
     roughness: 0.06,
@@ -133,8 +136,8 @@ export const FAMILY_DEFAULTS: Record<MaterialFamily, Omit<PbrMaterial, "family" 
     roughness: 0.93,
     metalness: 0,
     texture: { pattern: "PLASTER", scaleM: 2.2, contrast: 0.05 },
-    normalStrength: 0.25,
-    envIntensity: 0.5,
+    normalStrength: 0.3,
+    envIntensity: 0.28,
   },
   CERAMIC: {
     roughness: 0.22,
@@ -176,12 +179,12 @@ export const STANDARD_SURFACES: Record<MaterialSurface, PbrMaterial> = {
   // הקירות בהירים במכוון, כדי שהריצוף והמטבח יהיו הצבע הדומיננטי בחלל
   wall: {
     family: "PAINT",
-    baseColor: "#efebe4",
+    baseColor: "#f1f0ed",
     ...FAMILY_DEFAULTS.PAINT,
   },
   partition: {
     family: "PAINT",
-    baseColor: "#e9e5dd",
+    baseColor: "#eae8e4",
     ...FAMILY_DEFAULTS.PAINT,
   },
   railing: {

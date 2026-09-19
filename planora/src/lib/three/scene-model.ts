@@ -10,7 +10,7 @@
 
 import type { ApartmentGeometry, Vec2 } from "@/lib/geometry/types";
 import type { PbrMaterial } from "@/lib/visualization/material-library";
-import { buildStaging } from "./staging";
+import { buildStaging, type StagingShape } from "./staging";
 
 /** גובה חלל פנימי סטנדרטי במטרים */
 export const CEILING_HEIGHT_M = 2.7;
@@ -33,6 +33,7 @@ export type SurfaceKind =
   | "KITCHEN"
   | "SANITARY"
   | "FIXTURE"
+  | "CEILING"
   | "STAGING";
 
 export interface SceneBox {
@@ -51,6 +52,10 @@ export interface SceneBox {
   category?: "KITCHEN" | "FLOORING" | "SANITARY" | "DOORS" | "OUTDOOR";
   /** חומר קבוע — לפריטים שאינם נגזרים מבחירת הדייר */
   appearance?: PbrMaterial;
+  /** צורת הפריט. ברירת המחדל — תיבה חדה, כמו קיר או רצפה. */
+  shape?: StagingShape;
+  /** רדיוס פינה לפריטים מעוגלים */
+  cornerRadius?: number;
   /**
    * פריט המחשה בלבד: אינו חלק מהביצוע, אינו במפרט ואינו במחיר.
    * הממשק חייב לומר זאת לדייר במפורש.
@@ -81,8 +86,22 @@ export interface SceneRoom {
   isOutdoor: boolean;
 }
 
+/** פתח שדרכו נכנס אור יום — משמש למיקום תאורת חלון */
+export interface SceneOpening {
+  id: string;
+  /** מרכז הפתח */
+  position: [number, number, number];
+  /** רוחב הפתח */
+  widthM: number;
+  isBalconyDoor: boolean;
+}
+
 export interface SceneModel {
   boxes: SceneBox[];
+  /** פתחי אור. ריק כאשר התצוגה חתוכה ואין צורך בהם. */
+  openings: SceneOpening[];
+  /** האם התצוגה מציגה את הדירה בגובהה המלא (מצב סיור) */
+  enclosed: boolean;
   /** מרכז הדירה, לצורך מיקום המצלמה */
   center: [number, number];
   /** מידות כוללות במטרים */
@@ -116,7 +135,10 @@ export function buildSceneModel(
   cutHeightM: number = DOLLHOUSE_CUT_M,
 ): SceneModel {
   const boxes: SceneBox[] = [];
+  const openings: SceneOpening[] = [];
   const roomById = new Map(geometry.rooms.map((room) => [room.id, room]));
+  // תצוגה סגורה = הקירות בגובהם המלא. רק אז יש טעם בתקרה.
+  const enclosed = cutHeightM >= CEILING_HEIGHT_M - 0.01;
 
   // --- רצפות ---
   for (const floor of geometry.floors) {
@@ -160,6 +182,12 @@ export function buildSceneModel(
     });
   }
 
+  // הערה על תקרות: תקרה גאומטרית נראית כמו הפתרון הנכון למצב סיור, אבל היא
+  // חוסמת את המצלמה, מבלבלת את בדיקת ההתנגשויות ומחשיכה את החלל לגמרי —
+  // כי אין כאן תאורה גלובלית שתחזיר אור מהתקרה בחזרה לחדר. במקום זאת
+  // `enclosed` מסמן לשכבת התאורה להתנהג כאילו יש תקרה: שמיים מוחלשים,
+  // אור שנכנס מהפתחים, ותאורה פנימית דולקת.
+
   // --- פתחים ---
   for (const opening of geometry.openings) {
     const horizontal = Math.abs(Math.cos(opening.rotationRad)) >= Math.abs(Math.sin(opening.rotationRad));
@@ -193,6 +221,17 @@ export function buildSceneModel(
         selectable: false,
       });
     }
+
+    openings.push({
+      id: opening.id,
+      position: [
+        opening.center.x,
+        opening.sillHeightM + Math.min(opening.heightM, cutHeightM) / 2,
+        opening.center.z,
+      ],
+      widthM: opening.widthM,
+      isBalconyDoor: opening.kind === "SLIDING_DOOR",
+    });
 
     // הזכוכית — עד גובה החיתוך של התצוגה
     const glassHeight = Math.max(0.2, Math.min(opening.heightM, cutHeightM - opening.sillHeightM));
@@ -237,6 +276,8 @@ export function buildSceneModel(
       label: item.label,
       materialSlot: "wall",
       appearance: item.appearance,
+      shape: item.shape,
+      cornerRadius: item.cornerRadius,
       selectable: false,
       visualizationOnly: true,
     });
@@ -244,6 +285,8 @@ export function buildSceneModel(
 
   return {
     boxes,
+    openings,
+    enclosed,
     center: [geometry.bounds.center.x, geometry.bounds.center.z],
     size: [geometry.bounds.sizeX, geometry.bounds.sizeZ],
     rooms: geometry.rooms.map((room) => {
