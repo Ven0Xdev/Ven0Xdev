@@ -4,7 +4,7 @@
  * מנוע התלת-ממד הוא מודול נפרד וניתן להחלפה. המסכים אינם יודעים אם הדירה
  * מרונדרת בדפדפן או בשרת רינדור מרוחק — הם מדברים אך ורק בשפת הממשק הזה.
  *
- * המימוש הפעיל היום הוא אב-טיפוס מבוסס Three.js (`PrototypeVisualizationProvider`).
+ * המימוש הפעיל היום הוא `R3FVisualizationProvider` — React Three Fiber בדפדפן.
  * היעד העתידי הוא הדמיה אדריכלית פוטוריאליסטית מבוססת Unreal Engine בזרימת
  * וידאו (`UnrealPixelStreamingProvider`). ההחלפה נעשית בנקודה אחת: הפונקציה
  * `createVisualizationProvider` שבקובץ זה.
@@ -19,6 +19,7 @@ import type {
   ExteriorEnvironment,
   LoadApartmentInput,
   LoadConfigurationInput,
+  QualityMode,
   TimeOfDay,
   VisualizationCapabilities,
   VisualizationListener,
@@ -66,6 +67,12 @@ export interface ApartmentVisualizationProvider {
   /** חוזר ממצב סיור למבט כללי על הדירה */
   stopWalkthrough(): Promise<VisualizationState>;
 
+  /** קובע את רמת האיכות. `AUTO` נותן למנוע להחליט לפי המכשיר. */
+  setQualityMode(mode: QualityMode): Promise<VisualizationState>;
+
+  /** מחזיר את הסצנה למפרט הסטנדרט ולמבט הפתיחה, בלי לטעון מחדש את הדירה */
+  resetScene(): Promise<VisualizationState>;
+
   getState(): VisualizationState;
 
   /** מחזיר פונקציית ביטול הרשמה */
@@ -80,9 +87,16 @@ export interface ApartmentVisualizationProvider {
 // ---------------------------------------------------------------------------
 
 /** המנוע שרץ כאשר לא הוגדר אחרת */
-export const DEFAULT_VISUALIZATION_PROVIDER_ID: VisualizationProviderId = "prototype-three";
+export const DEFAULT_VISUALIZATION_PROVIDER_ID: VisualizationProviderId = "r3f-webgl";
 
-const PROVIDER_IDS: VisualizationProviderId[] = ["prototype-three", "unreal-pixel-streaming"];
+const PROVIDER_IDS: VisualizationProviderId[] = ["r3f-webgl", "unreal-pixel-streaming"];
+
+/** שמות קודמים שעדיין עשויים להופיע בקובצי סביבה */
+const PROVIDER_ALIASES: Record<string, VisualizationProviderId> = {
+  "prototype-three": "r3f-webgl",
+  webgl: "r3f-webgl",
+  r3f: "r3f-webgl",
+};
 
 export function isVisualizationProviderId(value: unknown): value is VisualizationProviderId {
   return typeof value === "string" && (PROVIDER_IDS as string[]).includes(value);
@@ -96,7 +110,9 @@ export function isVisualizationProviderId(value: unknown): value is Visualizatio
  */
 export function resolveVisualizationProviderId(): VisualizationProviderId {
   const configured = process.env.NEXT_PUBLIC_VISUALIZATION_PROVIDER;
-  return isVisualizationProviderId(configured) ? configured : DEFAULT_VISUALIZATION_PROVIDER_ID;
+  if (isVisualizationProviderId(configured)) return configured;
+  if (configured && configured in PROVIDER_ALIASES) return PROVIDER_ALIASES[configured];
+  return DEFAULT_VISUALIZATION_PROVIDER_ID;
 }
 
 /**
@@ -118,10 +134,10 @@ export async function createVisualizationProvider(
       );
       return new UnrealPixelStreamingProvider();
     }
-    case "prototype-three":
+    case "r3f-webgl":
     default: {
-      const { PrototypeVisualizationProvider } = await import("./providers/prototype");
-      return new PrototypeVisualizationProvider();
+      const { R3FVisualizationProvider } = await import("./providers/r3f");
+      return new R3FVisualizationProvider();
     }
   }
 }

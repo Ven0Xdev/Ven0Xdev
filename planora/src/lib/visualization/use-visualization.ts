@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createVisualizationProvider, type ApartmentVisualizationProvider } from "./provider";
+import { createGeometryProvider } from "@/lib/geometry/provider";
+import { detectQualityMode, isWebGLAvailable } from "./quality";
 import {
   VisualizationUnsupportedError,
   type ExteriorEnvironment,
   type MaterialAssignment,
+  type QualityMode,
   type TimeOfDay,
   type VisualizationState,
 } from "./types";
@@ -16,6 +19,8 @@ const INITIAL_STATE: VisualizationState = {
   status: "LOADING",
   apartmentId: null,
   timeOfDay: "MIDDAY",
+  qualityMode: "AUTO",
+  effectiveQuality: "BALANCED",
   environment: null,
   focusedRoomId: null,
   cameraMode: "ORBIT",
@@ -52,12 +57,24 @@ export function useApartmentVisualization({
   // החומרים מגיעים כמערך חדש בכל רינדור של ההורה. חתימה יציבה מונעת טעינה
   // מחדש של התצורה — וקפיצה של המצלמה — כשדבר לא באמת השתנה.
   const materialsKey = useMemo(() => JSON.stringify(materials), [materials]);
+  const autoQuality = useMemo(() => detectQualityMode(), []);
   const materialsRef = useRef(materials);
   materialsRef.current = materials;
 
   useEffect(() => {
     let cancelled = false;
     let instance: ApartmentVisualizationProvider | null = null;
+
+    // מכשיר ללא WebGL אינו מקבל מסך שבור: הוא מקבל הסבר, והמסך מציע את
+    // התוכנית הדו-ממדית במקום.
+    if (!isWebGLAvailable()) {
+      setState((current) => ({
+        ...current,
+        status: "UNSUPPORTED",
+        message: "תצוגת 3D מתקדמת אינה זמינה במכשיר זה.",
+      }));
+      return;
+    }
 
     createVisualizationProvider()
       .then((created) => {
@@ -66,6 +83,8 @@ export function useApartmentVisualization({
           return;
         }
         instance = created;
+        // ברירת מחדל לפי המכשיר, לפני שהדירה נטענת
+        void created.setQualityMode("AUTO").catch(() => undefined);
         setProvider(created);
       })
       .catch((error: unknown) => {
@@ -92,7 +111,12 @@ export function useApartmentVisualization({
 
     async function load(engine: ApartmentVisualizationProvider) {
       try {
-        await engine.loadApartment({ apartmentId, document, environment: environment ?? null });
+        // התוכנית → גאומטריה מנורמלת → מנוע. התצוגה אינה יודעת מאיפה הגיעה
+        // הדירה, וכשייכתב מעבד DWG אמיתי רק השלב הזה יתחלף.
+        const geometryProvider = await createGeometryProvider();
+        const geometry = await geometryProvider.loadFromPlan({ document, apartmentId });
+        if (cancelled) return;
+        await engine.loadApartment({ apartmentId, geometry, environment: environment ?? null });
         if (cancelled) return;
         await engine.loadConfiguration({ materials: materialsRef.current });
       } catch (error) {
@@ -141,13 +165,27 @@ export function useApartmentVisualization({
     void provider?.stopWalkthrough().catch(() => undefined);
   }, [provider]);
 
+  const setQualityMode = useCallback(
+    (mode: QualityMode) => {
+      void provider?.setQualityMode(mode).catch(() => undefined);
+    },
+    [provider],
+  );
+
+  const resetScene = useCallback(() => {
+    void provider?.resetScene().catch(() => undefined);
+  }, [provider]);
+
   return {
     state,
+    autoQuality,
     capabilities: provider?.capabilities ?? null,
     providerId: provider?.id ?? null,
     setTimeOfDay,
     focusRoom,
     startWalkthrough,
     stopWalkthrough,
+    setQualityMode,
+    resetScene,
   };
 }

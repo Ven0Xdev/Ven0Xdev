@@ -1,19 +1,18 @@
 /**
- * מנוע האב-טיפוס — Three.js בתוך הדפדפן.
+ * המנוע הפעיל — React Three Fiber בתוך הדפדפן.
  *
- * זהו המנוע הפעיל היום. הוא נותן לדייר ולמנהל שינויי הדיירים תצוגה נאמנה
- * *לתוכנית*: הגאומטריה נגזרת מאותו `DrawingDocument` שמשמש את ההשוואה
- * הדו-ממדית, והחומרים מגיעים ממוצרים שאושרו לפרויקט. הוא אינו הדמיה
- * פוטוריאליסטית, ואינו מתיימר להיות כזו.
+ * הוא מרנדר את הדירה מתוך **גאומטריה מנורמלת** שנגזרה מהתוכנית שהקבלן העלה,
+ * עם חומרים שמגיעים ממוצרים שאושרו לפרויקט.
  *
- * מה שהמנוע הזה לא עושה — ומדווח על כך ב-`capabilities`:
- * תאורה גלובלית, השתקפויות, זכוכית אמיתית, מצלמה קולנועית וסביבה חיצונית.
- * מסך שנשען על היכולות האלה יקבל אותן מ-`UnrealPixelStreamingProvider` בעתיד,
- * בלי שינוי בקוד המסך.
+ * מה שהמנוע הזה עדיין לא עושה — ומדווח על כך ב-`capabilities`: תאורה גלובלית
+ * ומצלמה קולנועית. מסך שנשען על היכולות האלה יקבל אותן מ-
+ * `UnrealPixelStreamingProvider` בעתיד, בלי שינוי בקוד המסך.
  */
 
 import { SCENE_LIGHTING, resolveMaterials, type ProductMaterial } from "@/lib/three/materials";
 import { buildSceneModel, type SceneModel } from "@/lib/three/scene-model";
+import { QUALITY_SETTINGS, resolveQuality, type ResolvedQuality } from "../quality";
+import type { ApartmentGeometry } from "@/lib/geometry/types";
 import type { ApartmentVisualizationProvider } from "../provider";
 import type {
   ApplyMaterialInput,
@@ -23,6 +22,7 @@ import type {
   LoadConfigurationInput,
   MaterialAssignment,
   MaterialSurface,
+  QualityMode,
   ResolvedMaterial,
   TimeOfDay,
   VisualizationCapabilities,
@@ -32,7 +32,7 @@ import type {
   WalkthroughOptions,
 } from "../types";
 
-const PROTOTYPE_CAPABILITIES: VisualizationCapabilities = {
+const R3F_CAPABILITIES: VisualizationCapabilities = {
   photorealistic: false,
   globalIllumination: false,
   reflections: false,
@@ -47,11 +47,13 @@ const PROTOTYPE_CAPABILITIES: VisualizationCapabilities = {
   requiresStreaming: false,
 };
 
-function emptyState(): VisualizationState {
+function emptyState(quality: ResolvedQuality): VisualizationState {
   return {
     status: "IDLE",
     apartmentId: null,
     timeOfDay: "MIDDAY",
+    qualityMode: "AUTO",
+    effectiveQuality: quality,
     environment: null,
     focusedRoomId: null,
     cameraMode: "ORBIT",
@@ -61,13 +63,14 @@ function emptyState(): VisualizationState {
   };
 }
 
-export class PrototypeVisualizationProvider implements ApartmentVisualizationProvider {
-  readonly id: VisualizationProviderId = "prototype-three";
-  readonly label = "אב-טיפוס (דפדפן)";
-  readonly capabilities = PROTOTYPE_CAPABILITIES;
+export class R3FVisualizationProvider implements ApartmentVisualizationProvider {
+  readonly id: VisualizationProviderId = "r3f-webgl";
+  readonly label = "תצוגה בדפדפן (WebGL)";
+  readonly capabilities = R3F_CAPABILITIES;
 
-  private state: VisualizationState = emptyState();
+  private state: VisualizationState = emptyState(resolveQuality("AUTO"));
   private listeners = new Set<VisualizationListener>();
+  private geometry: ApartmentGeometry | null = null;
   private scene: SceneModel | null = null;
   /** החומרים הפעילים, לפי משטח. משטח שאינו כאן מקבל את חומר הסטנדרט. */
   private assignments = new Map<MaterialSurface, MaterialAssignment>();
@@ -77,7 +80,8 @@ export class PrototypeVisualizationProvider implements ApartmentVisualizationPro
     this.assertLive();
 
     // פונקציה טהורה וזולה; אין כאן קריאת רשת ואין טעינת נכסים חיצוניים.
-    this.scene = buildSceneModel(input.document);
+    this.geometry = input.geometry;
+    this.scene = buildSceneModel(input.geometry);
     this.assignments.clear();
 
     this.state = {
@@ -179,6 +183,31 @@ export class PrototypeVisualizationProvider implements ApartmentVisualizationPro
     return this.render();
   }
 
+  async setQualityMode(mode: QualityMode): Promise<VisualizationState> {
+    this.assertLive();
+    this.state = { ...this.state, qualityMode: mode, effectiveQuality: resolveQuality(mode) };
+    return this.render();
+  }
+
+  async resetScene(): Promise<VisualizationState> {
+    this.assertLive();
+    // חזרה למפרט הסטנדרט ולמבט הפתיחה. הדירה עצמה נשארת טעונה.
+    this.assignments.clear();
+    this.state = {
+      ...this.state,
+      timeOfDay: "MIDDAY",
+      cameraMode: "ORBIT",
+      focusedRoomId: null,
+      message: null,
+    };
+    return this.render();
+  }
+
+  /** הגדרות הרינדור לרמת האיכות הפעילה */
+  get qualitySettings() {
+    return QUALITY_SETTINGS[this.state.effectiveQuality];
+  }
+
   getState(): VisualizationState {
     return this.state;
   }
@@ -192,11 +221,14 @@ export class PrototypeVisualizationProvider implements ApartmentVisualizationPro
   }
 
   dispose(): void {
+    // שחרור מפורש: הסצנה, החומרים והמאזינים משוחררים יחד, כדי שמעבר בין
+    // מסכים לא ישאיר מודלים בזיכרון.
     this.disposed = true;
     this.listeners.clear();
+    this.geometry = null;
     this.scene = null;
     this.assignments.clear();
-    this.state = emptyState();
+    this.state = emptyState(this.state.effectiveQuality);
   }
 
   // -------------------------------------------------------------------------

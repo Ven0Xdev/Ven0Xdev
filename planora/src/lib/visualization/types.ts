@@ -7,13 +7,13 @@
  */
 
 import type { SupplierCategory, ViewType } from "@prisma/client";
-import type { DrawingDocument } from "@/lib/drawing/types";
+import type { ApartmentGeometry } from "@/lib/geometry/types";
 
 // ---------------------------------------------------------------------------
 // זהות המנוע ויכולותיו
 // ---------------------------------------------------------------------------
 
-export type VisualizationProviderId = "prototype-three" | "unreal-pixel-streaming";
+export type VisualizationProviderId = "r3f-webgl" | "unreal-pixel-streaming";
 
 /**
  * יכולות המנוע.
@@ -64,8 +64,11 @@ export interface ExteriorEnvironment {
 
 export interface LoadApartmentInput {
   apartmentId: string;
-  /** מודל התוכנית — המקור היחיד לגאומטריה של הדירה */
-  document: DrawingDocument;
+  /**
+   * גאומטריית הדירה המנורמלת — המקור היחיד לצורה.
+   * היא נגזרת מהתוכנית שהקבלן העלה, ולא נבנית בתצוגה.
+   */
+  geometry: ApartmentGeometry;
   /** מזהה טיפוס הדירה, לשימוש מנוע שטוען נכס מוכן לכל טיפוס */
   apartmentTypeId?: string | null;
   planVersionId?: string | null;
@@ -137,6 +140,14 @@ export interface WalkthroughOptions {
 
 export type VisualizationStatus = "IDLE" | "LOADING" | "READY" | "ERROR" | "UNSUPPORTED";
 
+/**
+ * רמת איכות הרינדור.
+ *
+ * `AUTO` נקבעת לפי המכשיר. הדייר אינו אמור לדעת מה זה SSAO — הוא רואה
+ * "איכות גבוהה" או "ביצועים", והמערכת בוחרת ברירת מחדל שמתאימה למכשיר שלו.
+ */
+export type QualityMode = "HIGH" | "BALANCED" | "PERFORMANCE" | "AUTO";
+
 export type CameraMode = "ORBIT" | "WALK";
 
 export interface VisualizationRoom {
@@ -192,6 +203,9 @@ export interface VisualizationState {
   status: VisualizationStatus;
   apartmentId: string | null;
   timeOfDay: TimeOfDay;
+  qualityMode: QualityMode;
+  /** רמת האיכות שנבחרה בפועל כאשר `qualityMode` הוא `AUTO` */
+  effectiveQuality: Exclude<QualityMode, "AUTO">;
   environment: ExteriorEnvironment | null;
   focusedRoomId: string | null;
   cameraMode: CameraMode;

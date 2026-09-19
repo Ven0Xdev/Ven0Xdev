@@ -1,27 +1,25 @@
 /**
- * גזירת מודל תלת-ממד מתוכנית הדירה.
+ * גזירת מודל הרינדור מגאומטריית הדירה.
  *
- * אין כאן קובץ מודל נפרד. התצוגה התלת-ממדית נבנית מאותו `DrawingDocument`
- * שמשמש את ההשוואה הדו-ממדית, כך שהתוכנית והתלת-ממד לעולם לא יוצאים מסנכרון.
+ * הרנדרר צורך **גאומטריה מנורמלת** (`ApartmentGeometry`) ולא את קובץ השרטוט.
+ * הגאומטריה עצמה נגזרת מהתוכנית שהקבלן העלה, ולכן התוכנית והתלת-ממד אינם
+ * יכולים לצאת מסנכרון — ובה בעת, כשייכתב מעבד DWG אמיתי, שום דבר כאן לא ישתנה.
  *
- * מערכת הצירים: תוכנית (x, y) בסנטימטרים → סצנה (x, z) במטרים, ציר Y כלפי מעלה.
+ * מערכת הצירים כאן זהה לזו של הגאומטריה: מטרים, x/z במישור הרצפה, y כלפי מעלה.
  */
 
-import type { DrawingDocument, DrawingElement } from "@/lib/drawing/types";
+import type { ApartmentGeometry, Vec2 } from "@/lib/geometry/types";
 
 /** גובה חלל פנימי סטנדרטי במטרים */
 export const CEILING_HEIGHT_M = 2.7;
 
 /**
- * גובה הקירות בתצוגה.
+ * גובה החיתוך בתצוגת "בית בובות".
  *
- * הקירות נחתכים בגובה נמוך מהגובה האמיתי — זו מוסכמה מקובלת בתצוגת דירה
- * ("בית בובות"), שמאפשרת לראות את כל הדירה מלמעלה ואת הריצוף והמטבח בבירור.
- * הגובה האמיתי נשאר ב-CEILING_HEIGHT_M לשימוש עתידי במצב סיור.
+ * הקירות נחתכים נמוך מהגובה האמיתי — מוסכמה מקובלת בתצוגת דירה, שמאפשרת
+ * לראות את כל הדירה מלמעלה. הגובה האמיתי נשמר בגאומטריה לשימוש במצב סיור.
  */
-const WALL_HEIGHT_M = 1.35;
-const RAILING_HEIGHT_M = 1.05;
-const CM_TO_M = 0.01;
+export const DOLLHOUSE_CUT_M = 1.35;
 
 export type SurfaceKind =
   | "WALL"
@@ -63,191 +61,170 @@ export type MaterialSlot =
   | "windowFrame"
   | "sanitary";
 
+export interface SceneRoom {
+  id: string;
+  label: string;
+  center: [number, number];
+  area: number;
+  isOutdoor: boolean;
+}
+
 export interface SceneModel {
   boxes: SceneBox[];
   /** מרכז הדירה, לצורך מיקום המצלמה */
   center: [number, number];
   /** מידות כוללות במטרים */
   size: [number, number];
-  rooms: { id: string; label: string; center: [number, number]; area: number }[];
+  rooms: SceneRoom[];
 }
 
-const OUTDOOR_ROOMS = ["מרפסת שמש"];
-
-function toMeters(value: number): number {
-  return Math.round(value * CM_TO_M * 1000) / 1000;
-}
-
-function boxFromElement(
-  element: DrawingElement,
-  kind: SurfaceKind,
-  options: {
-    height: number;
-    baseY?: number;
-    materialSlot: MaterialSlot;
-    selectable?: boolean;
-    category?: SceneBox["category"];
-  },
-): SceneBox {
-  const width = toMeters(element.width);
-  const depth = toMeters(element.height);
-  const x = toMeters(element.x) + width / 2;
-  const z = toMeters(element.y) + depth / 2;
-  const baseY = options.baseY ?? 0;
-
-  return {
-    id: element.id,
-    kind,
-    position: [x, baseY + options.height / 2, z],
-    size: [width, options.height, depth],
-    label: element.metadata?.label as string | undefined,
-    materialSlot: options.materialSlot,
-    selectable: options.selectable ?? false,
-    category: options.category,
-  };
-}
-
-/**
- * בונה את מודל הסצנה מהתוכנית.
- * פונקציה טהורה — ניתנת לבדיקה ללא דפדפן.
- */
-export function buildSceneModel(document: DrawingDocument): SceneModel {
-  const boxes: SceneBox[] = [];
-  const rooms: SceneModel["rooms"] = [];
-
-  for (const element of document.elements) {
-    switch (element.type) {
-      case "ROOM": {
-        const label = (element.metadata?.label as string | undefined) ?? "";
-        const isOutdoor = OUTDOOR_ROOMS.includes(label);
-
-        boxes.push(
-          boxFromElement(element, "FLOOR", {
-            height: 0.09,
-            baseY: -0.09,
-            materialSlot: isOutdoor ? "outdoorFloor" : "interiorFloor",
-            selectable: true,
-            category: isOutdoor ? "OUTDOOR" : "FLOORING",
-          }),
-        );
-
-        const width = toMeters(element.width);
-        const depth = toMeters(element.height);
-        rooms.push({
-          id: element.id,
-          label,
-          center: [toMeters(element.x) + width / 2, toMeters(element.y) + depth / 2],
-          area: Math.round(width * depth * 10) / 10,
-        });
-        break;
-      }
-
-      case "WALL":
-        boxes.push(
-          boxFromElement(element, "WALL", {
-            height: WALL_HEIGHT_M,
-            materialSlot: "wall",
-          }),
-        );
-        break;
-
-      case "PARTITION":
-        boxes.push(
-          boxFromElement(element, "PARTITION", {
-            height: WALL_HEIGHT_M,
-            materialSlot: "partition",
-          }),
-        );
-        break;
-
-      case "RAILING":
-        boxes.push(
-          boxFromElement(element, "RAILING", {
-            height: RAILING_HEIGHT_M,
-            materialSlot: "railing",
-          }),
-        );
-        break;
-
-      // דלת: סף נמוך בלבד, כך שנוצר מעבר פתוח וברור
-      case "DOOR":
-        boxes.push(
-          boxFromElement(element, "DOOR", {
-            height: 0.07,
-            materialSlot: "doorLeaf",
-            selectable: true,
-            category: "DOORS",
-          }),
-        );
-        break;
-
-      case "WINDOW":
-      case "SLIDING_DOOR": {
-        const isSliding = element.type === "SLIDING_DOOR";
-        const sillHeight = isSliding ? 0.04 : 0.55;
-
-        // אדן מתחת לחלון
-        if (sillHeight > 0.05) {
-          boxes.push(
-            boxFromElement(element, "WALL", {
-              height: sillHeight,
-              materialSlot: "wall",
-            }),
-          );
-        }
-
-        // הזכוכית — עד גובה החיתוך של התצוגה
-        boxes.push(
-          boxFromElement(element, "WINDOW", {
-            height: Math.max(0.2, WALL_HEIGHT_M - sillHeight),
-            baseY: sillHeight,
-            materialSlot: "windowFrame",
-          }),
-        );
-        break;
-      }
-
-      case "KITCHEN_UNIT": {
-        const label = (element.metadata?.label as string | undefined) ?? "";
-        const isCounter = label.includes("ארון") || label.includes("כיריים");
-        boxes.push(
-          boxFromElement(element, "KITCHEN", {
-            height: isCounter ? 0.9 : 0.85,
-            materialSlot: isCounter ? "kitchenFront" : "countertop",
-            selectable: true,
-            category: "KITCHEN",
-          }),
-        );
-        break;
-      }
-
-      case "SANITARY":
-        boxes.push(
-          boxFromElement(element, "SANITARY", {
-            height: 0.45,
-            materialSlot: "sanitary",
-            selectable: true,
-            category: "SANITARY",
-          }),
-        );
-        break;
-
-      default:
-        break;
-    }
-  }
-
-  const xs = boxes.map((box) => box.position[0]);
-  const zs = boxes.map((box) => box.position[2]);
+function outlineBox(outline: Vec2[]): { center: Vec2; width: number; depth: number } {
+  const xs = outline.map((point) => point.x);
+  const zs = outline.map((point) => point.z);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minZ = Math.min(...zs);
   const maxZ = Math.max(...zs);
+  return {
+    center: { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 },
+    width: maxX - minX,
+    depth: maxZ - minZ,
+  };
+}
+
+/**
+ * בונה את מודל הרינדור.
+ * פונקציה טהורה — ניתנת לבדיקה ללא דפדפן.
+ *
+ * @param cutHeightM גובה חיתוך הקירות. ברירת המחדל היא תצוגת "בית בובות";
+ *                   מצב סיור יבקש את הגובה המלא.
+ */
+export function buildSceneModel(
+  geometry: ApartmentGeometry,
+  cutHeightM: number = DOLLHOUSE_CUT_M,
+): SceneModel {
+  const boxes: SceneBox[] = [];
+  const roomById = new Map(geometry.rooms.map((room) => [room.id, room]));
+
+  // --- רצפות ---
+  for (const floor of geometry.floors) {
+    const { center, width, depth } = outlineBox(floor.outline);
+    const room = roomById.get(floor.roomId);
+
+    boxes.push({
+      id: floor.id,
+      kind: "FLOOR",
+      position: [center.x, floor.levelM - floor.thicknessM / 2, center.z],
+      size: [width, floor.thicknessM, depth],
+      label: room?.label,
+      materialSlot: floor.isOutdoor ? "outdoorFloor" : "interiorFloor",
+      selectable: true,
+      category: floor.isOutdoor ? "OUTDOOR" : "FLOORING",
+    });
+  }
+
+  // --- קירות, מחיצות ומעקות ---
+  for (const wall of geometry.walls) {
+    const length = Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z);
+    if (length === 0) continue;
+
+    const horizontal = Math.abs(wall.end.x - wall.start.x) >= Math.abs(wall.end.z - wall.start.z);
+    const height = Math.min(wall.heightM, wall.kind === "RAILING" ? wall.heightM : cutHeightM);
+
+    boxes.push({
+      id: wall.id,
+      kind: wall.kind === "STRUCTURAL" ? "WALL" : wall.kind === "PARTITION" ? "PARTITION" : "RAILING",
+      position: [
+        (wall.start.x + wall.end.x) / 2,
+        height / 2,
+        (wall.start.z + wall.end.z) / 2,
+      ],
+      size: horizontal
+        ? [length, height, wall.thicknessM]
+        : [wall.thicknessM, height, length],
+      materialSlot:
+        wall.kind === "STRUCTURAL" ? "wall" : wall.kind === "PARTITION" ? "partition" : "railing",
+      selectable: false,
+    });
+  }
+
+  // --- פתחים ---
+  for (const opening of geometry.openings) {
+    const horizontal = Math.abs(Math.cos(opening.rotationRad)) >= Math.abs(Math.sin(opening.rotationRad));
+    const footprint: [number, number] = horizontal
+      ? [opening.widthM, opening.depthM]
+      : [opening.depthM, opening.widthM];
+
+    if (opening.kind === "DOOR") {
+      // דלת פנים: סף נמוך בלבד, כך שנוצר מעבר פתוח וברור בתצוגה מלמעלה
+      boxes.push({
+        id: opening.id,
+        kind: "DOOR",
+        position: [opening.center.x, 0.035, opening.center.z],
+        size: [footprint[0], 0.07, footprint[1]],
+        label: opening.label,
+        materialSlot: "doorLeaf",
+        selectable: true,
+        category: "DOORS",
+      });
+      continue;
+    }
+
+    // מתחת לחלון — קיר מלא עד גובה האדן
+    if (opening.sillHeightM > 0.05) {
+      boxes.push({
+        id: `${opening.id}:sill`,
+        kind: "WALL",
+        position: [opening.center.x, opening.sillHeightM / 2, opening.center.z],
+        size: [footprint[0], opening.sillHeightM, footprint[1]],
+        materialSlot: "wall",
+        selectable: false,
+      });
+    }
+
+    // הזכוכית — עד גובה החיתוך של התצוגה
+    const glassHeight = Math.max(0.2, Math.min(opening.heightM, cutHeightM - opening.sillHeightM));
+    boxes.push({
+      id: opening.id,
+      kind: "WINDOW",
+      position: [opening.center.x, opening.sillHeightM + glassHeight / 2, opening.center.z],
+      size: [footprint[0], glassHeight, footprint[1]],
+      label: opening.label,
+      materialSlot: "windowFrame",
+      selectable: false,
+    });
+  }
+
+  // --- מטבח וכלים סניטריים ---
+  for (const fixture of geometry.fixtures) {
+    const isSanitary = fixture.kind === "SANITARY";
+    boxes.push({
+      id: fixture.id,
+      kind: isSanitary ? "SANITARY" : "KITCHEN",
+      position: [fixture.center.x, fixture.heightM / 2, fixture.center.z],
+      size: [fixture.widthM, fixture.heightM, fixture.depthM],
+      label: fixture.label,
+      materialSlot:
+        fixture.kind === "KITCHEN_COUNTER"
+          ? "countertop"
+          : fixture.kind === "KITCHEN_CABINET"
+            ? "kitchenFront"
+            : "sanitary",
+      selectable: true,
+      category: isSanitary ? "SANITARY" : "KITCHEN",
+    });
+  }
 
   return {
     boxes,
-    center: [(minX + maxX) / 2, (minZ + maxZ) / 2],
-    size: [maxX - minX, maxZ - minZ],
-    rooms,
+    center: [geometry.bounds.center.x, geometry.bounds.center.z],
+    size: [geometry.bounds.sizeX, geometry.bounds.sizeZ],
+    rooms: geometry.rooms.map((room) => ({
+      id: room.id,
+      label: room.label,
+      center: [room.center.x, room.center.z],
+      area: room.areaSqm,
+      isOutdoor: room.isOutdoor,
+    })),
   };
 }

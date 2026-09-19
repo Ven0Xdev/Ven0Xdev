@@ -60,6 +60,7 @@ import {
   type ExteriorEnvironment,
   type LoadApartmentInput,
   type LoadConfigurationInput,
+  type QualityMode,
   type TimeOfDay,
   type VisualizationCapabilities,
   type VisualizationListener,
@@ -101,6 +102,8 @@ export class UnrealPixelStreamingProvider implements ApartmentVisualizationProvi
     status: "UNSUPPORTED",
     apartmentId: null,
     timeOfDay: "MIDDAY",
+    qualityMode: "AUTO",
+    effectiveQuality: "HIGH",
     environment: null,
     focusedRoomId: null,
     cameraMode: "ORBIT",
@@ -150,6 +153,14 @@ export class UnrealPixelStreamingProvider implements ApartmentVisualizationProvi
   }
 
   async stopWalkthrough(): Promise<VisualizationState> {
+    this.unsupported();
+  }
+
+  async setQualityMode(_mode: QualityMode): Promise<VisualizationState> {
+    this.unsupported();
+  }
+
+  async resetScene(): Promise<VisualizationState> {
     this.unsupported();
   }
 

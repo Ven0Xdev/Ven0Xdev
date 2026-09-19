@@ -14,7 +14,8 @@ import {
   resolveVisualizationProviderId,
   type ApartmentVisualizationProvider,
 } from "@/lib/visualization/provider";
-import { PrototypeVisualizationProvider } from "@/lib/visualization/providers/prototype";
+import { R3FVisualizationProvider } from "@/lib/visualization/providers/r3f";
+import { DemoGeometryProvider } from "@/lib/geometry/providers/demo";
 import { UnrealPixelStreamingProvider } from "@/lib/visualization/providers/unreal-pixel-streaming";
 import { toMaterialAssignment } from "@/lib/visualization/materials";
 import {
@@ -24,6 +25,11 @@ import {
 } from "@/lib/visualization/types";
 
 const DOCUMENT = standardApartment42();
+const geometryProvider = new DemoGeometryProvider();
+const GEOMETRY = await geometryProvider.loadFromPlan({
+  document: DOCUMENT,
+  apartmentId: "apartment-42",
+});
 
 const DARK_FLOOR: MaterialAssignment = {
   surface: "interiorFloor",
@@ -35,26 +41,26 @@ const DARK_FLOOR: MaterialAssignment = {
   variantId: "variant-graphite",
 };
 
-async function loadedPrototype(): Promise<PrototypeVisualizationProvider> {
-  const provider = new PrototypeVisualizationProvider();
-  await provider.loadApartment({ apartmentId: "apartment-42", document: DOCUMENT });
+async function loadedViewer(): Promise<R3FVisualizationProvider> {
+  const provider = new R3FVisualizationProvider();
+  await provider.loadApartment({ apartmentId: "apartment-42", geometry: GEOMETRY });
   return provider;
 }
 
 describe("בחירת מנוע", () => {
   it("ברירת המחדל היא מנוע האב-טיפוס", () => {
-    expect(resolveVisualizationProviderId()).toBe("prototype-three");
+    expect(resolveVisualizationProviderId()).toBe("r3f-webgl");
   });
 
   it("מזהה מנוע לא מוכר אינו מתקבל", () => {
-    expect(isVisualizationProviderId("prototype-three")).toBe(true);
+    expect(isVisualizationProviderId("r3f-webgl")).toBe(true);
     expect(isVisualizationProviderId("unreal-pixel-streaming")).toBe(true);
     expect(isVisualizationProviderId("blender")).toBe(false);
   });
 
   it("המפעל מחזיר את המנוע המבוקש", async () => {
-    await expect(createVisualizationProvider("prototype-three")).resolves.toBeInstanceOf(
-      PrototypeVisualizationProvider,
+    await expect(createVisualizationProvider("r3f-webgl")).resolves.toBeInstanceOf(
+      R3FVisualizationProvider,
     );
     await expect(createVisualizationProvider("unreal-pixel-streaming")).resolves.toBeInstanceOf(
       UnrealPixelStreamingProvider,
@@ -72,13 +78,15 @@ describe("בחירת מנוע", () => {
       "focusRoom",
       "startWalkthrough",
       "stopWalkthrough",
+      "setQualityMode",
+      "resetScene",
       "getState",
       "subscribe",
       "dispose",
     ];
 
     for (const provider of [
-      new PrototypeVisualizationProvider(),
+      new R3FVisualizationProvider(),
       new UnrealPixelStreamingProvider(),
     ]) {
       for (const method of methods) {
@@ -88,9 +96,9 @@ describe("בחירת מנוע", () => {
   });
 });
 
-describe("מנוע האב-טיפוס", () => {
+describe("מנוע התצוגה בדפדפן", () => {
   it("טוען את הדירה מתוך התוכנית ומחזיר סצנה מקומית", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const state = provider.getState();
 
     expect(state.status).toBe("READY");
@@ -100,7 +108,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("מצהיר שאינו פוטוריאליסטי ואינו דורש שרת רינדור", () => {
-    const { capabilities } = new PrototypeVisualizationProvider();
+    const { capabilities } = new R3FVisualizationProvider();
     expect(capabilities.photorealistic).toBe(false);
     expect(capabilities.globalIllumination).toBe(false);
     expect(capabilities.runsInBrowser).toBe(true);
@@ -108,7 +116,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("מחיל חומר של מוצר על המשטח המבוקש", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const state = await provider.loadConfiguration({ materials: [DARK_FLOOR] });
 
     expect(state.presentation?.kind).toBe("LOCAL_SCENE");
@@ -118,7 +126,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("חומר בודד אינו נוגע במשטחים אחרים", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const before = provider.getState();
     if (before.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
     const wallBefore = before.presentation.materials.wall.color;
@@ -134,7 +142,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("ביטול חומר מחזיר את מפרט הסטנדרט", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const standard = provider.getState();
     if (standard.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
     const standardFloor = standard.presentation.materials.interiorFloor.color;
@@ -147,7 +155,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("וריאנט של מוצר יכול לגעת בכמה משטחים יחד", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const state = await provider.applyProductVariant({
       productId: "product-kitchen",
       variantId: "variant-urban",
@@ -175,7 +183,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("שעה ביום משנה את התאורה", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const midday = provider.getState();
     const night = await provider.setTimeOfDay("NIGHT");
 
@@ -192,7 +200,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("מיקוד בחדר שאינו קיים אינו משנה את המיקוד", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const room = provider.getState().rooms[0];
 
     const focused = await provider.focusRoom(room.id);
@@ -204,20 +212,20 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("סיור ויציאה ממנו מחליפים מצב מצלמה", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     expect((await provider.startWalkthrough()).cameraMode).toBe("WALK");
     expect((await provider.stopWalkthrough()).cameraMode).toBe("ORBIT");
   });
 
   it("מודיע שאינו מרנדר את הנוף מסביב לבניין", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const state = await provider.setExteriorEnvironment({ viewType: "SEA", floorHeightM: 18 });
     expect(state.environment?.viewType).toBe("SEA");
     expect(state.message).toBeTruthy();
   });
 
   it("מאזין מקבל את המצב מיד ובכל שינוי", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     const seen: VisualizationState[] = [];
     const unsubscribe = provider.subscribe((state) => seen.push(state));
 
@@ -232,7 +240,7 @@ describe("מנוע האב-טיפוס", () => {
   });
 
   it("שימוש אחרי שחרור המשאבים נכשל במפורש", async () => {
-    const provider = await loadedPrototype();
+    const provider = await loadedViewer();
     provider.dispose();
     await expect(provider.setTimeOfDay("NIGHT")).rejects.toThrow();
   });
@@ -251,7 +259,7 @@ describe("מנוע פוטוריאליסטי עתידי", () => {
   it("נכשל במפורש ואינו מחזיר דירה ריקה", async () => {
     const provider = new UnrealPixelStreamingProvider();
     await expect(
-      provider.loadApartment({ apartmentId: "apartment-42", document: DOCUMENT }),
+      provider.loadApartment({ apartmentId: "apartment-42", geometry: GEOMETRY }),
     ).rejects.toBeInstanceOf(VisualizationUnsupportedError);
     expect(provider.getState().status).toBe("UNSUPPORTED");
     expect(provider.getState().presentation).toBeNull();
@@ -275,5 +283,43 @@ describe("גזירת חומרים ממוצרים", () => {
         "ברז שחור",
       ),
     ).toBeNull();
+  });
+});
+
+describe("רמת איכות", () => {
+  it("מתחילה במצב אוטומטי", async () => {
+    const provider = await loadedViewer();
+    expect(provider.getState().qualityMode).toBe("AUTO");
+    expect(["HIGH", "BALANCED", "PERFORMANCE"]).toContain(provider.getState().effectiveQuality);
+  });
+
+  it("בחירה ידנית גוברת על הזיהוי האוטומטי", async () => {
+    const provider = await loadedViewer();
+    const state = await provider.setQualityMode("PERFORMANCE");
+    expect(state.effectiveQuality).toBe("PERFORMANCE");
+    // מצב ביצועים מוותר על צללים ועל אפקטים, ולא על נאמנות הדירה
+    expect(provider.qualitySettings.shadows).toBe(false);
+    expect(provider.qualitySettings.postProcessing).toBe(false);
+  });
+
+  it("איפוס מחזיר את מפרט הסטנדרט ואת מבט הפתיחה", async () => {
+    const provider = await loadedViewer();
+    const standard = provider.getState();
+    if (standard.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
+    const standardFloor = standard.presentation.materials.interiorFloor.color;
+
+    await provider.loadConfiguration({ materials: [DARK_FLOOR] });
+    await provider.setTimeOfDay("NIGHT");
+    await provider.startWalkthrough();
+
+    const reset = await provider.resetScene();
+    if (reset.presentation?.kind !== "LOCAL_SCENE") throw new Error("expected local scene");
+
+    expect(reset.presentation.materials.interiorFloor.color).toBe(standardFloor);
+    expect(reset.timeOfDay).toBe("MIDDAY");
+    expect(reset.cameraMode).toBe("ORBIT");
+    // הדירה עצמה נשארת טעונה — איפוס אינו טעינה מחדש
+    expect(reset.status).toBe("READY");
+    expect(reset.rooms.length).toBeGreaterThan(0);
   });
 });
