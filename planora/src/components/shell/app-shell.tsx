@@ -12,11 +12,13 @@ export function AppShell({
   user,
   counts,
   notifications,
+  isPlatformAdmin = false,
   children,
 }: {
   user: { name: string; image: string | null; role: string; organization: string };
   counts: NavCounts;
   notifications: NotificationItem[];
+  isPlatformAdmin?: boolean;
   children: React.ReactNode;
 }) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -26,7 +28,7 @@ export function AppShell({
       <div className="flex min-h-dvh bg-canvas">
         {/* סרגל צד — בצד ימין */}
         <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 lg:block">
-          <Sidebar user={user} counts={counts} />
+          <Sidebar user={user} counts={counts} isPlatformAdmin={isPlatformAdmin} />
         </aside>
 
         {/* סרגל צד במובייל */}
@@ -42,6 +44,7 @@ export function AppShell({
               <Sidebar
                 user={user}
                 counts={counts}
+                isPlatformAdmin={isPlatformAdmin}
                 onNavigate={() => setIsMobileNavOpen(false)}
               />
             </div>

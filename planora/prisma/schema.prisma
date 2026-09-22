@@ -1679,3 +1679,34 @@ model ApartmentViewProfile {
 
   apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
 }
+
+// ---------------------------------------------------------------------------
+// Platform bootstrap
+// ---------------------------------------------------------------------------
+
+/// How a privileged account came into existence.
+enum AccountCreationMethod {
+  BOOTSTRAP
+  PLATFORM_ADMIN
+}
+
+/// Immutable audit record of the one-time first-SUPER_ADMIN bootstrap.
+///
+/// The row is the lock: `lock` is a singleton unique key, so a second bootstrap
+/// cannot insert even under a race. It never stores the bootstrap secret — only
+/// a SHA-256 fingerprint, so an operator can prove which secret was used
+/// without the secret being recoverable from the database.
+model AdminBootstrap {
+  id             String                @id @default(cuid())
+  /// Always "singleton" — the unique constraint is what makes bootstrap one-time.
+  lock           String                @unique @default("singleton")
+  userId         String                @unique
+  email          String
+  role           UserRole
+  method         AccountCreationMethod @default(BOOTSTRAP)
+  /// SHA-256 of the bootstrap secret. Never the secret itself.
+  secretFingerprint String
+  /// Free-text note about where the command ran from (host, operator).
+  performedFrom  String?
+  createdAt      DateTime              @default(now())
+}

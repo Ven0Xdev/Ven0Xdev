@@ -11,6 +11,10 @@ import {
   FAMILY_DEFAULTS,
   inferMaterialFamily,
 } from "../src/lib/visualization/material-library";
+import { assertSeedTargetIsSafe } from "../src/lib/admin/seed-guard";
+
+// נתוני הדגמה לעולם אינם נכתבים לייצור
+assertSeedTargetIsSafe();
 
 const prisma = new PrismaClient();
 

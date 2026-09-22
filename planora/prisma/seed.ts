@@ -19,6 +19,10 @@ import type { DrawingDocument } from "../src/lib/drawing/types";
 import { SYSTEM_RULES } from "../src/lib/rules/system-rules";
 import { CHANGE_CATEGORY_LABELS } from "../src/lib/i18n/he";
 import { buildPricingLines } from "../src/lib/pricing/engine";
+import { assertSeedTargetIsSafe } from "../src/lib/admin/seed-guard";
+
+// נתוני הדגמה לעולם אינם נכתבים לייצור
+assertSeedTargetIsSafe();
 
 const prisma = new PrismaClient();
 

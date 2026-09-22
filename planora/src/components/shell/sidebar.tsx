@@ -16,6 +16,7 @@ import {
   UserCheck,
   Home,
   BarChart3,
+  ShieldCheck,
 } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
@@ -46,13 +47,23 @@ const NAV_ITEMS = [
   { href: "/settings", label: NAV_LABELS.settings, icon: Settings },
 ] as const;
 
+/** נראה למנהל־על בלבד. הקישור נגזר מהשרת — הדף עצמו נשמר בנפרד. */
+const PLATFORM_ITEM = {
+  href: "/admin",
+  label: "ניהול הפלטפורמה",
+  icon: ShieldCheck,
+  exact: false,
+} as const;
+
 export function Sidebar({
   user,
   counts,
+  isPlatformAdmin = false,
   onNavigate,
 }: {
   user: { name: string; image: string | null; role: string; organization: string };
   counts: NavCounts;
+  isPlatformAdmin?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -67,7 +78,7 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="ניווט ראשי">
         <ul className="space-y-0.5">
-          {NAV_ITEMS.map((item) => {
+          {[...(isPlatformAdmin ? [PLATFORM_ITEM] : []), ...NAV_ITEMS].map((item) => {
             const isActive =
               "exact" in item && item.exact
                 ? pathname === item.href

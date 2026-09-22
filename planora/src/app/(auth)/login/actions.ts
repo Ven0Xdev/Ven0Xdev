@@ -1,7 +1,30 @@
 "use server";
 
 import { signIn } from "@/auth";
+import { prisma } from "@/lib/db";
+import { landingPathForRole } from "@/lib/auth/routing";
 import { env } from "@/lib/env";
+
+/**
+ * לאן נשלח המשתמש אחרי התחברות מוצלחת.
+ * ההחלטה נעשית בשרת לפי התפקיד שבמסד הנתונים — לא לפי פרמטר בכתובת.
+ */
+async function landingPathForEmail(email: string): Promise<string> {
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: {
+      isSuperAdmin: true,
+      memberships: {
+        where: { isActive: true },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { role: true },
+      },
+    },
+  });
+  if (!user) return "/";
+  return landingPathForRole(user.memberships[0]?.role ?? null, user.isSuperAdmin);
+}
 
 /** כניסה עם דואר אלקטרוני וסיסמה */
 export async function signInWithPassword(formData: FormData) {
@@ -12,8 +35,10 @@ export async function signInWithPassword(formData: FormData) {
     return { error: "יש למלא דואר אלקטרוני וסיסמה." };
   }
 
+  const destination = await landingPathForEmail(email);
+
   try {
-    await signIn("password", { email, password, redirectTo: "/" });
+    await signIn("password", { email, password, redirectTo: destination });
   } catch (error) {
     // הפניה מוצלחת מסומנת על ידי Next.js בזריקה — אין לבלוע אותה
     if (isRedirect(error)) throw error;

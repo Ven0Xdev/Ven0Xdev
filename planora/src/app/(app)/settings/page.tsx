@@ -40,6 +40,8 @@ const CAPABILITY_LABELS: Record<string, string> = {
   "rules:manage": "ניהול כללים",
   "priceBook:manage": "ניהול מחירון",
   "learning:view": "צפייה במרכז הלמידה",
+  "users:manage": "ניהול משתמשים ותפקידים",
+  "platform:administer": "ניהול הפלטפורמה (OVIAX)",
 };
 
 export default async function SettingsPage() {

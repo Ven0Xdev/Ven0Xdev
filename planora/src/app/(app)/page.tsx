@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   AlertTriangle,
   Building2,
@@ -13,6 +14,7 @@ import { ApartmentStatusBadge } from "@/components/domain/status-badges";
 import { Avatar, EmptyState, PageHeader } from "@/components/ui/misc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser, primaryRole } from "@/lib/auth/session";
+import { PLATFORM_ADMIN_PATH } from "@/lib/auth/routing";
 import { APARTMENT_STATUS_LABELS, APARTMENT_STATUS_TONE, ACTIVITY_KIND_LABELS } from "@/lib/i18n/he";
 import { formatDate, formatRelative, plural } from "@/lib/i18n/format";
 import {
@@ -34,6 +36,10 @@ const BAR_COLORS: Record<string, string> = {
 
 export default async function DashboardPage() {
   const user = await requireUser();
+
+  // מנהל־על מנהל את הפלטפורמה, לא ארגון מסוים — לוח הבקרה הארגוני אינו שלו
+  if (user.isSuperAdmin) redirect(PLATFORM_ADMIN_PATH);
+
   const role = primaryRole(user);
 
   const [counts, attention, activity, breakdown] = await Promise.all([

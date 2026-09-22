@@ -35,15 +35,33 @@ export const CAPABILITIES = [
   "request:submit",
   "request:handle",
   "commercial:view",
+  // --- ניהול פלטפורמה ---
+  /// ניהול משתמשים ותפקידים בתוך ארגון
+  "users:manage",
+  /// ניהול OVIAX עצמו — חוצה ארגונים. שמור למנהל־על בלבד.
+  "platform:administer",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
 
 const ALL: Capability[] = [...CAPABILITIES];
 
+/**
+ * יכולות ששמורות למנהל־על בלבד.
+ *
+ * מנהל ארגון מקבל את כל היכולות התפעוליות, אבל לא את אלה — הוא מנהל את
+ * הארגון שלו, לא את OVIAX. ההפרדה כאן היא שמונעת ממנו לראות ארגונים אחרים
+ * או לגעת בהגדרות הפלטפורמה.
+ */
+export const PLATFORM_ONLY_CAPABILITIES: Capability[] = ["platform:administer"];
+
+const ORGANIZATION_SCOPED: Capability[] = ALL.filter(
+  (capability) => !PLATFORM_ONLY_CAPABILITIES.includes(capability),
+);
+
 export const ROLE_CAPABILITIES: Record<UserRole, Capability[]> = {
   SUPER_ADMIN: ALL,
-  ORGANIZATION_ADMIN: ALL,
+  ORGANIZATION_ADMIN: ORGANIZATION_SCOPED,
   PROJECT_MANAGER: [
     "supplier:manage",
     "catalog:manage",

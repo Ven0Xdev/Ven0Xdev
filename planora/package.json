@@ -16,7 +16,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:seed:v2": "tsx prisma/seed-v2.ts",
-    "db:seed:seaview": "tsx prisma/seed-seaview.ts"
+    "db:seed:seaview": "tsx prisma/seed-seaview.ts",
+    "bootstrap:superadmin": "tsx scripts/bootstrap-superadmin.ts",
+    "bootstrap:verify": "tsx scripts/verify-superadmin.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

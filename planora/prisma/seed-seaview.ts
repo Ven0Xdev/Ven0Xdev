@@ -12,6 +12,10 @@ import {
   modifiedPlanForApartmentType,
   planForApartmentType,
 } from "../src/lib/drawing/demo/apartment-types";
+import { assertSeedTargetIsSafe } from "../src/lib/admin/seed-guard";
+
+// נתוני הדגמה לעולם אינם נכתבים לייצור
+assertSeedTargetIsSafe();
 
 const prisma = new PrismaClient();
 

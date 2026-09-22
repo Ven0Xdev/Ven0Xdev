@@ -154,3 +154,20 @@ export async function requireCapability(capability: Capability): Promise<Session
 export function organizationScope(user: SessionUser): { organizationId: { in: string[] } } {
   return { organizationId: { in: user.organizationIds } };
 }
+
+/** התפקיד שלפיו נבדקות הרשאות רוחביות */
+export function effectiveRole(user: SessionUser): UserRole | null {
+  return user.isSuperAdmin ? ("SUPER_ADMIN" as UserRole) : primaryRole(user);
+}
+
+/**
+ * שער הכניסה לאזור ניהול הפלטפורמה.
+ *
+ * מי שאינו מנהל־על מקבל "לא נמצא" ולא "אין הרשאה" — אין סיבה לאשר בפניו
+ * שהאזור הזה קיים בכלל.
+ */
+export async function requirePlatformAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!can(effectiveRole(user), "platform:administer")) notFound();
+  return user;
+}
